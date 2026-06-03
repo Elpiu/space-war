@@ -14,6 +14,21 @@ Leggere in ordine:
 
 Poi controllare lo stato reale del repo, perche' i documenti potrebbero essere stati superati da implementazioni successive.
 
+## Regole operative apprese
+
+- Rispettare la struttura Phaser del progetto: le scene devono orchestrare, mentre dati, tipi, costanti, utility e sottosistemi vanno separati in cartelle dedicate sotto `src/game/`.
+- Evitare scene monolitiche quando una feature cresce oltre il prototipo immediato.
+- Usare `src/game/config/` per numeri condivisi e bilanciamento iniziale.
+- Usare `src/game/types/` per contratti TypeScript condivisi.
+- Usare `src/game/data/` per dati di design come upgrade, nemici, nodi e loot table.
+- Usare `src/game/systems/` per rendering HUD, effetti, arena, wave, pickup e sistemi riusabili.
+- Usare `src/game/utils/` per funzioni pure o quasi pure, per esempio geometria e collisioni semplici.
+- Nei moduli ES non assumere l'esistenza globale di `Phaser`: importare esplicitamente i simboli runtime usati, per esempio `Input`, `Math as PhaserMath`, `Utils` o `Scene`.
+- Non aggiungere dipendenze senza un motivo forte.
+- Non eseguire test manuali, test automatici, test e2e, build, dev server o browser check quando il proprietario del progetto chiede esplicitamente di occuparsene personalmente.
+- In quel caso sono consentiti solo controlli statici non esecutivi: lettura file, ricerca, `git diff`, `git diff --check` e ispezione del codice.
+- Aggiornare sempre docs operativi quando cambia struttura, milestone o stato reale del backlog.
+
 ## Verita' di design da preservare
 
 - Il gioco e' un roguelite spaziale survival.
@@ -42,7 +57,7 @@ Costruire un prototipo Phaser giocabile con:
 
 ## Attenzione allo stato attuale
 
-Al 2026-06-03 il codice e' ancora template Phaser. Non assumere sistemi gia' presenti. La scena `Game` e' placeholder e puo' essere sostituita o rifattorizzata durante il primo prototipo.
+Al 2026-06-03 il codice contiene una vertical slice giocabile e una struttura Phaser modulare iniziale. Non assumere pero' che esistano gia' mappa-grafo completa, torrette, trappole, shop, persistenza o sistemi avanzati.
 
 ## Quando aggiornare docs
 
@@ -52,4 +67,3 @@ Aggiornare:
 - [technical-context.md](technical-context.md) quando cambia architettura o struttura cartelle;
 - [backlog.md](backlog.md) quando feature vengono completate, spostate o scartate;
 - i design docs quando cambia una decisione di gioco.
-

@@ -4,23 +4,25 @@ Backlog ordinato per fase. Le feature possono spostarsi quando il design o il pr
 
 ## Prototipo core
 
-- Sostituire scena placeholder con scena di gioco.
-- Navicella controllabile.
-- Shooting automatico o semi-automatico.
-- Nemico inseguitore base.
-- Wave con timer e scaling.
-- Pickup XP.
-- Pickup monete.
-- Level-up con 3 scelte.
-- 6-10 upgrade base.
+- [x] Sostituire scena placeholder con scena di gioco.
+- [x] Navicella controllabile.
+- [x] Shooting automatico o semi-automatico.
+- [x] Nemico inseguitore base.
+- [x] Wave con timer e scaling.
+- [x] Pickup XP.
+- [x] Pickup monete.
+- [x] Level-up con 3 scelte.
+- [x] 6-10 upgrade base.
 - Mappa-grafo minima con nodi e collegamenti.
 - Espansione mappa durante run.
 - Movimento tra nodi.
 - Torretta piazzabile.
 - Trappola o mina piazzabile.
-- HP, morte e restart.
-- UI base per HP, XP, livello, monete, wave.
-- Feedback visivi minimi.
+- [x] HP, morte e restart.
+- [x] UI base per HP, XP, livello, monete, wave.
+- [x] Feedback visivi minimi.
+
+Nota: la vertical slice del 2026-06-03 include solo un nodo centrale visibile come base per la futura mappa-grafo. Collegamenti, espansione del grafo, movimento tra nodi, torrette e trappole restano da implementare.
 
 ## Versione v1
 
@@ -59,4 +61,3 @@ Backlog ordinato per fase. Le feature possono spostarsi quando il design o il pr
 - Nemici che bloccano temporaneamente un collegamento.
 - Trappole che cambiano effetto in base al tipo di nodo.
 - Ricompense maggiori nei nodi ciechi o instabili.
-

@@ -34,14 +34,15 @@ Lo scopo principale e' aiutare nuovi agenti di coding a capire rapidamente cosa 
 
 ## Stato attuale del progetto
 
-Al 2026-06-03 il repository e' ancora vicino al template Phaser 4 + Vite + TypeScript:
+Al 2026-06-03 il repository contiene una prima vertical slice Phaser giocabile:
 
 - `src/main.ts` avvia il gioco dentro `game-container`.
-- `src/game/main.ts` configura Phaser con canvas 1024x768, scaling `FIT` e scena `Game`.
-- `src/game/scenes/Game.ts` mostra ancora background, logo e testo placeholder del template.
-- `public/assets` contiene asset demo (`bg.png`, `logo.png`).
+- `src/game/main.ts` configura Phaser usando dimensioni condivise da `src/game/config/gameplay.ts`, scaling `FIT` e scena `Game`.
+- `src/game/scenes/Game.ts` orchestra una run arcade minima con movimento, shooting automatico, nemici, wave, pickup, level-up, HP, morte, restart e UI.
+- `src/game/config/`, `src/game/types/`, `src/game/data/`, `src/game/systems/` e `src/game/utils/` separano costanti, contratti, dati di design, sottosistemi e funzioni di supporto.
+- `public/assets` contiene ancora asset demo (`bg.png`, `logo.png`), non usati dalla vertical slice attuale.
 
-Il prossimo lavoro di implementazione dovrebbe sostituire gradualmente il placeholder con il nucleo giocabile descritto in [prototype-scope.md](prototype-scope.md).
+Il prossimo lavoro di implementazione dovrebbe proseguire dal nucleo giocabile verso mappa-grafo, movimento tra nodi, torrette e trappole descritti in [prototype-scope.md](prototype-scope.md).
 
 ## Regole di aggiornamento docs
 
@@ -50,4 +51,4 @@ Il prossimo lavoro di implementazione dovrebbe sostituire gradualmente il placeh
 - Non usare i documenti come lista infinita di idee: spostare le idee non prioritarie in [backlog.md](backlog.md).
 - Quando una feature viene costruita, mantenere allineati design, stato tecnico e backlog.
 - Scrivere in italiano semplice, con termini stabili: run, wave, upgrade, mappa-grafo, nodo, collegamento, meta-progressione.
-
+- Se il proprietario del progetto chiede di gestire personalmente la verifica, non eseguire test manuali, automatici, e2e, build, dev server o browser check.
