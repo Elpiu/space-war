@@ -5,11 +5,14 @@ import {
   SCREEN_CENTER_Y,
 } from "../config/gameplay";
 import {
+  getShopItemLevel,
+  getShopItemUpgradeCost,
   SHOP_CATEGORIES,
   SHOP_ITEMS,
 } from "./metaProgression";
 import type {
   MetaProgressionState,
+  PostRunRewardPreview,
   ShopCategory,
   ShopItem,
   ShopItemId,
@@ -135,6 +138,8 @@ export const showMainMenuOverlay = (
 export const showGameOverOverlay = (
   scene: Phaser.Scene,
   coins: number,
+  reward: PostRunRewardPreview,
+  totalCredits: number,
   actions: {
     restart: () => void;
     shop: () => void;
@@ -156,19 +161,31 @@ export const showGameOverOverlay = (
     .setOrigin(0.5)
     .setDepth(311);
   const summary = scene.add
-    .text(SCREEN_CENTER_X, 368, `Risorse run rimaste: ${coins}`, {
-      fontFamily: "Arial",
-      fontSize: 18,
-      color: "#fde68a",
-    })
+    .text(
+      SCREEN_CENTER_X,
+      382,
+      [
+        `Livello ${reward.reachedLevel}  |  Wave ${reward.reachedWave}`,
+        `Crediti ottenuti: +${reward.earnedCredits}`,
+        `Totale crediti: ${totalCredits}`,
+        `Risorse run rimaste: ${coins}`,
+      ],
+      {
+        fontFamily: "Arial",
+        fontSize: 18,
+        color: "#fde68a",
+        align: "center",
+        lineSpacing: 7,
+      },
+    )
     .setOrigin(0.5)
     .setDepth(311);
   const objects: Phaser.GameObjects.GameObject[] = [panel, title, summary];
 
   objects.push(
-    ...createMenuButton(scene, 316, 470, "RESTART", actions.restart, 160),
-    ...createMenuButton(scene, 512, 470, "SHOP", actions.shop, 160),
-    ...createMenuButton(scene, 708, 470, "MENU", actions.menu, 160),
+    ...createMenuButton(scene, 316, 514, "RESTART", actions.restart, 160),
+    ...createMenuButton(scene, 512, 514, "SHOP", actions.shop, 160),
+    ...createMenuButton(scene, 708, 514, "MENU", actions.menu, 160),
   );
 
   pinToScreen(objects);
@@ -179,9 +196,11 @@ export const showShopOverlay = (
   scene: Phaser.Scene,
   metaState: MetaProgressionState,
   selectedShopCategory: ShopCategory,
+  feedback: string,
   actions: {
     selectCategory: (category: ShopCategory) => void;
     selectItem: (itemId: ShopItemId) => void;
+    upgradeItem: (itemId: ShopItemId) => void;
     menu: () => void;
     play: () => void;
   },
@@ -197,9 +216,9 @@ export const showShopOverlay = (
     )
     .setDepth(310);
   const title = scene.add
-    .text(SCREEN_CENTER_X, 58, "SHOP / HANGAR", {
+    .text(SCREEN_CENTER_X, 50, "SHOP / HANGAR", {
       fontFamily: "Arial Black",
-      fontSize: 34,
+      fontSize: 32,
       color: "#f8fafc",
       stroke: "#0f172a",
       strokeThickness: 6,
@@ -209,17 +228,30 @@ export const showShopOverlay = (
   const wallet = scene.add
     .text(
       SCREEN_CENTER_X,
-      102,
-      "Hangar libero: scegli il loadout, nessun acquisto richiesto",
+      90,
+      `Crediti hangar: ${metaState.postRunCredits}`,
       {
         fontFamily: "Arial",
         fontSize: 18,
-        color: "#bae6fd",
+        color: "#fde68a",
       },
     )
     .setOrigin(0.5)
     .setDepth(311);
-  const objects: Phaser.GameObjects.GameObject[] = [backdrop, title, wallet];
+  const feedbackText = scene.add
+    .text(SCREEN_CENTER_X, 116, feedback, {
+      fontFamily: "Arial",
+      fontSize: 14,
+      color: feedback.includes("insufficienti") ? "#fecaca" : "#bbf7d0",
+    })
+    .setOrigin(0.5)
+    .setDepth(311);
+  const objects: Phaser.GameObjects.GameObject[] = [
+    backdrop,
+    title,
+    wallet,
+    feedbackText,
+  ];
 
   SHOP_CATEGORIES.forEach((category, index) => {
     const x = 132 + index * 172;
@@ -229,7 +261,7 @@ export const showShopOverlay = (
       ...createMenuButton(
         scene,
         x,
-        150,
+        154,
         category.label.toUpperCase(),
         () => actions.selectCategory(category.id),
         150,
@@ -239,7 +271,7 @@ export const showShopOverlay = (
         scene,
         category.id,
         x - 56,
-        150,
+        154,
         selected ? 0xccfbf1 : 0x7dd3fc,
       ),
     );
@@ -250,23 +282,49 @@ export const showShopOverlay = (
       const col = index % 2;
       const rowIndex = Math.floor(index / 2);
       const x = 330 + col * 368;
-      const y = 264 + rowIndex * 184;
+      const y = 268 + rowIndex * 172;
       const equipped = metaState.loadout[item.category] === item.id;
-      const status = equipped ? "EQUIP" : "SELEZIONA";
+      const unlocked =
+        item.isDefault || metaState.unlockedItems.includes(item.id);
+      const affordable = metaState.postRunCredits >= item.cost;
+      const level = getShopItemLevel(metaState, item.id);
+      const upgradeCost = getShopItemUpgradeCost(item, level);
+      const upgradeAffordable = metaState.postRunCredits >= upgradeCost;
+      const status = equipped
+        ? "EQUIP"
+        : unlocked
+          ? "ACQUISTATO"
+          : affordable
+            ? "COMPRA"
+            : "BLOCCATO";
+      const statusColor = equipped
+        ? item.accentColor
+        : unlocked
+          ? 0x14532d
+          : affordable
+            ? 0x1d4ed8
+            : 0x7f1d1d;
       const card = scene.add
-        .rectangle(x, y, 326, 156, 0x0f172a, 0.9)
+        .rectangle(
+          x,
+          y,
+          326,
+          160,
+          0x0f172a,
+          unlocked || affordable ? 0.92 : 0.68,
+        )
         .setStrokeStyle(
           2,
-          equipped ? item.accentColor : 0x334155,
-          equipped ? 0.95 : 0.86,
+          equipped ? item.accentColor : unlocked ? 0x475569 : 0x334155,
+          unlocked || affordable ? 0.86 : 0.48,
         )
         .setInteractive({ useHandCursor: true })
         .setDepth(311);
       const title = scene.add
-        .text(x - 88, y - 54, item.title, {
+        .text(x - 88, y - 52, item.title, {
           fontFamily: "Arial Black",
-          fontSize: 17,
-          color: "#f8fafc",
+          fontSize: 16,
+          color: unlocked || affordable ? "#f8fafc" : "#94a3b8",
           wordWrap: { width: 190 },
         })
         .setDepth(312);
@@ -276,10 +334,10 @@ export const showShopOverlay = (
           y - 52,
           104,
           28,
-          equipped ? item.accentColor : 0x1e293b,
+          statusColor,
           0.96,
         )
-        .setStrokeStyle(1, item.accentColor, 0.75)
+        .setStrokeStyle(1, equipped ? item.accentColor : 0x94a3b8, 0.55)
         .setDepth(312);
       const statusText = scene.add
         .text(x + 96, y - 52, status, {
@@ -290,29 +348,48 @@ export const showShopOverlay = (
         .setOrigin(0.5)
         .setDepth(313);
       const description = scene.add
-        .text(x - 88, y - 20, item.description, {
+        .text(x - 88, y - 22, item.description, {
           fontFamily: "Arial",
-          fontSize: 13,
-          color: "#bae6fd",
+          fontSize: 12,
+          color: unlocked || affordable ? "#bae6fd" : "#64748b",
           wordWrap: { width: 216 },
         })
         .setDepth(312);
       const statLine = scene.add
-        .text(x - 88, y + 42, item.statLine, {
+        .text(x - 88, y + 26, item.statLine, {
           fontFamily: "Arial Black",
-          fontSize: 12,
+          fontSize: 11,
           color: "#fde68a",
           wordWrap: { width: 216 },
         })
         .setDepth(312);
-      const costText = scene.add
-        .text(x + 78, y + 46, "clicca per equip", {
+      const levelText = scene.add
+        .text(x - 88, y + 48, `Lv.${level}  ${item.upgrade?.label ?? ""}`, {
           fontFamily: "Arial",
-          fontSize: 12,
-          color: "#ccfbf1",
+          fontSize: 11,
+          color: unlocked ? "#ccfbf1" : "#64748b",
+          wordWrap: { width: 174 },
+        })
+        .setDepth(312);
+      const costText = scene.add
+        .text(x - 88, y + 66, getShopCostLabel(item, unlocked), {
+          fontFamily: "Arial",
+          fontSize: 11,
+          color: unlocked ? "#bbf7d0" : affordable ? "#ccfbf1" : "#fecaca",
+          wordWrap: { width: 164 },
         })
         .setDepth(312);
       const preview = createShopItemPreview(scene, item, x - 126, y + 8);
+      const upgradeButton = unlocked
+        ? createShopUpgradeButton(
+            scene,
+            x + 100,
+            y + 56,
+            upgradeCost,
+            upgradeAffordable,
+            () => actions.upgradeItem(item.id),
+          )
+        : [];
 
       card.on("pointerdown", () => actions.selectItem(item.id));
 
@@ -324,18 +401,81 @@ export const showShopOverlay = (
         statusText,
         description,
         statLine,
+        levelText,
         costText,
+        ...upgradeButton,
       );
     },
   );
 
   objects.push(
-    ...createMenuButton(scene, 408, 704, "MENU", actions.menu, 180),
-    ...createMenuButton(scene, 616, 704, "PLAY", actions.play, 180),
+    ...createMenuButton(scene, 408, 724, "MENU", actions.menu, 180),
+    ...createMenuButton(scene, 616, 724, "PLAY", actions.play, 180),
   );
 
   pinToScreen(objects);
   return scene.add.container(0, 0, objects).setDepth(310);
+};
+
+const getShopCostLabel = (item: ShopItem, unlocked: boolean) => {
+  if (item.isDefault) {
+    return "Gratis (default) · click equip";
+  }
+
+  if (unlocked) {
+    return `Acquistato · click equip`;
+  }
+
+  return `Costo: ${item.cost} crediti`;
+};
+
+const createShopUpgradeButton = (
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  cost: number,
+  affordable: boolean,
+  onClick: () => void,
+) => {
+  const color = affordable ? 0x164e63 : 0x431407;
+  const borderColor = affordable ? 0x67e8f9 : 0xf97316;
+  const textColor = affordable ? "#ecfeff" : "#fed7aa";
+  const button = scene.add
+    .rectangle(x, y, 106, 30, color, 0.96)
+    .setStrokeStyle(1, borderColor, 0.78)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(314);
+  const label = scene.add
+    .text(x, y - 4, "UPGRADE", {
+      fontFamily: "Arial Black",
+      fontSize: 10,
+      color: textColor,
+    })
+    .setOrigin(0.5)
+    .setDepth(315);
+  const costText = scene.add
+    .text(x, y + 8, `${cost} crediti`, {
+      fontFamily: "Arial",
+      fontSize: 9,
+      color: textColor,
+    })
+    .setOrigin(0.5)
+    .setDepth(315);
+
+  button.on(
+    "pointerdown",
+    (
+      _pointer: Phaser.Input.Pointer,
+      _localX: number,
+      _localY: number,
+      event: Phaser.Types.Input.EventData,
+    ) => {
+      event.stopPropagation();
+      onClick();
+    },
+  );
+
+  return [button, label, costText];
 };
 
 const createShopCategoryIcon = (

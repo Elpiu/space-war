@@ -321,22 +321,29 @@ export type ShopItemId =
   | "shipScout"
   | "shipTank"
   | "shipLightFighter"
+  | "shipSupport"
   | "shipSniper"
   | "weaponBase"
   | "weaponRapid"
   | "weaponHeavy"
   | "weaponShotgun"
+  | "weaponScatter"
   | "boosterNone"
   | "boosterHull"
   | "boosterSpeed"
   | "boosterMagnet"
+  | "boosterOverdrive"
   | "turretBasic"
   | "turretTesla"
   | "turretLongRange"
+  | "turretSiege"
   | "mineBasic"
-  | "mineBlast";
+  | "mineBlast"
+  | "mineCluster"
+  | "mineEMP";
 
 export type ShopLoadout = Record<ShopCategory, ShopItemId>;
+export type ShopItemLevels = Partial<Record<ShopItemId, number>>;
 
 export type TurretDefinition = {
   cost: number;
@@ -362,6 +369,7 @@ export type MineDefinition = {
   color: number;
   strokeColor: number;
   pulseColor: number;
+  slowMultiplier?: number;
 };
 
 export type ShopItem = {
@@ -391,7 +399,11 @@ export type ShopItem = {
     | "mineBlast";
   cost: number;
   isDefault: boolean;
-  modifiers?: PlayerStatModifier[];
+  modifiers?: Modifier[];
+  upgrade?: {
+    label: string;
+    modifiersPerLevel: Modifier[];
+  };
   turret?: TurretDefinition;
   mine?: MineDefinition;
 };
@@ -407,6 +419,7 @@ export type MetaProgressionState = {
   postRunCredits: number;
   upgrades: Record<HangarUpgradeId, number>;
   unlockedItems: ShopItemId[];
+  itemLevels: ShopItemLevels;
   loadout: ShopLoadout;
 };
 

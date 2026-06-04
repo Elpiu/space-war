@@ -16,7 +16,19 @@ import {
 import { createPulse } from "../systems/effects";
 import { createHud, updateHud } from "../systems/hud";
 import { createInitialMapSectors, getMapBounds, getSectorAt, getStartPosition } from "../systems/mapSectors";
-import { applyLoadoutBonuses, equipShopItem, getShopItem, loadMetaProgression } from "../systems/metaProgression";
+import {
+  applyLoadoutBonuses,
+  buyShopItem,
+  calculatePostRunReward,
+  equipShopItem,
+  getShopItem,
+  getShopItemLevel,
+  getShopItemUpgradeCost,
+  isShopItemUnlocked,
+  grantPostRunCredits,
+  loadMetaProgression,
+  upgradeShopItem,
+} from "../systems/metaProgression";
 import {
   getMaxMines,
   getMaxTurrets,
@@ -43,6 +55,7 @@ import type {
   MapSectorState,
   MetaProgressionState,
   Pickup,
+  PostRunRewardPreview,
   ShopCategory,
   ShopItemId,
   Upgrade,
@@ -68,6 +81,8 @@ export class Game extends Scene {
   private currentRenderedSectorId = "";
   private metaState!: MetaProgressionState;
   private selectedShopCategory: ShopCategory = "ships";
+  private lastPostRunReward: PostRunRewardPreview | null = null;
+  private shopFeedback = "";
   private hudText!: Phaser.GameObjects.Text;
   private stateText!: Phaser.GameObjects.Text;
 
@@ -133,8 +148,10 @@ export class Game extends Scene {
     this.currentRenderedSectorId = "";
     this.updateCameraBounds();
     this.run = createInitialRunState();
+    this.lastPostRunReward = null;
+    this.shopFeedback = "";
     this.run.nextChestKillThreshold = this.getNextChestKillThreshold();
-    applyLoadoutBonuses(this.run.stats, this.metaState);
+    applyLoadoutBonuses(this.run.stats, this.run.runUpgrades, this.metaState);
     this.stateText.setText("");
 
     const startPosition = getStartPosition(this.mapState);
@@ -451,9 +468,15 @@ export class Game extends Scene {
   }
 
   private endRun() {
+    if (this.run.isGameOver) {
+      return;
+    }
+
     this.screenMode = "gameOver";
     this.run.isGameOver = true;
     this.run.stats.hp = 0;
+    this.lastPostRunReward = calculatePostRunReward(this.run);
+    grantPostRunCredits(this.metaState, this.lastPostRunReward);
     this.stateText.setText("");
     this.player?.setFillStyle(0x64748b, 0.8);
     this.playerTrail?.setVisible(false);
@@ -504,6 +527,7 @@ export class Game extends Scene {
     this.screenMode = "mainMenu";
     this.run.isGameOver = false;
     this.run.isLevelingUp = false;
+    this.shopFeedback = "";
     this.hudText.setText("");
     this.stateText.setText("");
     this.screenOverlay = showMainMenuOverlay(this, feedback, {
@@ -515,11 +539,17 @@ export class Game extends Scene {
 
   private showGameOver() {
     this.clearScreenOverlay();
-    this.screenOverlay = showGameOverOverlay(this, this.run.coins, {
-      restart: () => this.startRun(),
-      shop: () => this.showShop(),
-      menu: () => this.showMainMenu(),
-    });
+    this.screenOverlay = showGameOverOverlay(
+      this,
+      this.run.coins,
+      this.lastPostRunReward ?? calculatePostRunReward(this.run),
+      this.metaState.postRunCredits,
+      {
+        restart: () => this.startRun(),
+        shop: () => this.showShop(),
+        menu: () => this.showMainMenu(),
+      },
+    );
   }
 
   private showShop() {
@@ -532,12 +562,15 @@ export class Game extends Scene {
       this,
       this.metaState,
       this.selectedShopCategory,
+      this.shopFeedback,
       {
         selectCategory: (category) => {
           this.selectedShopCategory = category;
+          this.shopFeedback = "";
           this.showShop();
         },
         selectItem: (itemId) => this.handleShopItemClick(itemId),
+        upgradeItem: (itemId) => this.handleShopItemUpgradeClick(itemId),
         menu: () => this.showMainMenu(),
         play: () => this.startRun(),
       },
@@ -545,7 +578,44 @@ export class Game extends Scene {
   }
 
   private handleShopItemClick(itemId: ShopItemId) {
-    equipShopItem(this.metaState, itemId);
+    const item = getShopItem(itemId);
+
+    if (!item) {
+      return;
+    }
+
+    if (isShopItemUnlocked(this.metaState, item.id)) {
+      equipShopItem(this.metaState, item.id);
+      this.shopFeedback = `${item.title} equipaggiato`;
+    } else if (!buyShopItem(this.metaState, item.id)) {
+      this.shopFeedback = `Crediti insufficienti: servono ${item.cost} crediti`;
+    } else {
+      this.shopFeedback = `${item.title} sbloccato`;
+    }
+
+    this.showShop();
+  }
+
+  private handleShopItemUpgradeClick(itemId: ShopItemId) {
+    const item = getShopItem(itemId);
+
+    if (!item) {
+      return;
+    }
+
+    if (!isShopItemUnlocked(this.metaState, item.id)) {
+      this.shopFeedback = "Sblocca l'item prima di potenziarlo";
+    } else if (!upgradeShopItem(this.metaState, item.id)) {
+      const level = getShopItemLevel(this.metaState, item.id);
+      const cost = getShopItemUpgradeCost(item, level);
+
+      this.shopFeedback = `Crediti insufficienti: servono ${cost} crediti`;
+    } else {
+      const level = getShopItemLevel(this.metaState, item.id);
+
+      this.shopFeedback = `${item.title} potenziato a Lv.${level}`;
+    }
+
     this.showShop();
   }
 
