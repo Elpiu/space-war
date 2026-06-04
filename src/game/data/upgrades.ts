@@ -1,4 +1,4 @@
-import type { RunUpgradeState, Upgrade } from "../types/gameplay";
+import type { LootTable, RunUpgradeState, Upgrade } from "../types/gameplay";
 
 export const createInitialRunUpgradeState = (): RunUpgradeState => ({
   stacks: {},
@@ -18,6 +18,9 @@ export const createInitialRunUpgradeState = (): RunUpgradeState => ({
   droneLimit: 0,
   droneDamageBonus: 0,
   droneFireRateMultiplier: 1,
+  xpMultiplierBonus: 0,
+  lifeStealBonus: 0,
+  shipSlotBonus: 0,
 });
 
 export const XP_UPGRADES: Upgrade[] = [
@@ -28,9 +31,10 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Cadenza rapida",
     description: "Spari piu spesso.",
     maxStacks: 5,
-    apply: ({ stats }) => {
-      stats.fireRate *= 0.82;
-    },
+    weight: 1.15,
+    modifiers: [
+      { target: "playerStat", stat: "fireRate", operation: "multiply", value: 0.82 },
+    ],
   },
   {
     id: "heavy-shots",
@@ -39,9 +43,10 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Colpi pesanti",
     description: "Aumenta il danno dei proiettili.",
     maxStacks: 5,
-    apply: ({ stats }) => {
-      stats.damage += 1.4;
-    },
+    weight: 1.1,
+    modifiers: [
+      { target: "playerStat", stat: "damage", operation: "add", value: 1.4 },
+    ],
   },
   {
     id: "thrusters",
@@ -50,9 +55,9 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Propulsori",
     description: "La navicella si muove piu veloce.",
     maxStacks: 4,
-    apply: ({ stats }) => {
-      stats.speed += 35;
-    },
+    modifiers: [
+      { target: "playerStat", stat: "speed", operation: "add", value: 35 },
+    ],
   },
   {
     id: "cargo-magnet",
@@ -61,9 +66,10 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Magnete cargo",
     description: "Raccogli pickup da piu lontano.",
     maxStacks: 4,
-    apply: ({ stats }) => {
-      stats.pickupRadius += 36;
-    },
+    weight: 0.9,
+    modifiers: [
+      { target: "playerStat", stat: "pickupRadius", operation: "add", value: 36 },
+    ],
   },
   {
     id: "multishot",
@@ -72,9 +78,9 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Doppio arco",
     description: "Aggiunge un proiettile laterale.",
     maxStacks: 3,
-    apply: ({ stats }) => {
-      stats.multiShot = Math.min(stats.multiShot + 1, 4);
-    },
+    modifiers: [
+      { target: "playerStat", stat: "multiShot", operation: "add", value: 1, max: 4 },
+    ],
   },
   {
     id: "reinforced-hull",
@@ -95,10 +101,11 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Calibrazione torrette",
     description: "Torrette con piu danno e piu vita.",
     maxStacks: 4,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.turretDamageBonus += 1.5;
-      runUpgrades.turretHpBonus += 3.5;
-    },
+    weight: 0.85,
+    modifiers: [
+      { target: "runUpgrade", stat: "turretDamageBonus", operation: "add", value: 1.5 },
+      { target: "runUpgrade", stat: "turretHpBonus", operation: "add", value: 3.5 },
+    ],
   },
   {
     id: "mine-engineering",
@@ -107,10 +114,11 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Ingegneria mine",
     description: "Mine piu potenti e con area maggiore.",
     maxStacks: 4,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.mineDamageBonus += 1;
-      runUpgrades.mineRadiusBonus += 14;
-    },
+    weight: 0.85,
+    modifiers: [
+      { target: "runUpgrade", stat: "mineDamageBonus", operation: "add", value: 1 },
+      { target: "runUpgrade", stat: "mineRadiusBonus", operation: "add", value: 14 },
+    ],
   },
   {
     id: "sentinel-drone",
@@ -119,9 +127,10 @@ export const XP_UPGRADES: Upgrade[] = [
     title: "Mini navicella",
     description: "Aggiunge una piccola scorta automatica.",
     maxStacks: 3,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.droneLimit += 1;
-    },
+    weight: 0.8,
+    modifiers: [
+      { target: "runUpgrade", stat: "droneLimit", operation: "add", value: 1 },
+    ],
   },
 ];
 
@@ -132,10 +141,10 @@ export const CHEST_UPGRADES: Upgrade[] = [
     category: "turret",
     title: "Ottiche torretta",
     description: "Le torrette coprono piu spazio.",
-    maxStacks: 4,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.turretRangeBonus += 38;
-    },
+    weight: 1,
+    modifiers: [
+      { target: "runUpgrade", stat: "turretRangeBonus", operation: "add", value: 38 },
+    ],
   },
   {
     id: "extra-turret-slot",
@@ -143,10 +152,10 @@ export const CHEST_UPGRADES: Upgrade[] = [
     category: "turret",
     title: "Slot torretta",
     description: "Puoi mantenere due torrette in piu.",
-    maxStacks: 2,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.maxTurretBonus += 2;
-    },
+    weight: 0.75,
+    modifiers: [
+      { target: "runUpgrade", stat: "maxTurretBonus", operation: "add", value: 2 },
+    ],
   },
   {
     id: "mine-supply-cache",
@@ -154,11 +163,11 @@ export const CHEST_UPGRADES: Upgrade[] = [
     category: "mine",
     title: "Scorta mine",
     description: "Mine meno costose e limite aumentato.",
-    maxStacks: 3,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.mineCostReduction += 1;
-      runUpgrades.maxMineBonus += 1;
-    },
+    weight: 1,
+    modifiers: [
+      { target: "runUpgrade", stat: "mineCostReduction", operation: "add", value: 1 },
+      { target: "runUpgrade", stat: "maxMineBonus", operation: "add", value: 1 },
+    ],
   },
   {
     id: "barricade-kit",
@@ -166,18 +175,13 @@ export const CHEST_UPGRADES: Upgrade[] = [
     category: "barricade",
     title: "Kit barricata",
     description: "Aumenta di 2 le barricate piazzabili.",
+    weight: 0.85,
     // Se vuoi permettere di prendere questo upgrade più volte,
     // rimuovi maxStacks o impostalo a un numero alto
-    maxStacks: 5,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.barricadeUnlocked = true;
-
-      if (typeof runUpgrades.maxBarricades === "undefined") {
-        runUpgrades.maxBarricades = 0;
-      }
-
-      runUpgrades.maxBarricades += 2;
-    },
+    modifiers: [
+      { target: "runUpgrade", stat: "barricadeUnlocked", operation: "set", value: true },
+      { target: "runUpgrade", stat: "maxBarricades", operation: "add", value: 2 },
+    ],
   },
   {
     id: "barricade-plating",
@@ -185,7 +189,7 @@ export const CHEST_UPGRADES: Upgrade[] = [
     category: "barricade",
     title: "Piastre barricata",
     description: "Barricate piu resistenti.",
-    maxStacks: 4,
+    weight: 0.75,
     apply: ({ runUpgrades }) => {
       runUpgrades.barricadeUnlocked = true;
       runUpgrades.maxBarricades = Math.max(runUpgrades.maxBarricades, 2);
@@ -198,10 +202,10 @@ export const CHEST_UPGRADES: Upgrade[] = [
     category: "drone",
     title: "Link drone",
     description: "Aggiunge una mini navicella sentinella.",
-    maxStacks: 3,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.droneLimit += 1;
-    },
+    weight: 0.95,
+    modifiers: [
+      { target: "runUpgrade", stat: "droneLimit", operation: "add", value: 1 },
+    ],
   },
   {
     id: "drone-weapons",
@@ -209,11 +213,11 @@ export const CHEST_UPGRADES: Upgrade[] = [
     category: "drone",
     title: "Armi drone",
     description: "Le mini navicelle sparano piu forte.",
-    maxStacks: 4,
-    apply: ({ runUpgrades }) => {
-      runUpgrades.droneDamageBonus += 1;
-      runUpgrades.droneFireRateMultiplier *= 0.92;
-    },
+    weight: 0.85,
+    modifiers: [
+      { target: "runUpgrade", stat: "droneDamageBonus", operation: "add", value: 1 },
+      { target: "runUpgrade", stat: "droneFireRateMultiplier", operation: "multiply", value: 0.92 },
+    ],
   },
   //{
   //  id: "field-coins",
@@ -228,12 +232,22 @@ export const CHEST_UPGRADES: Upgrade[] = [
   //},
 ];
 
+export const XP_UPGRADE_LOOT_TABLE: LootTable<Upgrade> = {
+  id: "xp-level-up",
+  source: "xp",
+  entries: XP_UPGRADES,
+};
+
+export const CHEST_UPGRADE_LOOT_TABLE: LootTable<Upgrade> = {
+  id: "field-chest",
+  source: "chest",
+  entries: CHEST_UPGRADES,
+};
+
 export const getAvailableUpgrades = (
   upgrades: Upgrade[],
   state: RunUpgradeState,
 ) => {
-  // Per adesso nessun max stack
-  return upgrades;
   return upgrades.filter((upgrade) => {
     if (!upgrade.maxStacks) {
       return true;

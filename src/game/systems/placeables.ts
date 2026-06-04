@@ -2,28 +2,20 @@ import { Math as PhaserMath } from "phaser";
 import {
   BARRICADE_COST,
   BARRICADE_HP,
-  MINE_DAMAGE,
-  MINE_DAMAGE_RADIUS,
-  MINE_HP,
-  MINE_COST,
-  MINE_TRIGGER_RADIUS,
-  TURRET_COST,
-  TURRET_DAMAGE,
-  TURRET_FIRE_RATE,
-  TURRET_HP,
-  TURRET_RANGE,
-  TURRET_CONFIGS,
 } from "../config/gameplay";
 import type {
   Barricade,
   Enemy,
   Mine,
+  MineDefinition,
   RunUpgradeState,
   ShopItemId,
   Turret,
+  TurretDefinition,
 } from "../types/gameplay";
 import { circlesOverlap } from "../utils/geometry";
 import { createPulse } from "./effects";
+import { getShopItem } from "./metaProgression";
 
 export const createTurret = (
   scene: Phaser.Scene,
@@ -32,10 +24,7 @@ export const createTurret = (
   turretId: ShopItemId,
   runUpgrades: RunUpgradeState,
 ): Turret => {
-  // Recupera la configurazione o usa una di default
-  const config = TURRET_CONFIGS[turretId] || TURRET_CONFIGS.turretBasic;
-
-  // Calcola i valori finali applicando i bonus delle run
+  const config = getTurretDefinition(turretId);
   const range = config.range + runUpgrades.turretRangeBonus;
   const fireRate = config.fireRate * runUpgrades.turretFireRateMultiplier;
   const damage = config.damage + runUpgrades.turretDamageBonus;
@@ -47,8 +36,8 @@ export const createTurret = (
     .setDepth(8);
 
   const body = scene.add
-    .rectangle(x, y, 22, 22, config.color, 0.95)
-    .setStrokeStyle(2, 0xe0f2fe, 0.9)
+    .rectangle(x, y, config.bodySize, config.bodySize, config.color, 0.95)
+    .setStrokeStyle(2, config.strokeColor, 0.9)
     .setDepth(18);
 
   return {
@@ -57,10 +46,12 @@ export const createTurret = (
     range,
     fireRate,
     damage,
+    beamColor: config.beamColor,
+    pulseColor: config.pulseColor,
     nextShotAt: 0,
     hp,
     maxHp: hp,
-    radius: 18,
+    radius: config.radius,
     damageCooldownUntil: 0,
   };
 };
@@ -72,13 +63,11 @@ export const createMine = (
   mineId: ShopItemId,
   runUpgrades: RunUpgradeState,
 ): Mine => {
-  const isBlast = mineId === "mineBlast";
-  const damageRadius =
-    (isBlast ? MINE_DAMAGE_RADIUS + 42 : MINE_DAMAGE_RADIUS) +
-    runUpgrades.mineRadiusBonus;
+  const config = getMineDefinition(mineId);
+  const damageRadius = config.damageRadius + runUpgrades.mineRadiusBonus;
   const body = scene.add
-    .circle(x, y, isBlast ? 14 : 12, isBlast ? 0xfb923c : 0xfacc15, 0.95)
-    .setStrokeStyle(2, 0xfef3c7, 0.9)
+    .circle(x, y, config.radius, config.color, 0.95)
+    .setStrokeStyle(2, config.strokeColor, 0.9)
     .setDepth(17);
 
   scene.tweens.add({
@@ -91,14 +80,14 @@ export const createMine = (
 
   return {
     body,
-    triggerRadius: MINE_TRIGGER_RADIUS,
+    triggerRadius: config.triggerRadius,
     damageRadius,
-    damage:
-      (isBlast ? MINE_DAMAGE - 1 : MINE_DAMAGE) + runUpgrades.mineDamageBonus,
+    damage: config.damage + runUpgrades.mineDamageBonus,
+    pulseColor: config.pulseColor,
     isExploding: false,
-    hp: MINE_HP,
-    maxHp: MINE_HP,
-    radius: isBlast ? 14 : 12,
+    hp: config.hp,
+    maxHp: config.hp,
+    radius: config.radius,
     damageCooldownUntil: 0,
   };
 };
@@ -157,7 +146,7 @@ export const updateTurrets = (
         turret.body.y,
         target.body.x,
         target.body.y,
-        0x67e8f9,
+        turret.beamColor,
         0.78,
       )
       .setOrigin(0, 0)
@@ -172,7 +161,7 @@ export const updateTurrets = (
       },
     });
 
-    createPulse(scene, turret.body.x, turret.body.y, 18, 0x38bdf8, 0.22);
+    createPulse(scene, turret.body.x, turret.body.y, 18, turret.pulseColor, 0.22);
     damageEnemy(targetIndex, turret.damage);
     turret.nextShotAt = time + turret.fireRate;
   });
@@ -205,7 +194,7 @@ export const updateMines = (
       mine.body.x,
       mine.body.y,
       mine.damageRadius,
-      0xfacc15,
+      mine.pulseColor,
       0.26,
     );
 
@@ -325,12 +314,18 @@ export const destroyBarricade = (barricade: Barricade) => {
   barricade.body.destroy();
 };
 
-export const getTurretCost = () => {
-  return TURRET_COST;
+export const getTurretCost = (turretId: ShopItemId) => {
+  return getTurretDefinition(turretId).cost;
 };
 
-export const getMineCost = (runUpgrades: RunUpgradeState) => {
-  return Math.max(1, MINE_COST - runUpgrades.mineCostReduction);
+export const getMineCost = (
+  mineId: ShopItemId,
+  runUpgrades: RunUpgradeState,
+) => {
+  return Math.max(
+    1,
+    getMineDefinition(mineId).cost - runUpgrades.mineCostReduction,
+  );
 };
 
 export const getBarricadeCost = (runUpgrades: RunUpgradeState) => {
@@ -352,7 +347,7 @@ const damageTurretsNearEnemy = (
     ) {
       turret.hp -= enemy.damage;
       turret.damageCooldownUntil = time + 780;
-      createPulse(scene, turret.body.x, turret.body.y, 20, 0x38bdf8, 0.18);
+      createPulse(scene, turret.body.x, turret.body.y, 20, turret.pulseColor, 0.18);
 
       if (turret.hp <= 0) {
         destroyTurret(turret);
@@ -378,7 +373,7 @@ const damageMinesNearEnemy = (
     ) {
       mine.hp -= enemy.damage;
       mine.damageCooldownUntil = time + 780;
-      createPulse(scene, mine.body.x, mine.body.y, 16, 0xfacc15, 0.18);
+      createPulse(scene, mine.body.x, mine.body.y, 16, mine.pulseColor, 0.18);
 
       if (mine.hp <= 0) {
         destroyMine(mine);
@@ -435,6 +430,48 @@ const repelEnemyFromBarricade = (enemy: Enemy, barricade: Barricade) => {
   direction.normalize().scale(18);
   enemy.body.x += direction.x;
   enemy.body.y += direction.y;
+};
+
+const getTurretDefinition = (turretId: ShopItemId): TurretDefinition => {
+  return (
+    getShopItem(turretId)?.turret ??
+    getShopItem("turretBasic")?.turret ??
+    FALLBACK_TURRET_DEFINITION
+  );
+};
+
+const getMineDefinition = (mineId: ShopItemId): MineDefinition => {
+  return (
+    getShopItem(mineId)?.mine ??
+    getShopItem("mineBasic")?.mine ??
+    FALLBACK_MINE_DEFINITION
+  );
+};
+
+const FALLBACK_TURRET_DEFINITION: TurretDefinition = {
+  cost: 6,
+  range: 100,
+  fireRate: 1000,
+  damage: 5,
+  hp: 20,
+  radius: 18,
+  bodySize: 22,
+  color: 0x38bdf8,
+  strokeColor: 0xe0f2fe,
+  beamColor: 0x67e8f9,
+  pulseColor: 0x38bdf8,
+};
+
+const FALLBACK_MINE_DEFINITION: MineDefinition = {
+  cost: 3,
+  triggerRadius: 34,
+  damageRadius: 92,
+  damage: 4,
+  hp: 3,
+  radius: 12,
+  color: 0xfacc15,
+  strokeColor: 0xfef3c7,
+  pulseColor: 0xfacc15,
 };
 
 const findNearestEnemyInRange = (

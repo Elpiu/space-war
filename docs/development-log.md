@@ -2,6 +2,56 @@
 
 Log cronologico dei progressi del progetto. Ogni voce deve indicare data, tipo di cambiamento e stato del lavoro.
 
+## 2026-06-04 - Shop item e piazzabili data-driven
+
+Stato:
+
+- convertiti navicelle, cannoni e booster dello shop da funzioni `apply` imperative a `modifiers` dichiarativi;
+- reso il sistema upgrade capace di applicare automaticamente i `modifiers`, lasciando `apply` opzionale per casi dinamici;
+- aggiunti clamp opzionali `min`/`max` ai modificatori numerici;
+- spostate le definizioni operative di torrette e mine dentro gli item shop (`turret`/`mine`), inclusi costo run, stat, colori e raggi;
+- rimosse le config duplicate di torrette/mine da `src/game/config/gameplay.ts`;
+- `placeables.ts` crea torrette e mine leggendo il loadout selezionato come dati.
+
+Verifica:
+
+- `npm run build-nolog` e `npx tsc --noEmit` non erano disponibili perche' `npm`/`npx` non sono nel PATH della shell;
+- eseguito type-check `tsc --noEmit` con il runtime Node bundled;
+- eseguita build produzione Vite con il runtime Node bundled.
+
+## 2026-06-04 - Loot table pesata e sensibile al loadout
+
+Stato:
+
+- aggiunti pesi base agli upgrade XP/chest per rappresentare rarita' e frequenza desiderata;
+- sostituita la pesca uniforme con una pesca pesata senza duplicati per le 3 scelte XP;
+- sostituita la pesca casuale uniforme delle chest con una pesca pesata singola;
+- il loadout equipaggiato influenza le categorie coerenti, per esempio mine, torrette, pickup, nave e armi;
+- la direzione gia presa nella run aumenta la probabilita' di categorie come droni, mine, torrette e barricate;
+- aggiunti gate morbidi per tenere possibili ma meno frequenti alcune categorie prima che diventino rilevanti.
+
+Verifica:
+
+- non eseguita su richiesta del proprietario del progetto.
+
+## 2026-06-04 - Refactor modulare della scena Game
+
+Stato:
+
+- ridotta `src/game/scenes/Game.ts` da circa 1837 a 579 righe;
+- estratti stato run, player, weapon, pickup, wave, chest, reward, upgrade, screen e controller piazzabili in sistemi dedicati;
+- aggiunto modello `Modifier` per futuri item/upgrade data-driven;
+- aggiunte loot table esplicite per upgrade XP e chest;
+- corretto il filtro `maxStacks` degli upgrade;
+- aggiunti hook per aperture/generazione settori e per valuta post-run `postRunCredits`;
+- preservata la vertical slice e il colore shotgun gia modificato localmente.
+
+Verifica:
+
+- `npm run build-nolog` non era disponibile perche' `npm` non e' nel PATH della shell;
+- eseguito type-check `tsc --noEmit` con il runtime Node bundled;
+- eseguita build produzione Vite con il runtime Node bundled.
+
 ## 2026-06-04 - Economia run, chest e piazzabili evoluti
 
 Stato:

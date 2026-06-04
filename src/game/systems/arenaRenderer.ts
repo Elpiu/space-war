@@ -4,7 +4,12 @@ import {
   SECTOR_SIZE_CONFIG,
 } from "../config/gameplay";
 import { getMapBounds } from "./mapSectors";
-import type { MapHazard, MapSector, MapSectorState } from "../types/gameplay";
+import type {
+  MapDirection,
+  MapHazard,
+  MapSector,
+  MapSectorState,
+} from "../types/gameplay";
 
 export type MapArenaRenderer = {
   arena: Phaser.GameObjects.Graphics;
@@ -124,6 +129,25 @@ const drawHazard = (
     return;
   }
 
+  if (hazard.kind === "gravityWell") {
+    graphics.fillStyle(0x6366f1, 0.16);
+    graphics.fillCircle(hazard.x, hazard.y, hazard.radius);
+    graphics.lineStyle(2, 0xa5b4fc, 0.38);
+    graphics.strokeCircle(hazard.x, hazard.y, hazard.radius);
+    graphics.strokeCircle(hazard.x, hazard.y, hazard.radius * 0.48);
+    return;
+  }
+
+  if (hazard.kind === "radiation") {
+    graphics.fillStyle(0xa3e635, 0.14);
+    graphics.fillCircle(hazard.x, hazard.y, hazard.radius);
+    graphics.lineStyle(2, 0xd9f99d, 0.42);
+    graphics.strokeCircle(hazard.x, hazard.y, hazard.radius);
+    graphics.lineStyle(1, 0x84cc16, 0.5);
+    graphics.strokeCircle(hazard.x, hazard.y, hazard.radius * 0.7);
+    return;
+  }
+
   graphics.fillStyle(0xf97316, 0.16);
   graphics.fillCircle(hazard.x, hazard.y, hazard.radius);
   graphics.lineStyle(2, 0xfacc15, 0.42);
@@ -136,7 +160,6 @@ const drawSectorPassages = (
   graphics: Phaser.GameObjects.Graphics,
   sectors: MapSector[],
 ) => {
-  const passageSize = 156;
   const passageDepth = 18;
 
   sectors.forEach((from, fromIndex) => {
@@ -156,24 +179,36 @@ const drawSectorPassages = (
           return;
         }
 
-        const size = Math.min(passageSize, overlap);
-        const center = overlapStart + overlap / 2;
-        const sharedX = from.x + from.width === to.x ? to.x : from.x;
+        const fromDirection = from.x + from.width === to.x ? "east" : "west";
+        const passage = getSharedPassage(
+          from,
+          to,
+          fromDirection,
+          getOppositeDirection(fromDirection),
+          overlapStart,
+          overlapEnd,
+        );
+        const sharedX = fromDirection === "east" ? to.x : from.x;
 
         graphics.fillStyle(0x070b1f, 1);
-        graphics.fillRect(sharedX - 8, center - size / 2, 16, size);
+        graphics.fillRect(
+          sharedX - 8,
+          passage.center - passage.size / 2,
+          16,
+          passage.size,
+        );
         graphics.lineStyle(3, 0x67e8f9, 0.82);
         graphics.lineBetween(
           sharedX - passageDepth,
-          center - size / 2,
+          passage.center - passage.size / 2,
           sharedX + passageDepth,
-          center - size / 2,
+          passage.center - passage.size / 2,
         );
         graphics.lineBetween(
           sharedX - passageDepth,
-          center + size / 2,
+          passage.center + passage.size / 2,
           sharedX + passageDepth,
-          center + size / 2,
+          passage.center + passage.size / 2,
         );
       }
 
@@ -186,28 +221,78 @@ const drawSectorPassages = (
           return;
         }
 
-        const size = Math.min(passageSize, overlap);
-        const center = overlapStart + overlap / 2;
-        const sharedY = from.y + from.height === to.y ? to.y : from.y;
+        const fromDirection = from.y + from.height === to.y ? "south" : "north";
+        const passage = getSharedPassage(
+          from,
+          to,
+          fromDirection,
+          getOppositeDirection(fromDirection),
+          overlapStart,
+          overlapEnd,
+        );
+        const sharedY = fromDirection === "south" ? to.y : from.y;
 
         graphics.fillStyle(0x070b1f, 1);
-        graphics.fillRect(center - size / 2, sharedY - 8, size, 16);
+        graphics.fillRect(
+          passage.center - passage.size / 2,
+          sharedY - 8,
+          passage.size,
+          16,
+        );
         graphics.lineStyle(3, 0x67e8f9, 0.82);
         graphics.lineBetween(
-          center - size / 2,
+          passage.center - passage.size / 2,
           sharedY - passageDepth,
-          center - size / 2,
+          passage.center - passage.size / 2,
           sharedY + passageDepth,
         );
         graphics.lineBetween(
-          center + size / 2,
+          passage.center + passage.size / 2,
           sharedY - passageDepth,
-          center + size / 2,
+          passage.center + passage.size / 2,
           sharedY + passageDepth,
         );
       }
     });
   });
+};
+
+const getSharedPassage = (
+  from: MapSector,
+  to: MapSector,
+  fromDirection: MapDirection,
+  toDirection: MapDirection,
+  overlapStart: number,
+  overlapEnd: number,
+) => {
+  const overlap = overlapEnd - overlapStart;
+  const fromOpening = from.openings.find(
+    (opening) => opening.direction === fromDirection,
+  );
+  const toOpening = to.openings.find(
+    (opening) => opening.direction === toDirection,
+  );
+  const sizeRatio =
+    ((fromOpening?.sizeRatio ?? 0.34) + (toOpening?.sizeRatio ?? 0.34)) / 2;
+  const centerRatio =
+    ((fromOpening?.centerRatio ?? 0.5) + (toOpening?.centerRatio ?? 0.5)) / 2;
+
+  return {
+    center: overlapStart + overlap * centerRatio,
+    size: Math.min(Math.max(72, overlap * sizeRatio), overlap),
+  };
+};
+
+const getOppositeDirection = (direction: MapDirection): MapDirection => {
+  if (direction === "north") {
+    return "south";
+  }
+
+  if (direction === "south") {
+    return "north";
+  }
+
+  return direction === "east" ? "west" : "east";
 };
 
 const renderMinimap = (

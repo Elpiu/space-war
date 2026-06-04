@@ -23,6 +23,9 @@ Poi controllare lo stato reale del repo, perche' i documenti potrebbero essere s
 - Usare `src/game/data/` per dati di design come upgrade, nemici, settori, hazard e loot table.
 - Usare `src/game/systems/` per rendering HUD, effetti, arena, wave, pickup e sistemi riusabili.
 - Usare `src/game/utils/` per funzioni pure o quasi pure, per esempio geometria e collisioni semplici.
+- Dopo il refactor del 2026-06-04, non aggiungere nuove feature direttamente in `Game.ts` se esiste un confine di sistema adatto: usare `runState`, `playerSystem`, `weaponSystem`, `pickupSystem`, `waveSystem`, `chestController`, `combatRewards`, `upgradeSystem`, `placeableController` o `screenSystem`.
+- Per nuovi item/upgrade, preferire dati e `Modifier` riusabili; usare funzioni `apply` custom solo quando il comportamento non e' esprimibile come modifica numerica semplice.
+- Per nuovi shop item equipaggiabili, aggiungere `modifiers` in `SHOP_ITEMS`; per nuove torrette o mine, aggiungere la definizione `turret`/`mine` nello stesso record invece di introdurre branch su id nei sistemi.
 - Nei moduli ES non assumere l'esistenza globale di `Phaser`: importare esplicitamente i simboli runtime usati, per esempio `Input`, `Math as PhaserMath`, `Utils` o `Scene`.
 - Non aggiungere dipendenze senza un motivo forte.
 - Non eseguire test manuali, test automatici, test e2e, build, dev server, browser check o controlli statici quando il proprietario del progetto chiede esplicitamente di non fare verifiche.

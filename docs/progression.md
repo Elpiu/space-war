@@ -19,6 +19,14 @@ Nel prototipo attuale gli upgrade in-run sono divisi per fonte:
 
 Le chest servono a spingere build emergenti su piazzabili, droni e controllo mappa, mentre il level-up mantiene piu' controllo sulla direzione principale della run.
 
+Dal 2026-06-04 XP e chest usano una loot table pesata invece di una scelta uniforme. Ogni upgrade puo' avere un peso base che rappresenta rarita' o frequenza desiderata. La pesca viene poi corretta da tre segnali:
+
+- loadout equipaggiato: mine, torrette speciali, booster magnete e armi non base aumentano le categorie coerenti;
+- build gia avviata nella run: se il giocatore ha gia preso droni, mine, torrette o barricate, la categoria collegata diventa piu' probabile;
+- gate morbidi: alcune categorie restano possibili ma meno frequenti finche' non sono state sbloccate o rese rilevanti.
+
+Il level-up pesca le 3 carte senza duplicati, ma ogni carta segue i pesi aggiornati. Le chest pescano un singolo upgrade dallo stesso sistema di bias, con un pool separato.
+
 Categorie possibili:
 
 - danno;

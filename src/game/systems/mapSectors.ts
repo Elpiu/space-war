@@ -5,11 +5,19 @@ import {
     SECTOR_CELL_SIZE,
     SECTOR_SIZE_CONFIG
 } from '../config/gameplay';
+import {
+    SECTOR_ARCHETYPES,
+    SECTOR_NAMES,
+    createSectorHazards,
+    createSectorOpenings,
+    getSectorArchetype,
+    getSectorSizeForExpansion
+} from '../data/mapGeneration';
 import type {
     MapDirection,
-    MapHazard,
     MapSector,
     MapSectorState,
+    SectorArchetypeId,
     SectorSize
 } from '../types/gameplay';
 
@@ -27,30 +35,16 @@ export const DIRECTION_VECTORS: Record<MapDirection, { x: number; y: number }> =
     west: { x: -1, y: 0 }
 };
 
-const SECTOR_SIZE_SEQUENCE: SectorSize[] = [
-    'small',
-    'medium',
-    'large',
-    'medium',
-    'small',
-    'large'
-];
-
-const SECTOR_NAMES: Record<SectorSize, string[]> = {
-    small: ['Settore compatto', 'Tasca mineraria', 'Cella rotta'],
-    medium: ['Settore mediano', 'Fascia ionica', 'Campo di rottami'],
-    large: ['Settore vasto', 'Distesa plasma', 'Cantiere orbitale']
-};
-
 type SectorPlacement = {
     gridX: number;
     gridY: number;
     cellWidth: number;
     cellHeight: number;
+    direction?: MapDirection;
 };
 
 export const createInitialMapSectors = (): MapSectorState => {
-    const startSector = createMapSector('sector-0', 0, -1, 0, 'medium');
+    const startSector = createMapSector('sector-0', 0, -1, 0, 'medium', undefined, undefined, undefined, 'balanced');
 
     startSector.name = 'Settore centrale';
 
@@ -76,12 +70,15 @@ export const expandMapForWave = (
     }
 
     const sectorNumber = state.nextSectorNumber;
-    const size = SECTOR_SIZE_SEQUENCE[
-        (sectorNumber - 1) % SECTOR_SIZE_SEQUENCE.length
-    ];
 
     for (const anchor of getExpansionAnchors(state)) {
-        const placement = findOpenPlacement(state, anchor, size);
+        const anchorSeed = anchor.gridX * 7 + anchor.gridY * 11 + state.sectors.length;
+        const size = getSectorSizeForExpansion(
+            sectorNumber,
+            anchorSeed
+        );
+        const archetype = getSectorArchetype(sectorNumber, anchorSeed);
+        const placement = findOpenPlacement(state, anchor, size, sectorNumber, archetype);
 
         if (!placement) {
             continue;
@@ -94,7 +91,9 @@ export const expandMapForWave = (
             placement.gridY,
             size,
             placement.cellWidth,
-            placement.cellHeight
+            placement.cellHeight,
+            placement.direction,
+            archetype
         );
 
         state.sectors.push(newSector);
@@ -166,7 +165,7 @@ export const getSlowMultiplierAt = (
 ) => {
     return state.sectors
         .flatMap((sector) => sector.hazards)
-        .filter((hazard) => hazard.kind === 'nebula')
+        .filter((hazard) => hazard.kind === 'nebula' || hazard.kind === 'gravityWell')
         .reduce((multiplier, hazard) => {
             const inside = distanceSquared(x, y, hazard.x, hazard.y) <=
                 hazard.radius * hazard.radius;
@@ -184,14 +183,14 @@ export const getPlasmaDamageAt = (
     x: number,
     y: number
 ) => {
-    const plasma = state.sectors
+    const damagingHazard = state.sectors
         .flatMap((sector) => sector.hazards)
         .find((hazard) =>
-            hazard.kind === 'plasma' &&
+            (hazard.kind === 'plasma' || hazard.kind === 'radiation') &&
             distanceSquared(x, y, hazard.x, hazard.y) <= hazard.radius * hazard.radius
         );
 
-    return plasma?.damage ?? 0;
+    return damagingHazard?.damage ?? 0;
 };
 
 const createMapSector = (
@@ -201,19 +200,23 @@ const createMapSector = (
     gridY: number,
     size: SectorSize,
     cellWidth = SECTOR_SIZE_CONFIG[size].cellWidth,
-    cellHeight = SECTOR_SIZE_CONFIG[size].cellHeight
+    cellHeight = SECTOR_SIZE_CONFIG[size].cellHeight,
+    entryDirection?: MapDirection,
+    archetype: SectorArchetypeId = 'balanced'
 ): MapSector => {
     const config = SECTOR_SIZE_CONFIG[size];
+    const archetypeConfig = SECTOR_ARCHETYPES[archetype];
     const width = cellWidth * SECTOR_CELL_SIZE;
     const height = cellHeight * SECTOR_CELL_SIZE;
     const x = gridX * SECTOR_CELL_SIZE;
     const y = gridY * SECTOR_CELL_SIZE;
-    const names = SECTOR_NAMES[size];
+    const names = archetype === 'balanced' ? SECTOR_NAMES[size] : archetypeConfig.names;
 
     return {
         id,
         name: names[number % names.length],
         size,
+        archetype,
         gridX,
         gridY,
         cellWidth,
@@ -222,10 +225,21 @@ const createMapSector = (
         y,
         width,
         height,
-        risk: config.risk,
-        color: config.color,
-        accentColor: config.accentColor,
-        hazards: createSectorHazards(id, number, x, y, width, height, size)
+        risk: Number((config.risk * archetypeConfig.riskMultiplier).toFixed(2)),
+        rewardMultiplier: archetypeConfig.rewardMultiplier,
+        color: archetypeConfig.color ?? config.color,
+        accentColor: archetypeConfig.accentColor ?? config.accentColor,
+        hazards: createSectorHazards({
+            sectorId: id,
+            sectorNumber: number,
+            x,
+            y,
+            width,
+            height,
+            size,
+            archetype
+        }),
+        openings: createSectorOpenings(number, archetype, entryDirection)
     };
 };
 
@@ -239,31 +253,59 @@ const getExpansionAnchors = (state: MapSectorState) => {
 const findOpenPlacement = (
     state: MapSectorState,
     anchor: MapSector,
-    size: SectorSize
+    size: SectorSize,
+    sectorNumber: number,
+    archetype: MapSector['archetype']
 ): SectorPlacement | null => {
     const options = rotateDirections(anchor.id.length + state.sectors.length);
 
     for (const direction of options) {
-        const footprint = getSectorFootprint(size, direction);
+        const footprint = getSectorFootprint(size, direction, sectorNumber, archetype);
         const placement = getAdjacentPlacement(anchor, direction, {
             cellWidth: footprint.cellWidth,
             cellHeight: footprint.cellHeight
         });
 
         if (canPlaceSector(state, placement)) {
-            return placement;
+            return {
+                ...placement,
+                direction
+            };
         }
     }
 
     return null;
 };
 
-const getSectorFootprint = (size: SectorSize, direction: MapDirection) => {
-    if (size !== 'medium') {
+const getSectorFootprint = (
+    size: SectorSize,
+    direction: MapDirection,
+    sectorNumber: number,
+    archetype: MapSector['archetype']
+) => {
+    if (size === 'small') {
         return {
-            cellWidth: SECTOR_SIZE_CONFIG[size].cellWidth,
-            cellHeight: SECTOR_SIZE_CONFIG[size].cellHeight
+            cellWidth: 1,
+            cellHeight: 1
         };
+    }
+
+    if (size === 'large') {
+        if (archetype === 'fortress') {
+            return { cellWidth: 2, cellHeight: 2 };
+        }
+
+        if (sectorNumber % 3 === 0) {
+            return direction === 'north' || direction === 'south'
+                ? { cellWidth: 3, cellHeight: 2 }
+                : { cellWidth: 2, cellHeight: 3 };
+        }
+
+        return { cellWidth: 2, cellHeight: 2 };
+    }
+
+    if (sectorNumber % 4 === 0 && archetype !== 'plasma') {
+        return { cellWidth: 2, cellHeight: 2 };
     }
 
     return direction === 'north' || direction === 'south'
@@ -330,40 +372,6 @@ const canPlaceSector = (
     }
 
     return true;
-};
-
-const createSectorHazards = (
-    sectorId: string,
-    sectorNumber: number,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    size: SectorSize
-): MapHazard[] => {
-    if (sectorNumber === 0) {
-        return [];
-    }
-
-    const count = size === 'small' ? 1 : size === 'medium' ? 2 : 3;
-    const pattern: MapHazard['kind'][] = ['asteroid', 'nebula', 'plasma'];
-
-    return Array.from({ length: count }, (_, index) => {
-        const kind = pattern[(sectorNumber + index) % pattern.length];
-        const centerX = x + width * ((index + 1) / (count + 1));
-        const centerY = y + height * (0.34 + ((sectorNumber + index) % 3) * 0.16);
-        const radius = kind === 'asteroid' ? 42 : kind === 'nebula' ? 74 : 58;
-
-        return {
-            id: `${sectorId}-hazard-${index}`,
-            kind,
-            x: centerX,
-            y: centerY,
-            radius,
-            damage: kind === 'plasma' ? 1 : undefined,
-            slowMultiplier: kind === 'nebula' ? 0.62 : undefined
-        };
-    });
 };
 
 const rotateDirections = (offset: number) => {

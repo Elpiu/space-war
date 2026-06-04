@@ -8,13 +8,33 @@ export type PlayerStats = {
   bulletRange: number;
   pickupRadius: number;
   multiShot: number;
+  xpMultiplier: number;
+  lifeSteal: number;
 };
 
 export type SectorSize = "small" | "medium" | "large";
 
 export type MapDirection = "north" | "east" | "south" | "west";
 
-export type MapHazardKind = "asteroid" | "nebula" | "plasma";
+export type MapOpening = {
+  direction: MapDirection;
+  centerRatio: number;
+  sizeRatio: number;
+};
+
+export type SectorArchetypeId =
+  | "balanced"
+  | "salvage"
+  | "nebula"
+  | "plasma"
+  | "fortress";
+
+export type MapHazardKind =
+  | "asteroid"
+  | "nebula"
+  | "plasma"
+  | "gravityWell"
+  | "radiation";
 
 export type MapHazard = {
   id: string;
@@ -38,10 +58,13 @@ export type MapSector = {
   y: number;
   width: number;
   height: number;
+  archetype: SectorArchetypeId;
   risk: number;
+  rewardMultiplier: number;
   color: number;
   accentColor: number;
   hazards: MapHazard[];
+  openings: MapOpening[];
 };
 
 export type MapSectorState = {
@@ -51,7 +74,15 @@ export type MapSectorState = {
   activeSpawnSectorIds: string[];
 };
 
-export type EnemyTypeId = "chaser" | "swarm" | "brute" | "shooter";
+export type EnemyTypeId =
+  | "chaser"
+  | "swarm"
+  | "brute"
+  | "shooter"
+  | "charger"
+  | "sniper"
+  | "eliteBrute"
+  | "bossDreadnought";
 
 export type EnemyBehavior = "chaser" | "swarm" | "brute" | "shooter";
 
@@ -153,12 +184,37 @@ export type RunUpgradeState = {
   droneLimit: number;
   droneDamageBonus: number;
   droneFireRateMultiplier: number;
+  xpMultiplierBonus: number;
+  lifeStealBonus: number;
+  shipSlotBonus: number;
 };
 
 export type UpgradeApplyContext = {
   stats: PlayerStats;
   runUpgrades: RunUpgradeState;
 };
+
+export type NumericModifierOperation = "add" | "multiply" | "set";
+
+export type PlayerStatModifier = {
+  target: "playerStat";
+  stat: keyof PlayerStats;
+  operation: NumericModifierOperation;
+  value: number;
+  min?: number;
+  max?: number;
+};
+
+export type RunUpgradeModifier = {
+  target: "runUpgrade";
+  stat: Exclude<keyof RunUpgradeState, "stacks">;
+  operation: NumericModifierOperation;
+  value: number | boolean;
+  min?: number;
+  max?: number;
+};
+
+export type Modifier = PlayerStatModifier | RunUpgradeModifier;
 
 export type Upgrade = {
   id: string;
@@ -167,7 +223,21 @@ export type Upgrade = {
   title: string;
   description: string;
   maxStacks?: number;
-  apply: (context: UpgradeApplyContext) => void;
+  weight?: number;
+  modifiers?: Modifier[];
+  apply?: (context: UpgradeApplyContext) => void;
+};
+
+export type LootTable<T> = {
+  id: string;
+  source: UpgradeSource;
+  entries: T[];
+  fallback?: T;
+};
+
+export type LootBiasContext = {
+  runUpgrades: RunUpgradeState;
+  loadout?: ShopLoadout;
 };
 
 export type Turret = {
@@ -176,6 +246,8 @@ export type Turret = {
   range: number;
   fireRate: number;
   damage: number;
+  beamColor: number;
+  pulseColor: number;
   nextShotAt: number;
   hp: number;
   maxHp: number;
@@ -188,6 +260,7 @@ export type Mine = {
   triggerRadius: number;
   damageRadius: number;
   damage: number;
+  pulseColor: number;
   isExploding: boolean;
   hp: number;
   maxHp: number;
@@ -265,6 +338,32 @@ export type ShopItemId =
 
 export type ShopLoadout = Record<ShopCategory, ShopItemId>;
 
+export type TurretDefinition = {
+  cost: number;
+  range: number;
+  fireRate: number;
+  damage: number;
+  hp: number;
+  radius: number;
+  bodySize: number;
+  color: number;
+  strokeColor: number;
+  beamColor: number;
+  pulseColor: number;
+};
+
+export type MineDefinition = {
+  cost: number;
+  triggerRadius: number;
+  damageRadius: number;
+  damage: number;
+  hp: number;
+  radius: number;
+  color: number;
+  strokeColor: number;
+  pulseColor: number;
+};
+
 export type ShopItem = {
   id: ShopItemId;
   category: ShopCategory;
@@ -292,11 +391,20 @@ export type ShopItem = {
     | "mineBlast";
   cost: number;
   isDefault: boolean;
-  apply?: (stats: PlayerStats) => void;
+  modifiers?: PlayerStatModifier[];
+  turret?: TurretDefinition;
+  mine?: MineDefinition;
+};
+
+export type PostRunRewardPreview = {
+  reachedLevel: number;
+  reachedWave: number;
+  earnedCredits: number;
 };
 
 export type MetaProgressionState = {
   permanentCoins: number;
+  postRunCredits: number;
   upgrades: Record<HangarUpgradeId, number>;
   unlockedItems: ShopItemId[];
   loadout: ShopLoadout;

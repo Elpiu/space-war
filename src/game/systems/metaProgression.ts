@@ -6,6 +6,7 @@ import type {
   ShopItemId,
   ShopLoadout,
 } from "../types/gameplay";
+import { applyPlayerStatModifiers } from "./modifiers";
 
 const META_STORAGE_KEY = "space-war-meta-v1";
 
@@ -48,13 +49,12 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "shipTank",
     cost: 45,
     isDefault: false,
-    apply: (stats) => {
-      stats.maxHp += 5;
-      stats.hp += 5;
-      stats.damage += 1.5;
-      stats.speed -= 30;
-      stats.fireRate *= 1.0;
-    },
+    modifiers: [
+      { target: "playerStat", stat: "maxHp", operation: "add", value: 5 },
+      { target: "playerStat", stat: "hp", operation: "add", value: 5 },
+      { target: "playerStat", stat: "damage", operation: "add", value: 1.5 },
+      { target: "playerStat", stat: "speed", operation: "add", value: -30 },
+    ],
   },
   {
     id: "shipLightFighter",
@@ -67,12 +67,11 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "shipLight",
     cost: 42,
     isDefault: false,
-    apply: (stats) => {
-      stats.maxHp -= 2;
-      stats.hp = Math.min(stats.hp, stats.maxHp);
-      stats.speed += 42;
-      stats.fireRate *= 0.84;
-    },
+    modifiers: [
+      { target: "playerStat", stat: "maxHp", operation: "add", value: -2, min: 1 },
+      { target: "playerStat", stat: "speed", operation: "add", value: 42 },
+      { target: "playerStat", stat: "fireRate", operation: "multiply", value: 0.84 },
+    ],
   },
   {
     id: "shipSniper",
@@ -84,11 +83,11 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "shipSniper", // Assicurati di avere l'icona
     cost: 60,
     isDefault: false,
-    apply: (stats) => {
-      stats.bulletRange += 40;
-      stats.damage += 3;
-      stats.fireRate *= 0.5;
-    },
+    modifiers: [
+      { target: "playerStat", stat: "bulletRange", operation: "add", value: 40 },
+      { target: "playerStat", stat: "damage", operation: "add", value: 3 },
+      { target: "playerStat", stat: "fireRate", operation: "multiply", value: 0.5 },
+    ],
   },
   {
     id: "weaponBase",
@@ -112,10 +111,10 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "weaponRapid",
     cost: 35,
     isDefault: false,
-    apply: (stats) => {
-      stats.fireRate *= 0.72;
-      stats.damage = Math.max(1, stats.damage - 1);
-    },
+    modifiers: [
+      { target: "playerStat", stat: "fireRate", operation: "multiply", value: 0.72 },
+      { target: "playerStat", stat: "damage", operation: "add", value: -1, min: 1 },
+    ],
   },
   {
     id: "weaponHeavy",
@@ -127,10 +126,10 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "weaponHeavy",
     cost: 42,
     isDefault: false,
-    apply: (stats) => {
-      stats.damage += 2;
-      stats.fireRate *= 1.28;
-    },
+    modifiers: [
+      { target: "playerStat", stat: "damage", operation: "add", value: 2 },
+      { target: "playerStat", stat: "fireRate", operation: "multiply", value: 1.28 },
+    ],
   },
   {
     id: "weaponShotgun",
@@ -139,15 +138,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     description:
       "Esplosione a corto raggio: proiettili multipli e danno massiccio.",
     statLine: "+3 multi-shot  -20 range  -1 danno",
-    accentColor: 0xffffff,
+    accentColor: 0x399fff,
     iconKind: "weaponShotgun",
     cost: 50,
     isDefault: false,
-    apply: (stats) => {
-      stats.multiShot += 3;
-      stats.bulletRange -= 20;
-      stats.damage = Math.max(1, stats.damage - 1);
-    },
+    modifiers: [
+      { target: "playerStat", stat: "multiShot", operation: "add", value: 3 },
+      { target: "playerStat", stat: "bulletRange", operation: "add", value: -20 },
+      { target: "playerStat", stat: "damage", operation: "add", value: -1, min: 1 },
+    ],
   },
   {
     id: "boosterNone",
@@ -170,11 +169,11 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "boosterHull",
     cost: 20,
     isDefault: false,
-    apply: (stats) => {
-      stats.maxHp += 2;
-      stats.hp += 2;
-      stats.speed -= 16;
-    },
+    modifiers: [
+      { target: "playerStat", stat: "maxHp", operation: "add", value: 2 },
+      { target: "playerStat", stat: "hp", operation: "add", value: 2 },
+      { target: "playerStat", stat: "speed", operation: "add", value: -16 },
+    ],
   },
   {
     id: "boosterSpeed",
@@ -186,11 +185,10 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "boosterSpeed",
     cost: 24,
     isDefault: false,
-    apply: (stats) => {
-      stats.speed += 34;
-      stats.maxHp -= 1;
-      stats.hp = Math.min(stats.hp, stats.maxHp);
-    },
+    modifiers: [
+      { target: "playerStat", stat: "speed", operation: "add", value: 34 },
+      { target: "playerStat", stat: "maxHp", operation: "add", value: -1, min: 1 },
+    ],
   },
   {
     id: "boosterMagnet",
@@ -203,10 +201,10 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "boosterMagnet",
     cost: 22,
     isDefault: false,
-    apply: (stats) => {
-      stats.pickupRadius += 50;
-      stats.fireRate *= 1.06;
-    },
+    modifiers: [
+      { target: "playerStat", stat: "pickupRadius", operation: "add", value: 50 },
+      { target: "playerStat", stat: "fireRate", operation: "multiply", value: 1.06 },
+    ],
   },
   {
     id: "turretBasic",
@@ -218,6 +216,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "turretBasic",
     cost: 0,
     isDefault: true,
+    turret: {
+      cost: 6,
+      range: 100,
+      fireRate: 1000,
+      damage: 5,
+      hp: 20,
+      radius: 18,
+      bodySize: 22,
+      color: 0x38bdf8,
+      strokeColor: 0xe0f2fe,
+      beamColor: 0x67e8f9,
+      pulseColor: 0x38bdf8,
+    },
   },
   {
     id: "turretLongRange",
@@ -230,6 +241,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "turretLongRange",
     cost: 38,
     isDefault: false,
+    turret: {
+      cost: 6,
+      range: 170,
+      fireRate: 1170,
+      damage: 5,
+      hp: 20,
+      radius: 18,
+      bodySize: 22,
+      color: 0x818cf8,
+      strokeColor: 0xe0e7ff,
+      beamColor: 0xa5b4fc,
+      pulseColor: 0x818cf8,
+    },
   },
   {
     id: "turretTesla",
@@ -241,6 +265,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "turretTesla",
     cost: 55,
     isDefault: false,
+    turret: {
+      cost: 6,
+      range: 60,
+      fireRate: 500,
+      damage: 2,
+      hp: 30,
+      radius: 18,
+      bodySize: 22,
+      color: 0xa855f7,
+      strokeColor: 0xf3e8ff,
+      beamColor: 0xd8b4fe,
+      pulseColor: 0xa855f7,
+    },
   },
 
   {
@@ -253,6 +290,17 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "mineBasic",
     cost: 0,
     isDefault: true,
+    mine: {
+      cost: 3,
+      triggerRadius: 34,
+      damageRadius: 92,
+      damage: 4,
+      hp: 3,
+      radius: 12,
+      color: 0xfacc15,
+      strokeColor: 0xfef3c7,
+      pulseColor: 0xfacc15,
+    },
   },
   {
     id: "mineBlast",
@@ -264,6 +312,17 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconKind: "mineBlast",
     cost: 34,
     isDefault: false,
+    mine: {
+      cost: 3,
+      triggerRadius: 34,
+      damageRadius: 134,
+      damage: 3,
+      hp: 3,
+      radius: 14,
+      color: 0xfb923c,
+      strokeColor: 0xfef3c7,
+      pulseColor: 0xfb923c,
+    },
   },
 ];
 
@@ -299,8 +358,10 @@ export const applyLoadoutBonuses = (
   SHOP_CATEGORIES.forEach((category) => {
     const item = getShopItem(state.loadout[category.id]);
 
-    item?.apply?.(stats);
+    applyPlayerStatModifiers(stats, item?.modifiers);
   });
+
+  normalizeEquippedStats(stats);
 };
 
 export const equipShopItem = (
@@ -331,11 +392,15 @@ const normalizeMetaProgression = (
   const permanentCoins = Number.isFinite(parsed.permanentCoins)
     ? Math.max(0, Math.floor(parsed.permanentCoins ?? 0))
     : 0;
+  const postRunCredits = Number.isFinite(parsed.postRunCredits)
+    ? Math.max(0, Math.floor(parsed.postRunCredits ?? 0))
+    : 0;
   const unlockedItems = normalizeUnlockedItems(parsed.unlockedItems, parsed);
   const loadout = normalizeLoadout(parsed.loadout, unlockedItems);
 
   return {
     permanentCoins,
+    postRunCredits,
     upgrades: {
       starterHull: normalizeLegacyLevel(parsed.upgrades?.starterHull),
       starterThrusters: normalizeLegacyLevel(parsed.upgrades?.starterThrusters),
@@ -419,6 +484,7 @@ const normalizeLegacyLevel = (level: unknown) => {
 
 const createDefaultMetaState = (): MetaProgressionState => ({
   permanentCoins: 0,
+  postRunCredits: 0,
   upgrades: {
     starterHull: 0,
     starterThrusters: 0,
@@ -427,6 +493,16 @@ const createDefaultMetaState = (): MetaProgressionState => ({
   unlockedItems: [...DEFAULT_UNLOCKED_ITEMS],
   loadout: { ...DEFAULT_LOADOUT },
 });
+
+const normalizeEquippedStats = (stats: PlayerStats) => {
+  stats.maxHp = Math.max(1, stats.maxHp);
+  stats.hp = Math.min(Math.max(1, stats.hp), stats.maxHp);
+  stats.damage = Math.max(1, stats.damage);
+  stats.fireRate = Math.max(60, stats.fireRate);
+  stats.bulletRange = Math.max(80, stats.bulletRange);
+  stats.pickupRadius = Math.max(0, stats.pickupRadius);
+  stats.multiShot = Math.max(1, Math.floor(stats.multiShot));
+};
 
 const DEFAULT_UNLOCKED_ITEMS = SHOP_ITEMS.map((item) => item.id);
 

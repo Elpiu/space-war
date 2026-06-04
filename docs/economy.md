@@ -13,11 +13,22 @@ La risorsa run serve per:
 - piazzare barricate quando sbloccate;
 - aprire chest acquistabili nella mappa.
 
-Le chest possono anche apparire gratuitamente dopo circa 80 nemici eliminati. All'apertura applicano un upgrade casuale non scelto dal giocatore.
+Le chest possono anche apparire gratuitamente dopo circa 80 nemici eliminati. All'apertura applicano un upgrade non scelto dal giocatore, pescato da una loot table pesata.
+
+La pesca chest non e' piu' uniforme: la categoria dell'upgrade viene influenzata dal loadout e dagli upgrade gia presi nella run. Una build con mine equipaggiate vede piu' spesso upgrade mine, una run che ha gia sbloccato droni riceve piu' spesso upgrade drone, e le categorie non ancora rilevanti restano nel pool ma con peso ridotto.
 
 ## Monete permanenti
 
 La meta-valuta permanente e' parcheggiata nel prototipo attuale. In futuro potra' tornare come risorsa separata dalle monete run, senza riusare automaticamente le monete raccolte in partita.
+
+Dal refactor del 2026-06-04 il tipo `MetaProgressionState` contiene anche `postRunCredits`, pensato come valuta post-run separata. Il campo viene normalizzato/persistito ma non e' ancora mostrato nello shop e non sblocca item: serve come hook per la prossima iterazione.
+
+Formula iniziale consigliata quando verra' attivata:
+
+- base: `livello raggiunto * 2`;
+- bonus wave: `wave raggiunta * 3`;
+- bonus sopravvivenza: piccolo moltiplicatore o flat bonus oltre soglie come wave 5/10/15;
+- nessuna conversione diretta 1:1 delle monete run residue, per mantenere separate economia tattica e progressione permanente.
 
 Fuori dalla run, il giocatore puo' spenderle per:
 

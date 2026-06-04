@@ -32,10 +32,11 @@ Per sviluppo locale del gioco, preferire `npm run dev-nolog`.
   - `Scale.CENTER_BOTH`;
   - background `#028af8`;
   - scena `Game`.
-- `src/game/scenes/Game.ts` contiene una vertical slice giocabile:
+- `src/game/scenes/Game.ts` orchestra una vertical slice giocabile:
   - menu principale con `Play`, `Shop` ed `Exit`;
   - shop/hangar esterno con categorie navicelle, cannoni, booster, torrette e mine;
   - shop a schede tutto sbloccato con preview vettoriali Phaser, colori per item, stati selezione/equip e descrizioni leggibili;
+  - item shop data-driven: navicelle, cannoni e booster usano `modifiers`, torrette e mine portano definizioni operative `turret`/`mine`;
   - tre archetipi nave: Standard neutra, Tank resistente/lento e Light Fighter fragile/rapido;
   - loadout persistente che influenza la run successiva;
   - mappa continua prototipo con settori S/M/L, mini-mappa e camera follow;
@@ -61,23 +62,44 @@ Per sviluppo locale del gioco, preferire `npm run dev-nolog`.
   - settori di spawn scelti tra quelli piu' lontani dal giocatore e marcati nel mondo/mini-mappa;
   - pickup XP e monete;
   - level-up con 3 scelte cliccabili da un pool XP separato dagli upgrade chest;
+  - loot table XP/chest pesate da rarita', loadout equipaggiato e direzione build della run;
   - HP, invulnerabilita' breve dopo colpo, morte, pannello game over e restart con `R`;
   - UI base per HP, XP, livello, monete run, wave e numero nemici.
+- La scena `Game` e' stata ridotta a circa 580 righe e delega lo stato e le responsabilita' volatili a sistemi dedicati:
+  - `runState.ts` contiene stato run, collezioni entita' e cleanup;
+  - `playerSystem.ts`, `weaponSystem.ts`, `pickupSystem.ts`, `waveSystem.ts`, `chestController.ts` e `combatRewards.ts` gestiscono loop gameplay specifici;
+  - `placeableController.ts` centralizza input, costi, limiti e contratti futuri per preview/spostamento/riparazione/upgrade;
+  - `screenSystem.ts` contiene menu, game over, shop e overlay level-up;
+  - `upgradeSystem.ts` filtra gli upgrade disponibili, applica modificatori e sceglie upgrade XP/chest tramite pesi dinamici;
+  - `modifiers.ts` applica modificatori data-driven per stats e run-upgrades, con clamp opzionali `min`/`max`;
+  - `data/mapGeneration.ts` contiene dati/regole leggere per dimensioni, nomi, hazard e aperture dei settori.
 
 ## Struttura Phaser consigliata
 
 - `src/game/scenes/` contiene scene Phaser. Le scene coordinano il ciclo di vita e collegano i sistemi.
 - `src/game/config/` contiene costanti condivise, dimensioni canvas e valori iniziali di bilanciamento.
 - `src/game/types/` contiene tipi TypeScript condivisi tra scene e sistemi.
-- `src/game/data/` contiene dati di design, per esempio pool upgrade separati e definizioni nemici.
+- `src/game/data/` contiene dati di design, per esempio pool upgrade separati, loot table, definizioni nemici e regole di generazione mappa.
 - `src/game/systems/` contiene sottosistemi riusabili per settori mappa, rendering arena/mini-mappa, HUD, effetti, chest, droni, piazzabili, meta-progressione, nemici e futuri sistemi di gameplay.
 - `src/game/utils/` contiene funzioni pure o leggere, per esempio geometria e collisioni.
 
 La scena `Game` deve restare un orchestratore. Quando una responsabilita' cresce, spostarla in un sistema o in dati dedicati invece di allungare ulteriormente la scena.
 
+Per nuovi upgrade in-run, preferire:
+
+- definire categoria, `maxStacks`, `weight` e modificatori in `src/game/data/upgrades.ts`;
+- aggiungere nuove regole di bias in `src/game/systems/upgradeSystem.ts` solo quando servono archetipi di build nuovi;
+- passare sempre un contesto con `runUpgrades` e, quando disponibile, `loadout`, evitando pescate uniformi dirette dai pool.
+
+Per nuovi contenuti shop, preferire:
+
+- aggiungere navicelle, cannoni e booster come record in `SHOP_ITEMS` con `modifiers`;
+- aggiungere torrette e mine come record in `SHOP_ITEMS` con definizione `turret` o `mine`;
+- cambiare `placeables.ts` solo per nuovi comportamenti non descrivibili con stat, costo, colori, raggi e cooldown.
+
 ## Implicazioni
 
-Il progetto contiene un primo nucleo giocabile, ma non contiene ancora:
+Il progetto contiene un primo nucleo giocabile e un refactor modulare iniziale, ma non contiene ancora:
 
 - elite, boss, supporti nemici o kamikaze;
 - shop/hangar definitivo con economia permanente;

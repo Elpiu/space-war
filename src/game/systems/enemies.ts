@@ -330,6 +330,24 @@ const createEnemyMarker = (
       .setDepth(16);
   }
 
+  if (typeId === "charger") {
+    return scene.add
+      .triangle(x, y, 11, 0, -7, -8, -7, 8, color, 0.92)
+      .setDepth(16);
+  }
+
+  if (typeId === "sniper") {
+    return scene.add.rectangle(x, y, 22, 4, color, 0.92).setDepth(16);
+  }
+
+  if (typeId === "eliteBrute") {
+    return scene.add.rectangle(x, y, 24, 10, color, 0.94).setDepth(16);
+  }
+
+  if (typeId === "bossDreadnought") {
+    return scene.add.rectangle(x, y, 34, 16, color, 0.96).setDepth(16);
+  }
+
   return scene.add.circle(x, y, 5, color, 0.64).setDepth(16);
 };
 
