@@ -46,7 +46,8 @@ import {
 } from "../systems/playerSystem";
 import { updatePickups } from "../systems/pickupSystem";
 import { createInitialRunState, destroyRunEntities, type RunState } from "../systems/runState";
-import { createUpgradeOverlay, showGameOverOverlay, showMainMenuOverlay, showShopOverlay } from "../systems/screenSystem";
+import { createUpgradeOverlay, showGameOverOverlay, showMainMenuOverlay } from "../systems/screenSystem";
+import { createShopDomOverlay } from "../systems/shopOverlay";
 import { addXpAndCheckLevelUp, applyUpgradeToRun, getLevelUpChoices } from "../systems/upgradeSystem";
 import { updatePlayerBullets, updatePlayerShooting } from "../systems/weaponSystem";
 import { updateWaveSystem } from "../systems/waveSystem";
@@ -76,6 +77,7 @@ export class Game extends Scene {
   private run: RunState = createInitialRunState();
   private upgradeOverlay: Phaser.GameObjects.Container | null = null;
   private screenOverlay: Phaser.GameObjects.Container | null = null;
+  private shopDomOverlay: (() => void) | null = null;
   private mapRenderer!: MapArenaRenderer;
   private mapState: MapSectorState = createInitialMapSectors();
   private currentRenderedSectorId = "";
@@ -558,8 +560,7 @@ export class Game extends Scene {
     this.screenMode = "shop";
     this.hudText.setText("");
     this.stateText.setText("");
-    this.screenOverlay = showShopOverlay(
-      this,
+    this.shopDomOverlay = createShopDomOverlay(
       this.metaState,
       this.selectedShopCategory,
       this.shopFeedback,
@@ -622,6 +623,8 @@ export class Game extends Scene {
   private clearScreenOverlay() {
     this.screenOverlay?.destroy();
     this.screenOverlay = null;
+    this.shopDomOverlay?.();
+    this.shopDomOverlay = null;
   }
 
   private getCurrentMapSector() {

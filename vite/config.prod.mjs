@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 
 const phasermsg = () => {
     return {
@@ -42,6 +43,7 @@ export default defineConfig({
         port: 8080
     },
     plugins: [
+        tailwindcss(),
         phasermsg()
     ]
 });
