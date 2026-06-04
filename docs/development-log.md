@@ -2,6 +2,179 @@
 
 Log cronologico dei progressi del progetto. Ogni voce deve indicare data, tipo di cambiamento e stato del lavoro.
 
+## 2026-06-04 - Economia run, chest e piazzabili evoluti
+
+Stato:
+
+- separata la risorsa run dalla meta-economia: le monete raccolte in partita non vengono piu' bancate fuori run;
+- trasformato lo shop/hangar in loadout tutto sbloccato senza acquisti;
+- divisi gli upgrade in pool XP selezionabile e pool chest casuale;
+- aggiunte chest gratuite circa ogni 80 kill e chest acquistabili in mappa con costo visibile;
+- aggiunte barricate sbloccabili, rimozione piazzabile vicino con `E` e HP ai piazzabili;
+- aggiunte mini navicelle follower sbloccabili tramite upgrade;
+- i nemici possono distruggere torrette, mine e barricate.
+
+Verifica:
+
+- eseguito type-check `tsc --noEmit` con il runtime Node bundled;
+- eseguita build produzione Vite con il runtime Node bundled.
+
+## 2026-06-04 - Sistema nemici data-driven
+
+Stato:
+
+- aggiunte definizioni nemici tipizzate in `src/game/data/enemies.ts`;
+- aggiunti 4 archetipi giocabili: inseguitore, sciame, corazzato e tiratore;
+- aggiunto sistema `src/game/systems/enemies.ts` per creazione, AI, scaling wave, cleanup e proiettili nemici;
+- separati i proiettili nemici dai proiettili del giocatore;
+- preparato `iconKey` opzionale per future icone nemico con fallback geometrico Phaser;
+- aggiornata la composizione wave per introdurre gradualmente sciame, corazzati e tiratori.
+
+Verifica:
+
+- `npm run build-nolog` non era disponibile perche' `npm` non e' nel PATH della shell;
+- eseguito type-check `tsc --noEmit` con il runtime Node bundled;
+- eseguita build produzione Vite con il runtime Node bundled.
+
+## 2026-06-04 - Rifinitura shop/hangar e archetipi navicella
+
+Stato:
+
+- trasformato lo shop da lista testuale a schede con preview vettoriali Phaser, colori per item e stati `EQUIP`, `ACQUISTATO` e `COMPRA`;
+- aggiunti metadati visuali agli item shop: colore, icona/preview e riga statistiche;
+- sostituito `Collector` con `Light Fighter`, mantenendo compatibilita' dei vecchi salvataggi `shipCollector`;
+- bilanciate le navicelle in tre archetipi: Standard neutra, Tank resistente/lento e Light Fighter fragile/rapido;
+- resi i booster moduli con tradeoff invece di bonus puri;
+- la navicella in run cambia forma e colore in base al loadout selezionato.
+
+Verifica:
+
+- `npm run build-nolog` non era disponibile perche' `npm` non e' nel PATH della shell;
+- eseguita build produzione chiamando Vite con il runtime Node bundled;
+- eseguito type-check `tsc --noEmit` con il runtime Node bundled;
+- avviato dev server Vite su `http://127.0.0.1:5173` e verificata risposta HTTP 200;
+- non e' stato possibile completare il browser check integrato per assenza del relativo tool nella sessione.
+
+## 2026-06-04 - Wave persistenti e settori di spawn
+
+Stato:
+
+- convertite le wave da spawn singolo a finestre persistenti da circa 30 secondi;
+- aggiunte fasi wave `inizio`, `medio`, `finale` con intervalli di spawn progressivamente piu' rapidi;
+- i nemici spawnano dai settori piu' lontani dal giocatore tra quelli scoperti;
+- i settori attivi per lo spawn vengono evidenziati nel mondo e nella mini-mappa;
+- l'HUD mostra la fase corrente della wave.
+
+Verifica:
+
+- non sono stati eseguiti test, build, dev server, browser check, e2e, type-check, `git diff`, `git diff --check` o controlli statici, come richiesto dal proprietario.
+
+## 2026-06-04 - Mappa continua a settori
+
+Stato:
+
+- sostituito il modello mappa-grafo con mappa continua composta da settori S/M/L;
+- rimosso il gameplay basato su gate, portali, bridge, edge e nodo corrente;
+- aggiunto sistema `mapSectors` per creare settori, espandere la mappa, calcolare bounds e hazard;
+- aggiornato renderer mappa per disegnare tutti i settori in world-space e mini-mappa fissa a schermo;
+- aggiunta camera follow con world bounds aggiornati quando la mappa cresce;
+- aggiunti hazard iniziali: asteroidi solidi, nebule rallentanti e plasma dannoso;
+- aggiornati movimento, proiettili, nemici, spawn wave e HUD per usare settori continui;
+- aggiornati docs di design e contesto tecnico.
+
+Fuori dal batch:
+
+- bilanciamento finale degli hazard, asset definitivi, pathfinding nemico avanzato e varietà completa dei settori.
+
+Verifica:
+
+- non sono stati eseguiti test, build, dev server, browser check, e2e, type-check, `git diff`, `git diff --check` o controlli statici, come richiesto dal proprietario.
+
+## 2026-06-04 - Menu principale e shop/loadout esterno
+
+Stato:
+
+- aggiunto menu principale con `Play`, `Shop` ed `Exit`;
+- trasformato l'hangar in shop esterno con categorie navicelle, cannoni, booster, torrette e mine;
+- aggiunti item acquistabili e selezionabili per loadout persistente;
+- esteso il meta-state localStorage con item sbloccati e loadout equipaggiato;
+- mantenuta compatibilita' con i vecchi livelli hangar gia salvati;
+- `Play` avvia la run applicando navicella, cannone, booster, torretta e mina selezionati;
+- dopo morte sono disponibili `Restart`, `Shop` e `Menu`;
+- aggiornato backlog e contesto tecnico.
+
+Fuori dal batch:
+
+- UI finale dello shop, reset progressione, descrizioni avanzate, preview visuali e bilanciamento definitivo degli item.
+
+Verifica:
+
+- non sono stati eseguiti test, build, dev server, browser check, e2e, type-check, `git diff`, `git diff --check` o controlli statici, come richiesto dal proprietario.
+
+## 2026-06-03 - Monete permanenti e hangar provvisorio
+
+Stato:
+
+- aggiunto meta-state persistente in `localStorage` con chiave `space-war-meta-v1`;
+- aggiunti tipi condivisi per upgrade hangar e stato meta-progressione;
+- aggiunto sistema `metaProgression` per load/save, costi, acquisti e bonus permanenti;
+- alla morte le monete run vengono sommate una sola volta al totale permanente;
+- aggiunto hangar post-morte con 3 acquisti: scafo iniziale, propulsori iniziali e magnete iniziale;
+- gli acquisti permanenti vengono applicati all'inizio della run successiva;
+- aggiornato backlog e contesto tecnico.
+
+Fuori dal batch:
+
+- hangar definitivo, reset manuale progressione, nuove navicelle, shop completo e sblocchi avanzati.
+
+Verifica:
+
+- non sono stati eseguiti test, build, dev server, browser check, e2e, type-check, `git diff`, `git diff --check` o controlli statici, come richiesto dal proprietario.
+
+## 2026-06-03 - Torrette e mine piazzabili
+
+Stato:
+
+- aggiunti tipi condivisi per torrette e mine;
+- aggiunte costanti di costo, limite, range, danno e cooldown dei piazzabili;
+- aggiunto sistema `placeables` per creazione, update, danno e cleanup;
+- aggiunto input `T` per piazzare torrette sulla posizione della navicella;
+- aggiunto input `F` per piazzare mine sulla posizione della navicella;
+- torrette e mine consumano monete run e rispettano limiti massimi;
+- aggiornato HUD con contatori torrette/mine e comandi;
+- aggiornato backlog e contesto tecnico.
+
+Fuori dal batch:
+
+- risorsa in-run separata, upgrade specifici per piazzabili, shop/hangar e persistenza.
+
+Verifica:
+
+- non sono stati eseguiti test, build, dev server, browser check, e2e, type-check, `git diff`, `git diff --check` o controlli statici, come richiesto dal proprietario.
+
+## 2026-06-03 - Mappa-grafo prototipo e movimento tra nodi
+
+Stato:
+
+- aggiunti tipi condivisi per nodi, collegamenti, direzioni e stato del grafo;
+- aggiunta configurazione per 3 tipi di nodo tattico: ampio, stretto e hub;
+- aggiunto sistema `mapGraph` per creare la mappa iniziale, espanderla e risolvere collegamenti/direzioni;
+- sostituito il renderer del nodo centrale con rendering dinamico di arena corrente, gate e mini-mappa;
+- aggiunto movimento tra nodi attraversando i gate sul bordo;
+- aggiornato lo spawn wave per usare il nodo corrente, il rischio del nodo e i gate collegati;
+- aggiornato HUD con nodo corrente, tipo nodo e nodi scoperti;
+- aggiornato backlog e contesto tecnico.
+
+Fuori dal batch:
+
+- torrette, trappole, risorsa in-run, shop/hangar e persistenza.
+
+Verifica:
+
+- eseguita build produzione con Vite usando il runtime Node bundled;
+- eseguito type-check `tsc --noEmit`;
+- `npm` non era disponibile nel PATH della shell, quindi la verifica e' stata eseguita chiamando direttamente Node/Vite/TypeScript locali.
+
 ## 2026-06-03 - Fix import runtime Phaser
 
 Stato:

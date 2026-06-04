@@ -2,9 +2,22 @@
 
 L'economia collega sopravvivenza immediata, scelte tattiche e meta-progressione. Deve dare valore alle run anche quando finiscono con la morte.
 
+## Stato attuale del prototipo
+
+Al 2026-06-04 lo shop/hangar e' tutto sbloccato: fuori run il giocatore equipaggia loadout, ma non compra item. Le monete raccolte in partita sono risorsa run e non vengono piu' sommate a un totale permanente alla morte.
+
+La risorsa run serve per:
+
+- piazzare torrette;
+- piazzare mine;
+- piazzare barricate quando sbloccate;
+- aprire chest acquistabili nella mappa.
+
+Le chest possono anche apparire gratuitamente dopo circa 80 nemici eliminati. All'apertura applicano un upgrade casuale non scelto dal giocatore.
+
 ## Monete permanenti
 
-I nemici possono rilasciare monete. Le monete raccolte durante una run vengono mantenute dopo la morte.
+La meta-valuta permanente e' parcheggiata nel prototipo attuale. In futuro potra' tornare come risorsa separata dalle monete run, senza riusare automaticamente le monete raccolte in partita.
 
 Fuori dalla run, il giocatore puo' spenderle per:
 
@@ -62,4 +75,3 @@ Per il primo prototipo bastano:
 - totale permanente salvato almeno in memoria o local storage;
 - 2-3 acquisti permanenti provvisori;
 - costo per piazzare difesa/trappola durante la run.
-

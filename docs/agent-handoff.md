@@ -20,19 +20,19 @@ Poi controllare lo stato reale del repo, perche' i documenti potrebbero essere s
 - Evitare scene monolitiche quando una feature cresce oltre il prototipo immediato.
 - Usare `src/game/config/` per numeri condivisi e bilanciamento iniziale.
 - Usare `src/game/types/` per contratti TypeScript condivisi.
-- Usare `src/game/data/` per dati di design come upgrade, nemici, nodi e loot table.
+- Usare `src/game/data/` per dati di design come upgrade, nemici, settori, hazard e loot table.
 - Usare `src/game/systems/` per rendering HUD, effetti, arena, wave, pickup e sistemi riusabili.
 - Usare `src/game/utils/` per funzioni pure o quasi pure, per esempio geometria e collisioni semplici.
 - Nei moduli ES non assumere l'esistenza globale di `Phaser`: importare esplicitamente i simboli runtime usati, per esempio `Input`, `Math as PhaserMath`, `Utils` o `Scene`.
 - Non aggiungere dipendenze senza un motivo forte.
-- Non eseguire test manuali, test automatici, test e2e, build, dev server o browser check quando il proprietario del progetto chiede esplicitamente di occuparsene personalmente.
-- In quel caso sono consentiti solo controlli statici non esecutivi: lettura file, ricerca, `git diff`, `git diff --check` e ispezione del codice.
+- Non eseguire test manuali, test automatici, test e2e, build, dev server, browser check o controlli statici quando il proprietario del progetto chiede esplicitamente di non fare verifiche.
+- In quel caso non lanciare nemmeno `git diff`, `git diff --check`, type-check, lint, build o ispezioni finali: completare le modifiche richieste e riportare solo cosa e' stato cambiato.
 - Aggiornare sempre docs operativi quando cambia struttura, milestone o stato reale del backlog.
 
 ## Verita' di design da preservare
 
 - Il gioco e' un roguelite spaziale survival.
-- La mappa e' un grafo generativo di nodi collegati.
+- La mappa e' continua e generativa, composta da settori S/M/L agganciati su griglia.
 - Il giocatore non difende una base.
 - Il valore tattico principale e' scegliere dove combattere.
 - Difese e trappole servono a controllare terreno e flussi, non a sostituire il giocatore.
@@ -49,15 +49,15 @@ Costruire un prototipo Phaser giocabile con:
 - nemici a wave;
 - XP e level-up;
 - monete;
-- mappa-grafo minima;
-- movimento tra nodi;
+- mappa continua minima;
+- movimento tra settori;
 - una difesa;
 - una trappola;
 - morte e restart.
 
 ## Attenzione allo stato attuale
 
-Al 2026-06-03 il codice contiene una vertical slice giocabile e una struttura Phaser modulare iniziale. Non assumere pero' che esistano gia' mappa-grafo completa, torrette, trappole, shop, persistenza o sistemi avanzati.
+Al 2026-06-04 il codice contiene una vertical slice giocabile e una struttura Phaser modulare iniziale. Non assumere pero' che esistano gia' settori definitivi, hazard avanzati, shop finale, persistenza avanzata o sistemi di bilanciamento completi.
 
 ## Quando aggiornare docs
 

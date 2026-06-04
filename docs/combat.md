@@ -7,7 +7,7 @@ Il combattimento deve essere arcade, immediato e leggibile. La navicella e' il c
 Il movimento deve essere fluido e reattivo. Il giocatore deve poter:
 
 - schivare sciami e proiettili;
-- attraversare collegamenti tra nodi;
+- attraversare settori adiacenti senza portali;
 - scegliere distanza e angolo di attacco;
 - recuperare pickup rischiosi;
 - scappare da una posizione compromessa.
@@ -60,9 +60,8 @@ Nel prototipo, bastano:
 
 Il combattimento deve cambiare in base al terreno:
 
-- nodi ampi favoriscono kiting e schivata;
-- nodi stretti premiano armi lineari e mine;
-- hub aumentano rischio di accerchiamento;
-- nodi ciechi riducono ingressi ma limitano fuga;
-- collegamenti diventano punti di controllo o fuga.
-
+- settori grandi favoriscono kiting e schivata;
+- settori piccoli premiano armi lineari e mine;
+- asteroidi creano coperture e blocchi;
+- nebule cambiano il ritmo del movimento;
+- zone plasma trasformano alcune rotte in rischi temporanei.

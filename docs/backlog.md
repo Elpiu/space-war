@@ -13,40 +13,41 @@ Backlog ordinato per fase. Le feature possono spostarsi quando il design o il pr
 - [x] Pickup monete.
 - [x] Level-up con 3 scelte.
 - [x] 6-10 upgrade base.
-- Mappa-grafo minima con nodi e collegamenti.
-- Espansione mappa durante run.
-- Movimento tra nodi.
-- Torretta piazzabile.
-- Trappola o mina piazzabile.
+- [x] Mappa continua minima con settori S/M/L.
+- [x] Espansione mappa durante run.
+- [x] Movimento tra settori.
+- [x] Torretta piazzabile.
+- [x] Trappola o mina piazzabile.
 - [x] HP, morte e restart.
 - [x] UI base per HP, XP, livello, monete, wave.
 - [x] Feedback visivi minimi.
 
-Nota: la vertical slice del 2026-06-03 include solo un nodo centrale visibile come base per la futura mappa-grafo. Collegamenti, espansione del grafo, movimento tra nodi, torrette e trappole restano da implementare.
+Nota: la vertical slice attuale include una mappa continua prototipo con settori S/M/L, mini-mappa, camera follow, ostacoli/pericoli ed espansione ogni 2 wave dopo la seconda. Include anche torrette e mine piazzabili con costo in monete run.
 
 ## Versione v1
 
 - Piu' archetipi nemici.
 - Elite con pattern riconoscibili.
 - Boss periodici.
-- Piu' tipi di nodo.
+- Piu' varieta' di settori, ostacoli e pericoli.
 - Generazione mappa piu' varia.
 - Upgrade sinergici.
-- Meta-progressione con shop/hangar.
-- Nuove navicelle.
-- Nuove armi.
-- Nuove difese e trappole.
-- Salvataggio persistente.
+- [x] Meta-progressione con shop/hangar e menu/loadout base.
+- [x] Nuove navicelle prototipo.
+- [x] Nuove armi prototipo.
+- [x] Nuove difese e trappole prototipo.
+- [x] Shop visuale con schede, preview item e archetipi navicella bilanciati.
+- [x] Salvataggio persistente localStorage iniziale.
 - Bilanciamento delle run.
 - Effetti visivi piu' ricchi.
 - Audio e musica.
 
 ## Espansioni future
 
-- Eventi speciali nei nodi.
-- Collegamenti speciali apribili con risorse.
-- Nodi instabili con pericoli temporanei.
-- Modifiche permanenti al grafo durante la run.
+- Eventi speciali nei settori.
+- Settori speciali apribili con risorse.
+- Settori instabili con pericoli temporanei.
+- Modifiche permanenti alla mappa durante la run.
 - Droni avanzati.
 - Build elementali.
 - Boss con interazioni specifiche con la mappa.
@@ -57,7 +58,7 @@ Nota: la vertical slice del 2026-06-03 include solo un nodo centrale visibile co
 ## Idee da validare
 
 - Risorsa separata per spese in-run.
-- Upgrade che migliorano direttamente nodi o collegamenti.
-- Nemici che bloccano temporaneamente un collegamento.
-- Trappole che cambiano effetto in base al tipo di nodo.
-- Ricompense maggiori nei nodi ciechi o instabili.
+- Upgrade che migliorano direttamente settori o hazard.
+- Nemici che rendono temporaneamente pericolosa una zona.
+- Trappole che cambiano effetto in base alla dimensione del settore.
+- Ricompense maggiori in settori piccoli o instabili.

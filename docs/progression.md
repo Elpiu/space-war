@@ -12,6 +12,13 @@ Ogni level-up deve proporre una scelta chiara tra upgrade. La scelta deve essere
 
 Le scelte migliori non aumentano solo numeri: cambiano il comportamento del gioco.
 
+Nel prototipo attuale gli upgrade in-run sono divisi per fonte:
+
+- upgrade da XP: il giocatore sceglie una carta tra 3 opzioni al level-up;
+- upgrade da chest: il giocatore apre una chest e riceve subito un upgrade casuale non scelto.
+
+Le chest servono a spingere build emergenti su piazzabili, droni e controllo mappa, mentre il level-up mantiene piu' controllo sulla direzione principale della run.
+
 Categorie possibili:
 
 - danno;
@@ -44,7 +51,7 @@ Ogni run dovrebbe poter prendere una direzione leggibile:
 
 ## Meta-progressione
 
-Le monete permanenti restano dopo la morte. Fuori dalla run, il giocatore le spende per sbloccare nuove opzioni e miglioramenti.
+La meta-progressione economica e' sospesa nel prototipo attuale: lo shop/hangar e' tutto sbloccato e serve a scegliere loadout. Quando tornera', dovra' usare una valuta separata dalla risorsa run.
 
 Possibili sblocchi:
 
@@ -71,4 +78,3 @@ Per il primo prototipo bastano:
 - monete raccolte durante la run;
 - totale monete conservato dopo morte o restart;
 - una schermata o stato minimo di spesa permanente, anche provvisorio.
-

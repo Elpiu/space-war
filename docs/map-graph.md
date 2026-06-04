@@ -1,24 +1,23 @@
-# Map Graph
+# Mappa Continua A Settori
 
-La mappa-grafo e' la differenza principale tra Space War e una semplice arena survival. Il giocatore non difende una base: legge la mappa, sceglie terreno favorevole e attraversa collegamenti per sopravvivere.
+La mappa e' la differenza principale tra Space War e una semplice arena survival. Il giocatore non difende una base: legge lo spazio, sceglie terreno favorevole e si muove dentro un'area che cresce durante la run.
 
 ## Struttura base
 
-Ogni run parte da un nodo iniziale. Un nodo e' una piccola arena giocabile. I nodi sono collegati da passaggi attraversabili dal giocatore anche durante le wave.
+Ogni run parte da un settore iniziale. Un settore e' un pezzo fisico della mappa in world-space. I settori si agganciano su una griglia e condividono bordi attraversabili: non esistono portali, bridge o gate necessari per cambiare area.
 
-Il grafo deve poter generare:
+Il modello deve poter generare:
 
-- percorsi lineari;
-- diramazioni;
-- hub;
-- nodi ciechi;
-- collegamenti alternativi;
-- strozzature;
-- zone ricche ma rischiose.
+- settori piccoli, medi e grandi;
+- ramificazioni leggibili;
+- spazi larghi per schivare;
+- strozzature create dalla composizione dei settori;
+- zone con ostacoli o pericoli;
+- aree rischiose ma utili per controllare i nemici.
 
 ## Espansione progressiva
 
-Durante la partita, la mappa si espande generando nuovi nodi collegati al grafo esistente.
+Durante la partita, la mappa si espande generando nuovi settori adiacenti a quelli esistenti.
 
 Trigger possibili:
 
@@ -28,48 +27,37 @@ Trigger possibili:
 - soglie di livello;
 - eventi speciali.
 
-L'espansione deve dare la sensazione che lo spazio di gioco cresca insieme alla minaccia.
+L'espansione deve dare la sensazione che lo spazio di gioco cresca insieme alla minaccia. La camera segue il player e i bounds del mondo si aggiornano quando compaiono nuovi settori.
 
-## Collegamenti
+## Settori S/M/L
 
-I collegamenti sono importanti quanto i nodi. Influenzano fuga, inseguimento, controllo dei nemici e posizionamento delle trappole.
+I settori non sono biomi narrativi e non hanno tipologie tattiche rigide. La loro identita' nasce da dimensione, composizione e contenuto.
 
-Funzioni dei collegamenti:
+- Settore S: compatto, rapido da attraversare, piu' teso quando arrivano molti nemici.
+- Settore M: spazio intermedio, utile per combattere e riposizionarsi.
+- Settore L: ampio, piu' adatto a kite, torrette e movimento largo.
 
-- creare percorsi sicuri;
-- creare strozzature tattiche;
-- offrire scorciatoie;
-- esporre a rischi;
-- dare punti ideali per trappole;
-- permettere fuga durante una wave.
+Ogni settore puo' contenere 1-3 elementi spicy ma leggibili:
 
-## Tipologie di nodi
-
-I nodi non sono biomi narrativi: sono configurazioni tattiche.
-
-- Nodo ampio: favorisce schivata e movimento libero.
-- Nodo stretto: favorisce armi lineari, mine e trappole.
-- Nodo a imbuto: concentra nemici in pochi accessi.
-- Nodo hub: offre molte uscite ma anche molti ingressi nemici.
-- Nodo cieco: protegge un lato ma limita le vie di fuga.
-- Nodo ricco: offre piu' drop o opportunita', ma aumenta il rischio.
-- Nodo instabile: introduce ostacoli, variazioni o pericoli temporanei.
+- asteroidi solidi che bloccano movimento e proiettili;
+- campi nebula che rallentano;
+- zone plasma pulsanti che infliggono danno leggero.
 
 ## Requisiti di gameplay
 
-- Il giocatore deve potersi spostare tra nodi mentre le wave sono attive.
-- I nemici devono poter sfruttare la struttura della mappa.
-- La scelta del nodo deve influenzare davvero la sopravvivenza.
-- Le trappole nei collegamenti devono avere valore tattico chiaro.
-- Il grafo deve rimanere leggibile anche quando cresce.
+- Il giocatore deve muoversi tra settori senza interazioni speciali.
+- I nemici devono usare lo spazio continuo e spawnare dai bordi della mappa o del settore vicino al player.
+- La scelta del settore deve influenzare davvero la sopravvivenza.
+- Ostacoli e pericoli devono creare tattica senza rendere la mappa illeggibile.
+- La mini-mappa deve rimanere chiara anche quando la mappa cresce.
 
 ## Primo prototipo
 
 Per il primo prototipo, implementare una versione minima:
 
-- nodo iniziale centrale;
-- generazione di nuovi nodi a intervalli o dopo wave;
-- collegamenti visibili e attraversabili;
-- almeno 3 tipi di nodo con differenze tattiche semplici;
-- spawn nemici influenzato dal nodo o dai collegamenti.
-
+- settore iniziale centrale;
+- generazione di nuovi settori a intervalli o dopo wave;
+- movimento continuo in world-space;
+- settori S/M/L con differenze di dimensione;
+- ostacoli/pericoli semplici;
+- spawn nemici influenzato dal settore corrente e dai bordi dell'area.

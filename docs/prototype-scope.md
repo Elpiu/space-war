@@ -1,6 +1,6 @@
 # Prototype Scope
 
-Il primo prototipo deve dimostrare il cuore dell'esperienza. Non deve contenere tutte le feature finali: deve provare che movimento, wave, progressione e mappa-grafo funzionano insieme.
+Il primo prototipo deve dimostrare il cuore dell'esperienza. Non deve contenere tutte le feature finali: deve provare che movimento, wave, progressione e mappa continua funzionano insieme.
 
 ## Obiettivo del prototipo
 
@@ -10,7 +10,7 @@ Costruire una run breve ma giocabile dove il giocatore:
 - combatte nemici a ondate;
 - raccoglie esperienza e monete;
 - sale di livello e sceglie upgrade;
-- si sposta tra nodi collegati;
+- si sposta liberamente tra settori adiacenti;
 - usa una difesa e una trappola;
 - muore, conserva monete e puo' ripartire.
 
@@ -23,9 +23,9 @@ Costruire una run breve ma giocabile dove il giocatore:
 - Wave con scaling semplice.
 - Pickup XP e monete.
 - Level-up con scelta tra 3 upgrade.
-- Mappa-grafo minima con nodi e collegamenti.
+- Mappa continua minima con settori S/M/L.
 - Espansione della mappa durante la run.
-- Movimento in tempo reale tra nodi.
+- Movimento in tempo reale tra settori senza portali.
 - Torretta piazzabile.
 - Trappola semplice piazzabile.
 - HP, morte e restart della run.
@@ -33,7 +33,7 @@ Costruire una run breve ma giocabile dove il giocatore:
 
 ## Should have
 
-- Almeno 3 tipi di nodo.
+- Settori piccoli, medi e grandi.
 - Almeno 3 archetipi nemici.
 - Un elite semplice.
 - Monete permanenti salvate in local storage.
@@ -54,5 +54,4 @@ Costruire una run breve ma giocabile dove il giocatore:
 
 ## Criterio di successo
 
-Il prototipo e' riuscito se una run di 5-10 minuti e' gia' interessante anche con asset provvisori. Il giocatore deve sentire che la scelta del nodo, la build e il piazzamento di difese/trappole cambiano davvero la sopravvivenza.
-
+Il prototipo e' riuscito se una run di 5-10 minuti e' gia' interessante anche con asset provvisori. Il giocatore deve sentire che la scelta del settore, la build e il piazzamento di difese/trappole cambiano davvero la sopravvivenza.

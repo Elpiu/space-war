@@ -1,6 +1,6 @@
 # Space War Docs
 
-Questa cartella contiene il contesto condiviso del progetto Space War: un roguelite spaziale d'azione con combattimento in tempo reale, progressione RPG e mappa-grafo generativa.
+Questa cartella contiene il contesto condiviso del progetto Space War: un roguelite spaziale d'azione con combattimento in tempo reale, progressione RPG e mappa continua generativa.
 
 Lo scopo principale e' aiutare nuovi agenti di coding a capire rapidamente cosa costruire, cosa esiste gia' e quali decisioni di design sono considerate fondamentali.
 
@@ -17,7 +17,7 @@ Lo scopo principale e' aiutare nuovi agenti di coding a capire rapidamente cosa 
 - [concept.md](concept.md) - Identita' del gioco e principi guida.
 - [gameplay-loop.md](gameplay-loop.md) - Struttura della partita, tensioni e run ideale.
 - [progression.md](progression.md) - XP, level-up, upgrade e meta-progressione.
-- [map-graph.md](map-graph.md) - Mappa-grafo, nodi, collegamenti ed espansione.
+- [map-graph.md](map-graph.md) - Mappa continua, settori S/M/L, ostacoli, pericoli ed espansione.
 - [combat.md](combat.md) - Movimento, shooting, armi e leggibilita'.
 - [enemies-waves.md](enemies-waves.md) - Nemici, wave, elite, boss e scaling.
 - [defenses-traps.md](defenses-traps.md) - Difese, trappole e controllo del terreno.
@@ -42,7 +42,7 @@ Al 2026-06-03 il repository contiene una prima vertical slice Phaser giocabile:
 - `src/game/config/`, `src/game/types/`, `src/game/data/`, `src/game/systems/` e `src/game/utils/` separano costanti, contratti, dati di design, sottosistemi e funzioni di supporto.
 - `public/assets` contiene ancora asset demo (`bg.png`, `logo.png`), non usati dalla vertical slice attuale.
 
-Il prossimo lavoro di implementazione dovrebbe proseguire dal nucleo giocabile verso mappa-grafo, movimento tra nodi, torrette e trappole descritti in [prototype-scope.md](prototype-scope.md).
+Il prossimo lavoro di implementazione dovrebbe proseguire dal nucleo giocabile verso varieta' dei settori, ostacoli, pericoli, torrette e trappole descritti in [prototype-scope.md](prototype-scope.md).
 
 ## Regole di aggiornamento docs
 
@@ -50,5 +50,5 @@ Il prossimo lavoro di implementazione dovrebbe proseguire dal nucleo giocabile v
 - Aggiornare [development-log.md](development-log.md) a ogni passaggio importante.
 - Non usare i documenti come lista infinita di idee: spostare le idee non prioritarie in [backlog.md](backlog.md).
 - Quando una feature viene costruita, mantenere allineati design, stato tecnico e backlog.
-- Scrivere in italiano semplice, con termini stabili: run, wave, upgrade, mappa-grafo, nodo, collegamento, meta-progressione.
+- Scrivere in italiano semplice, con termini stabili: run, wave, upgrade, mappa continua, settore, hazard, meta-progressione.
 - Se il proprietario del progetto chiede di gestire personalmente la verifica, non eseguire test manuali, automatici, e2e, build, dev server o browser check.

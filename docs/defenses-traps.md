@@ -6,9 +6,9 @@ Difese e trappole servono a trasformare la mappa in un vantaggio tattico. Non pr
 
 Il giocatore usa strumenti piazzabili per:
 
-- preparare un nodo prima o durante una wave;
+- preparare un settore prima o durante una wave;
 - controllare flussi di nemici;
-- rendere utili strozzature e collegamenti;
+- rendere utili strozzature naturali, ostacoli e hazard;
 - guadagnare tempo per raccogliere pickup;
 - sostenere una build specifica;
 - creare una zona temporaneamente favorevole.
@@ -20,33 +20,35 @@ Il giocatore usa strumenti piazzabili per:
 - Campo rallentante: riduce velocita' nemica in un'area.
 - Barriera temporanea: blocca o devia nemici per pochi secondi.
 - Impulso ad area: respinge o danneggia gruppi.
-- Drone sentinella: pattuglia un nodo o segue il giocatore.
-- Trappola di collegamento: si piazza tra due nodi e colpisce chi attraversa.
+- Drone sentinella: pattuglia un settore o segue il giocatore.
+- Trappola ambientale: si piazza vicino a ostacoli, nebule o zone plasma.
 
 ## Regole di design
 
 - Devono aiutare, non giocare al posto del giocatore.
 - Devono avere costo, cooldown o limite di piazzamento.
 - Devono essere leggibili a colpo d'occhio.
-- Devono interagire con la forma dei nodi e dei collegamenti.
+- Devono interagire con forma dei settori, ostacoli e pericoli.
 - Devono poter essere migliorate tramite upgrade in-run o meta-progressione.
+- Nel prototipo attuale possono essere distrutte dai nemici e rimosse dal giocatore vicino con `E`, senza rimborso.
 
 ## Decisioni interessanti
 
 Le difese funzionano se creano domande:
 
-- piazzo una torretta nel nodo dove sono ora o in quello dove voglio fuggire?
+- piazzo una torretta nel settore dove sono ora o in quello dove voglio fuggire?
 - spendo risorse per una mina o conservo per riparare?
-- fortifico un nodo stretto o uso trappole nei collegamenti?
+- fortifico un settore piccolo o uso trappole vicino agli hazard?
 - potenzio la navicella o investo nel controllo della mappa?
 
 ## Primo prototipo
 
 Implementare una difesa e una trappola:
 
-- torretta automatica piazzabile nel nodo corrente;
-- mina o campo rallentante piazzabile in un punto del nodo o in un collegamento;
+- torretta automatica piazzabile nel settore corrente;
+- mina o campo rallentante piazzabile in un punto della mappa;
+- barricata semplice sbloccabile tramite upgrade/chest;
+- mini navicelle follower come supporto mobile;
 - costo semplice in risorsa in-run;
 - limite massimo per evitare spam;
 - feedback chiaro di piazzamento, attivazione e danno.
-

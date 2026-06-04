@@ -20,7 +20,7 @@ La direzione visiva deve puntare su energia, chiarezza e impatto. Space War deve
 - pickup attratti verso la navicella;
 - feedback chiaro quando si sale di livello;
 - upgrade che cambiano aspetto delle armi;
-- nodi che si accendono quando vengono scoperti;
+- settori che si accendono quando vengono scoperti;
 - effetti distinti per torrette, mine, droni e trappole;
 - boss grandi e riconoscibili.
 
@@ -32,8 +32,8 @@ Il giocatore deve sempre distinguere:
 - nemici pericolosi;
 - proiettili nemici;
 - pickup importanti;
-- confini o forma del nodo;
-- collegamenti disponibili;
+- confini o forma del settore;
+- ostacoli e hazard disponibili;
 - difese piazzate.
 
 Effetti troppo grandi, permanenti o saturi rischiano di coprire informazioni critiche. Preferire impatti brevi, scie pulite e colori differenziati.
@@ -47,6 +47,5 @@ Effetti troppo grandi, permanenti o saturi rischiano di coprire informazioni cri
 - pickup XP e monete distinguibili;
 - attrazione pickup con scia;
 - popup o pausa breve per level-up;
-- segnale visivo quando un nuovo nodo appare;
+- segnale visivo quando un nuovo settore appare;
 - effetto diverso per torretta e trappola.
-
