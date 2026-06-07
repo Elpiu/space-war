@@ -4,6 +4,7 @@ import { getEnemyDefinition, getEnemyWaveScale } from "../data/enemies";
 import type {
   Barricade,
   Enemy,
+  EnemyDefinition,
   EnemyProjectile,
   EnemyTypeId,
   MapSectorState,
@@ -33,7 +34,7 @@ export const createEnemy = (
     .circle(x, y, radius, definition.color, 1)
     .setStrokeStyle(2, definition.strokeColor, 0.88)
     .setDepth(15);
-  const marker = createEnemyMarker(scene, x, y, typeId, definition.strokeColor);
+  const marker = createEnemyMarker(scene, x, y, typeId, definition);
 
   resolveCircleHazardCollisions(body, radius, getBlockingHazards(mapState));
   clampInsideMap(body, radius, mapState.sectors);
@@ -314,20 +315,23 @@ const createEnemyMarker = (
   x: number,
   y: number,
   typeId: EnemyTypeId,
-  color: number,
+  definition: EnemyDefinition,
 ) => {
+  const color = definition.strokeColor;
+
+  if (definition.behavior === "shooter" && definition.projectile) {
+    return scene.add
+      .triangle(x, y, 0, -10, 10, 8, -10, 8, definition.projectile.color, 0.96)
+      .setStrokeStyle(2, 0x312e81, 0.94)
+      .setDepth(17);
+  }
+
   if (typeId === "swarm") {
     return scene.add.circle(x, y, 3, color, 0.92).setDepth(16);
   }
 
   if (typeId === "brute") {
     return scene.add.rectangle(x, y, 17, 7, color, 0.9).setDepth(16);
-  }
-
-  if (typeId === "shooter") {
-    return scene.add
-      .triangle(x, y, 0, -8, 8, 7, -8, 7, color, 0.92)
-      .setDepth(16);
   }
 
   if (typeId === "charger") {

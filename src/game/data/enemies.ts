@@ -1,5 +1,8 @@
 import type { EnemyDefinition, EnemyTypeId } from '../types/gameplay';
 
+const ARMED_ENEMY_COLOR = 0xc084fc;
+const ARMED_ENEMY_STROKE_COLOR = 0xf3e8ff;
+
 export const ENEMY_DEFINITIONS: Record<EnemyTypeId, EnemyDefinition> = {
     chaser: {
         id: 'chaser',
@@ -53,8 +56,8 @@ export const ENEMY_DEFINITIONS: Record<EnemyTypeId, EnemyDefinition> = {
         radius: 17,
         xpValue: 2,
         coinValue: 2,
-        color: 0x8b5cf6,
-        strokeColor: 0xddd6fe,
+        color: ARMED_ENEMY_COLOR,
+        strokeColor: ARMED_ENEMY_STROKE_COLOR,
         iconKey: 'enemy-shooter',
         preferredDistance: 250,
         attackRange: 390,
@@ -64,7 +67,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyTypeId, EnemyDefinition> = {
             range: 470,
             damage: 1,
             radius: 6,
-            color: 0xa78bfa
+            color: ARMED_ENEMY_COLOR
         }
     },
     charger: {
@@ -91,8 +94,8 @@ export const ENEMY_DEFINITIONS: Record<EnemyTypeId, EnemyDefinition> = {
         radius: 18,
         xpValue: 4,
         coinValue: 3,
-        color: 0x06b6d4,
-        strokeColor: 0xcffafe,
+        color: ARMED_ENEMY_COLOR,
+        strokeColor: ARMED_ENEMY_STROKE_COLOR,
         iconKey: 'enemy-sniper',
         preferredDistance: 330,
         attackRange: 520,
@@ -102,7 +105,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyTypeId, EnemyDefinition> = {
             range: 640,
             damage: 2,
             radius: 5,
-            color: 0x67e8f9
+            color: ARMED_ENEMY_COLOR
         }
     },
     eliteBrute: {
@@ -129,8 +132,8 @@ export const ENEMY_DEFINITIONS: Record<EnemyTypeId, EnemyDefinition> = {
         radius: 38,
         xpValue: 22,
         coinValue: 16,
-        color: 0x7f1d1d,
-        strokeColor: 0xfca5a5,
+        color: ARMED_ENEMY_COLOR,
+        strokeColor: ARMED_ENEMY_STROKE_COLOR,
         iconKey: 'enemy-boss-dreadnought',
         preferredDistance: 280,
         attackRange: 460,
@@ -140,7 +143,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyTypeId, EnemyDefinition> = {
             range: 520,
             damage: 2,
             radius: 9,
-            color: 0xfb7185
+            color: ARMED_ENEMY_COLOR
         }
     }
 };
