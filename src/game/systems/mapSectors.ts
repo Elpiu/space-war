@@ -1,21 +1,30 @@
 import {
+    DEFAULT_MAP_GENERATION_PROFILE,
     MAP_EXPANSION_INTERVAL,
     MAP_FIRST_EXPANSION_WAVE,
-    MAP_SECTOR_LIMIT,
     SECTOR_CELL_SIZE,
     SECTOR_SIZE_CONFIG
 } from '../config/gameplay';
 import {
     SECTOR_ARCHETYPES,
     SECTOR_NAMES,
+    chooseGrowthPattern,
+    createRunSeed,
+    createSeededRng,
     createSectorHazards,
     createSectorOpenings,
-    getSectorArchetype,
-    getSectorSizeForExpansion
+    getRandomSectorArchetype,
+    getRandomSectorSize,
+    pickWeighted,
+    randomInt,
+    shuffleWithRng
 } from '../data/mapGeneration';
 import type {
+    MapGenerationPattern,
+    MapGenerationProfile,
     MapDirection,
     MapSector,
+    MapSectorBlueprint,
     MapSectorState,
     SectorArchetypeId,
     SectorSize
@@ -43,13 +52,34 @@ type SectorPlacement = {
     direction?: MapDirection;
 };
 
+type BlueprintAnchor = MapSectorBlueprint & {
+    childCount: number;
+};
+
 export const createInitialMapSectors = (): MapSectorState => {
-    const startSector = createMapSector('sector-0', 0, -1, 0, 'medium', undefined, undefined, undefined, 'balanced');
+    const seed = createRunSeed();
+    const profile = { ...DEFAULT_MAP_GENERATION_PROFILE };
+    const startSector = createMapSector({
+        id: 'sector-0',
+        number: 0,
+        gridX: -1,
+        gridY: 0,
+        size: 'medium',
+        cellWidth: SECTOR_SIZE_CONFIG.medium.cellWidth,
+        cellHeight: SECTOR_SIZE_CONFIG.medium.cellHeight,
+        archetype: 'balanced',
+        depth: 0,
+        sectorSeed: seed
+    });
 
     startSector.name = 'Settore centrale';
 
     return {
         sectors: [startSector],
+        seed,
+        profile,
+        plannedSectors: createMapBlueprint(seed, profile, startSector),
+        nextPlannedSectorIndex: 0,
         nextSectorNumber: 1,
         lastExpandedWave: 0,
         activeSpawnSectorIds: []
@@ -64,48 +94,26 @@ export const expandMapForWave = (
         wave < MAP_FIRST_EXPANSION_WAVE ||
         wave % MAP_EXPANSION_INTERVAL !== 0 ||
         state.lastExpandedWave === wave ||
-        state.sectors.length >= MAP_SECTOR_LIMIT
+        state.sectors.length >= state.profile.maxSectors
     ) {
         return false;
     }
 
-    const sectorNumber = state.nextSectorNumber;
+    const blueprint = state.plannedSectors[state.nextPlannedSectorIndex];
 
-    for (const anchor of getExpansionAnchors(state)) {
-        const anchorSeed = anchor.gridX * 7 + anchor.gridY * 11 + state.sectors.length;
-        const size = getSectorSizeForExpansion(
-            sectorNumber,
-            anchorSeed
-        );
-        const archetype = getSectorArchetype(sectorNumber, anchorSeed);
-        const placement = findOpenPlacement(state, anchor, size, sectorNumber, archetype);
-
-        if (!placement) {
-            continue;
-        }
-
-        const newSector = createMapSector(
-            `sector-${sectorNumber}`,
-            sectorNumber,
-            placement.gridX,
-            placement.gridY,
-            size,
-            placement.cellWidth,
-            placement.cellHeight,
-            placement.direction,
-            archetype
-        );
-
-        state.sectors.push(newSector);
-        state.nextSectorNumber += 1;
+    if (!blueprint) {
         state.lastExpandedWave = wave;
-
-        return true;
+        return false;
     }
 
+    const newSector = createMapSector(blueprint);
+
+    state.sectors.push(newSector);
+    state.nextPlannedSectorIndex += 1;
+    state.nextSectorNumber = blueprint.number + 1;
     state.lastExpandedWave = wave;
 
-    return false;
+    return true;
 };
 
 export const getSectorAt = (
@@ -193,17 +201,20 @@ export const getPlasmaDamageAt = (
     return damagingHazard?.damage ?? 0;
 };
 
-const createMapSector = (
-    id: string,
-    number: number,
-    gridX: number,
-    gridY: number,
-    size: SectorSize,
-    cellWidth = SECTOR_SIZE_CONFIG[size].cellWidth,
-    cellHeight = SECTOR_SIZE_CONFIG[size].cellHeight,
-    entryDirection?: MapDirection,
-    archetype: SectorArchetypeId = 'balanced'
-): MapSector => {
+const createMapSector = (blueprint: MapSectorBlueprint): MapSector => {
+    const {
+        id,
+        number,
+        gridX,
+        gridY,
+        size,
+        archetype,
+        depth,
+        sectorSeed,
+        entryDirection
+    } = blueprint;
+    const cellWidth = blueprint.cellWidth ?? SECTOR_SIZE_CONFIG[size].cellWidth;
+    const cellHeight = blueprint.cellHeight ?? SECTOR_SIZE_CONFIG[size].cellHeight;
     const config = SECTOR_SIZE_CONFIG[size];
     const archetypeConfig = SECTOR_ARCHETYPES[archetype];
     const width = cellWidth * SECTOR_CELL_SIZE;
@@ -216,6 +227,7 @@ const createMapSector = (
         id,
         name: names[number % names.length],
         size,
+        depth,
         archetype,
         gridX,
         gridY,
@@ -237,44 +249,175 @@ const createMapSector = (
             width,
             height,
             size,
-            archetype
+            archetype,
+            sectorSeed
         }),
-        openings: createSectorOpenings(number, archetype, entryDirection)
+        openings: createSectorOpenings(number, archetype, entryDirection, sectorSeed)
     };
 };
 
-const getExpansionAnchors = (state: MapSectorState) => {
-    const newestFirst = [...state.sectors].reverse();
-    const oldestFirst = [...state.sectors];
+const createMapBlueprint = (
+    seed: number,
+    profile: MapGenerationProfile,
+    startSector: MapSector
+): MapSectorBlueprint[] => {
+    const rng = createSeededRng(seed);
+    const growthPattern = chooseGrowthPattern(rng, profile.pattern);
+    const occupiedCells = new Set<string>();
+    const exhaustedAnchorIds = new Set<string>();
+    const anchors: BlueprintAnchor[] = [
+        {
+            id: startSector.id,
+            number: 0,
+            size: startSector.size,
+            archetype: startSector.archetype,
+            depth: startSector.depth,
+            gridX: startSector.gridX,
+            gridY: startSector.gridY,
+            cellWidth: startSector.cellWidth,
+            cellHeight: startSector.cellHeight,
+            sectorSeed: seed,
+            childCount: 0
+        }
+    ];
+    const plannedSectors: MapSectorBlueprint[] = [];
+    let attempts = 0;
 
-    return newestFirst.concat(oldestFirst);
-};
+    addOccupiedCells(occupiedCells, startSector);
 
-const findOpenPlacement = (
-    state: MapSectorState,
-    anchor: MapSector,
-    size: SectorSize,
-    sectorNumber: number,
-    archetype: MapSector['archetype']
-): SectorPlacement | null => {
-    const options = rotateDirections(anchor.id.length + state.sectors.length);
+    while (
+        plannedSectors.length < profile.maxSectors - 1 &&
+        attempts < profile.maxSectors * 100
+    ) {
+        attempts += 1;
 
-    for (const direction of options) {
-        const footprint = getSectorFootprint(size, direction, sectorNumber, archetype);
-        const placement = getAdjacentPlacement(anchor, direction, {
-            cellWidth: footprint.cellWidth,
-            cellHeight: footprint.cellHeight
+        const candidateAnchors = anchors.filter((anchor) =>
+            anchor.depth < profile.maxDepth && !exhaustedAnchorIds.has(anchor.id)
+        );
+
+        if (candidateAnchors.length === 0) {
+            break;
+        }
+
+        const anchor = pickBlueprintAnchor(rng, candidateAnchors, growthPattern);
+        const depth = anchor.depth + 1;
+        const sectorNumber = plannedSectors.length + 1;
+        const archetype = getRandomSectorArchetype(rng, depth, profile.maxDepth);
+        const preferredSize = getRandomSectorSize(
+            rng,
+            depth,
+            profile.maxDepth,
+            growthPattern
+        );
+        const blueprint = createBlueprintNearAnchor({
+            rng,
+            anchor,
+            occupiedCells,
+            sectorNumber,
+            depth,
+            archetype,
+            preferredSize
         });
 
-        if (canPlaceSector(state, placement)) {
+        if (!blueprint) {
+            exhaustedAnchorIds.add(anchor.id);
+            continue;
+        }
+
+        plannedSectors.push(blueprint);
+        anchor.childCount += 1;
+        anchors.push({
+            ...blueprint,
+            childCount: 0
+        });
+        addOccupiedCells(occupiedCells, blueprint);
+    }
+
+    return plannedSectors;
+};
+
+const pickBlueprintAnchor = (
+    rng: ReturnType<typeof createSeededRng>,
+    anchors: BlueprintAnchor[],
+    growthPattern: Exclude<MapGenerationPattern, 'mixed'>
+) => {
+    return pickWeighted(rng, anchors.map((anchor) => ({
+        value: anchor,
+        weight: getAnchorWeight(anchor, growthPattern)
+    })));
+};
+
+const getAnchorWeight = (
+    anchor: BlueprintAnchor,
+    growthPattern: Exclude<MapGenerationPattern, 'mixed'>
+) => {
+    if (growthPattern === 'compact') {
+        return Math.max(0.8, 5 - anchor.depth * 0.9 - anchor.childCount * 0.7);
+    }
+
+    if (growthPattern === 'branching') {
+        return Math.max(0.8, 4 - anchor.childCount * 1.2 + anchor.depth * 0.35);
+    }
+
+    return Math.max(0.8, 1 + anchor.depth * 1.8 - anchor.childCount * 0.45);
+};
+
+const createBlueprintNearAnchor = (options: {
+    rng: ReturnType<typeof createSeededRng>;
+    anchor: BlueprintAnchor;
+    occupiedCells: Set<string>;
+    sectorNumber: number;
+    depth: number;
+    archetype: SectorArchetypeId;
+    preferredSize: SectorSize;
+}): MapSectorBlueprint | null => {
+    const sizes = getSizeFallbacks(options.preferredSize);
+
+    for (const size of sizes) {
+        const directions = shuffleWithRng(options.rng, MAP_DIRECTIONS);
+
+        for (const direction of directions) {
+            const footprint = getSectorFootprint(
+                size,
+                direction,
+                options.sectorNumber,
+                options.archetype
+            );
+            const placement = getAdjacentPlacement(options.anchor, direction, footprint);
+
+            if (!canPlaceSector(options.occupiedCells, placement)) {
+                continue;
+            }
+
             return {
-                ...placement,
-                direction
+                id: `sector-${options.sectorNumber}`,
+                number: options.sectorNumber,
+                size,
+                archetype: options.archetype,
+                depth: options.depth,
+                gridX: placement.gridX,
+                gridY: placement.gridY,
+                cellWidth: placement.cellWidth,
+                cellHeight: placement.cellHeight,
+                entryDirection: getOppositeDirection(direction),
+                sectorSeed: randomInt(options.rng, 1, 0x7ffffffe)
             };
         }
     }
 
     return null;
+};
+
+const getSizeFallbacks = (size: SectorSize): SectorSize[] => {
+    if (size === 'large') {
+        return ['large', 'medium', 'small'];
+    }
+
+    if (size === 'medium') {
+        return ['medium', 'small'];
+    }
+
+    return ['small'];
 };
 
 const getSectorFootprint = (
@@ -314,7 +457,7 @@ const getSectorFootprint = (
 };
 
 const getAdjacentPlacement = (
-    anchor: MapSector,
+    anchor: Pick<MapSectorBlueprint, 'gridX' | 'gridY' | 'cellWidth' | 'cellHeight'>,
     direction: MapDirection,
     size: { cellWidth: number; cellHeight: number }
 ): SectorPlacement => {
@@ -350,19 +493,9 @@ const getAdjacentPlacement = (
 };
 
 const canPlaceSector = (
-    state: MapSectorState,
+    occupiedCells: Set<string>,
     placement: SectorPlacement
 ) => {
-    const occupiedCells = new Set<string>();
-
-    state.sectors.forEach((sector) => {
-        for (let x = 0; x < sector.cellWidth; x += 1) {
-            for (let y = 0; y < sector.cellHeight; y += 1) {
-                occupiedCells.add(`${sector.gridX + x},${sector.gridY + y}`);
-            }
-        }
-    });
-
     for (let x = 0; x < placement.cellWidth; x += 1) {
         for (let y = 0; y < placement.cellHeight; y += 1) {
             if (occupiedCells.has(`${placement.gridX + x},${placement.gridY + y}`)) {
@@ -374,10 +507,27 @@ const canPlaceSector = (
     return true;
 };
 
-const rotateDirections = (offset: number) => {
-    return MAP_DIRECTIONS.map((_, index) =>
-        MAP_DIRECTIONS[(index + offset) % MAP_DIRECTIONS.length]
-    );
+const addOccupiedCells = (
+    occupiedCells: Set<string>,
+    sector: Pick<MapSectorBlueprint, 'gridX' | 'gridY' | 'cellWidth' | 'cellHeight'>
+) => {
+    for (let x = 0; x < sector.cellWidth; x += 1) {
+        for (let y = 0; y < sector.cellHeight; y += 1) {
+            occupiedCells.add(`${sector.gridX + x},${sector.gridY + y}`);
+        }
+    }
+};
+
+const getOppositeDirection = (direction: MapDirection): MapDirection => {
+    if (direction === 'north') {
+        return 'south';
+    }
+
+    if (direction === 'south') {
+        return 'north';
+    }
+
+    return direction === 'east' ? 'west' : 'east';
 };
 
 const distanceSquared = (

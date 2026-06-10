@@ -2,6 +2,21 @@
 
 Log cronologico dei progressi del progetto. Ogni voce deve indicare data, tipo di cambiamento e stato del lavoro.
 
+## 2026-06-10 - Generazione mappa non deterministica
+
+Stato:
+
+- sostituita la crescita deterministica dei settori con una blueprint random per run;
+- aggiunto seed interno alla run e RNG seedato senza nuove dipendenze;
+- aggiunto profilo mappa default con massimo 12 settori totali, profondita' massima 4 e pattern misto controllato;
+- la mappa pianifica settori nascosti all'avvio run e li rivela progressivamente dopo wave 2 e poi ogni 2 wave;
+- la scelta di anchor, direzione, dimensione, archetipo, aperture e hazard usa valori seedati;
+- mantenuti i settori visibili come fonte per camera, mini-mappa, collisioni, spawn, chest e reward.
+
+Verifica:
+
+- non eseguita su richiesta del proprietario del progetto.
+
 ## 2026-06-04 - Shop item e piazzabili data-driven
 
 Stato:

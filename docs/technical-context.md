@@ -1,6 +1,6 @@
 # Technical Context
 
-Questo documento descrive lo stato tecnico del repository al 2026-06-04. Serve a evitare che nuovi agenti assumano l'esistenza di sistemi non ancora implementati.
+Questo documento descrive lo stato tecnico del repository al 2026-06-10. Serve a evitare che nuovi agenti assumano l'esistenza di sistemi non ancora implementati.
 
 ## Stack
 
@@ -39,10 +39,12 @@ Per sviluppo locale del gioco, preferire `npm run dev-nolog`.
   - item shop data-driven: navicelle, cannoni e booster usano `modifiers`, torrette e mine portano definizioni operative `turret`/`mine`;
   - tre archetipi nave: Standard neutra, Tank resistente/lento e Light Fighter fragile/rapido;
   - loadout persistente che influenza la run successiva;
-  - mappa continua prototipo con settori S/M/L, mini-mappa e camera follow;
+  - mappa continua con settori S/M/L, mini-mappa e camera follow;
   - settori generati in world-space senza gate, portali o bridge;
+  - generazione mappa per run con seed random interno, blueprint nascosta e reveal progressivo;
+  - profilo mappa default: massimo 12 settori totali, profondita' massima 4 e pattern misto controllato;
   - ostacoli/pericoli iniziali: asteroidi solidi, nebule rallentanti e plasma dannoso;
-  - espansione della mappa dopo wave 2 e poi ogni 2 wave, fino a un limite prototipo;
+  - espansione della mappa dopo wave 2 e poi ogni 2 wave, fino al limite del profilo della run;
   - movimento continuo tra settori adiacenti;
   - torrette piazzabili con `T`, costo in monete run, limite massimo e fuoco automatico;
   - mine piazzabili con `F`, costo in monete run, limite massimo ed esplosione ad area;
@@ -72,7 +74,7 @@ Per sviluppo locale del gioco, preferire `npm run dev-nolog`.
   - `screenSystem.ts` contiene menu, game over, shop e overlay level-up;
   - `upgradeSystem.ts` filtra gli upgrade disponibili, applica modificatori e sceglie upgrade XP/chest tramite pesi dinamici;
   - `modifiers.ts` applica modificatori data-driven per stats e run-upgrades, con clamp opzionali `min`/`max`;
-  - `data/mapGeneration.ts` contiene dati/regole leggere per dimensioni, nomi, hazard e aperture dei settori.
+  - `data/mapGeneration.ts` contiene dati/regole leggere per dimensioni, nomi, hazard, aperture, RNG seedato e pesi di generazione dei settori.
 
 ## Struttura Phaser consigliata
 

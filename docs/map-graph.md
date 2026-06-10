@@ -29,6 +29,19 @@ Trigger possibili:
 
 L'espansione deve dare la sensazione che lo spazio di gioco cresca insieme alla minaccia. La camera segue il player e i bounds del mondo si aggiornano quando compaiono nuovi settori.
 
+## Generazione per run
+
+La mappa non deve comporsi sempre nello stesso modo. Ogni run crea un seed interno random e genera una blueprint nascosta della mappa, poi rivela i settori progressivamente durante le wave.
+
+Nel prototipo aggiornato il profilo default e':
+
+- massimo 12 settori totali, incluso il nucleo;
+- profondita' massima 4 dal settore centrale;
+- pattern misto controllato, con run piu' compatte, ramificate o con una spina principale e rami laterali;
+- reveal di 1 settore ogni 2 wave, a partire dalla wave 2.
+
+Il seed non e' ancora esposto in UI. Serve solo a rendere coerente la run dopo la creazione della blueprint e a preparare debug o seed condivisi futuri.
+
 ## Settori S/M/L
 
 I settori non sono biomi narrativi e non hanno tipologie tattiche rigide. La loro identita' nasce da dimensione, composizione e contenuto.

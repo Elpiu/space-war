@@ -16,6 +16,14 @@ export type SectorSize = "small" | "medium" | "large";
 
 export type MapDirection = "north" | "east" | "south" | "west";
 
+export type MapGenerationPattern = "mixed" | "compact" | "branching" | "spine";
+
+export type MapGenerationProfile = {
+  maxSectors: number;
+  maxDepth: number;
+  pattern: MapGenerationPattern;
+};
+
 export type MapOpening = {
   direction: MapDirection;
   centerRatio: number;
@@ -50,6 +58,7 @@ export type MapSector = {
   id: string;
   name: string;
   size: SectorSize;
+  depth: number;
   gridX: number;
   gridY: number;
   cellWidth: number;
@@ -67,8 +76,26 @@ export type MapSector = {
   openings: MapOpening[];
 };
 
+export type MapSectorBlueprint = {
+  id: string;
+  number: number;
+  size: SectorSize;
+  archetype: SectorArchetypeId;
+  depth: number;
+  gridX: number;
+  gridY: number;
+  cellWidth: number;
+  cellHeight: number;
+  entryDirection?: MapDirection;
+  sectorSeed: number;
+};
+
 export type MapSectorState = {
   sectors: MapSector[];
+  seed: number;
+  profile: MapGenerationProfile;
+  plannedSectors: MapSectorBlueprint[];
+  nextPlannedSectorIndex: number;
   nextSectorNumber: number;
   lastExpandedWave: number;
   activeSpawnSectorIds: string[];

@@ -22,7 +22,7 @@ Backlog ordinato per fase. Le feature possono spostarsi quando il design o il pr
 - [x] UI base per HP, XP, livello, monete, wave.
 - [x] Feedback visivi minimi.
 
-Nota: la vertical slice attuale include una mappa continua prototipo con settori S/M/L, mini-mappa, camera follow, ostacoli/pericoli ed espansione ogni 2 wave dopo la seconda. Include anche torrette e mine piazzabili con costo in monete run.
+Nota: la vertical slice attuale include una mappa continua con settori S/M/L, mini-mappa, camera follow, ostacoli/pericoli e blueprint random per run rivelata ogni 2 wave dopo la seconda. Include anche torrette e mine piazzabili con costo in monete run.
 
 ## Versione v1
 
@@ -30,7 +30,7 @@ Nota: la vertical slice attuale include una mappa continua prototipo con settori
 - Elite con pattern riconoscibili.
 - Boss periodici.
 - Piu' varieta' di settori, ostacoli e pericoli.
-- Generazione mappa piu' varia.
+- [x] Generazione mappa piu' varia.
 - Upgrade sinergici.
 - [x] Meta-progressione con shop/hangar e menu/loadout base.
 - [x] Nuove navicelle prototipo.

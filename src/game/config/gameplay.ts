@@ -1,4 +1,8 @@
-import type { PlayerStats, SectorSize } from "../types/gameplay";
+import type {
+  MapGenerationProfile,
+  PlayerStats,
+  SectorSize,
+} from "../types/gameplay";
 
 export const GAME_WIDTH = 1024;
 export const GAME_HEIGHT = 768;
@@ -6,9 +10,15 @@ export const GAME_HEIGHT = 768;
 export const SCREEN_CENTER_X = GAME_WIDTH / 2;
 export const SCREEN_CENTER_Y = GAME_HEIGHT / 2;
 export const SECTOR_CELL_SIZE = 420;
-export const MAP_SECTOR_LIMIT = 8;
+export const MAP_SECTOR_LIMIT = 12;
+export const MAP_MAX_DEPTH = 4;
 export const MAP_FIRST_EXPANSION_WAVE = 2;
 export const MAP_EXPANSION_INTERVAL = 2;
+export const DEFAULT_MAP_GENERATION_PROFILE: MapGenerationProfile = {
+  maxSectors: MAP_SECTOR_LIMIT,
+  maxDepth: MAP_MAX_DEPTH,
+  pattern: "mixed",
+};
 
 export const PLAYER_RADIUS = 17;
 export const ENEMY_RADIUS = 16;
