@@ -240,9 +240,31 @@ export type LootBiasContext = {
   loadout?: ShopLoadout;
 };
 
+export type PlaceableKind = "turret" | "mine" | "barricade";
+
+export type PlaceableCommon = {
+  id: string;
+  kind: PlaceableKind;
+  gridX: number;
+  gridY: number;
+  level: number;
+  label: string;
+  baseCost: number;
+};
+
 export type Turret = {
+  id: string;
+  kind: "turret";
   body: Phaser.GameObjects.Rectangle;
   rangeIndicator: Phaser.GameObjects.Arc;
+  hpBar: Phaser.GameObjects.Graphics;
+  levelText: Phaser.GameObjects.Text;
+  gridX: number;
+  gridY: number;
+  level: number;
+  label: string;
+  baseCost: number;
+  sourceId: ShopItemId;
   range: number;
   fireRate: number;
   damage: number;
@@ -256,7 +278,15 @@ export type Turret = {
 };
 
 export type Mine = {
+  id: string;
+  kind: "mine";
   body: Phaser.GameObjects.Arc;
+  gridX: number;
+  gridY: number;
+  level: number;
+  label: string;
+  baseCost: number;
+  sourceId: ShopItemId;
   triggerRadius: number;
   damageRadius: number;
   damage: number;
@@ -269,7 +299,16 @@ export type Mine = {
 };
 
 export type Barricade = {
+  id: string;
+  kind: "barricade";
   body: Phaser.GameObjects.Rectangle;
+  hpBar: Phaser.GameObjects.Graphics;
+  levelText: Phaser.GameObjects.Text;
+  gridX: number;
+  gridY: number;
+  level: number;
+  label: string;
+  baseCost: number;
   hp: number;
   maxHp: number;
   radius: number;

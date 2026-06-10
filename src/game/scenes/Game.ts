@@ -30,12 +30,16 @@ import {
   upgradeShopItem,
 } from "../systems/metaProgression";
 import {
+  createPlaceableControllerState,
+  destroyPlaceableControllerState,
   getMaxMines,
   getMaxTurrets,
+  handlePlaceablePointerDown,
   readPlaceableInput,
   type PlaceableActionResult,
+  type PlaceableControllerState,
 } from "../systems/placeableController";
-import { updateMines, updatePlaceableEnemyPressure, updateTurrets } from "../systems/placeables";
+import { updateMines, updatePlaceableEnemyPressure, updatePlaceableVisuals, updateTurrets } from "../systems/placeables";
 import {
   applyPlayerDamage,
   createMovementInput,
@@ -74,6 +78,8 @@ export class Game extends Scene {
   private mineKey!: Phaser.Input.Keyboard.Key;
   private barricadeKey!: Phaser.Input.Keyboard.Key;
   private removePlaceableKey!: Phaser.Input.Keyboard.Key;
+  private cancelPlaceableKey!: Phaser.Input.Keyboard.Key;
+  private placeableState: PlaceableControllerState = createPlaceableControllerState();
   private run: RunState = createInitialRunState();
   private upgradeOverlay: Phaser.GameObjects.Container | null = null;
   private screenOverlay: Phaser.GameObjects.Container | null = null;
@@ -140,6 +146,10 @@ export class Game extends Scene {
     this.mineKey = this.input.keyboard!.addKey(Input.Keyboard.KeyCodes.F);
     this.barricadeKey = this.input.keyboard!.addKey(Input.Keyboard.KeyCodes.B);
     this.removePlaceableKey = this.input.keyboard!.addKey(Input.Keyboard.KeyCodes.E);
+    this.cancelPlaceableKey = this.input.keyboard!.addKey(Input.Keyboard.KeyCodes.ESC);
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.handlePlaceablePointerDown(pointer);
+    });
   }
 
   private startRun() {
@@ -175,6 +185,7 @@ export class Game extends Scene {
 
   private clearRunObjects() {
     destroyRunEntities(this.run);
+    destroyPlaceableControllerState(this.placeableState);
     this.upgradeOverlay?.destroy();
     this.upgradeOverlay = null;
     this.player?.destroy();
@@ -234,14 +245,50 @@ export class Game extends Scene {
         mineKey: this.mineKey,
         barricadeKey: this.barricadeKey,
         removePlaceableKey: this.removePlaceableKey,
+        cancelPlaceableKey: this.cancelPlaceableKey,
       },
+      state: this.placeableState,
       player: this.player,
       metaState: this.metaState,
       runUpgrades: this.run.runUpgrades,
+      mapState: this.mapState,
       turrets: this.run.turrets,
       mines: this.run.mines,
       barricades: this.run.barricades,
       coins: this.run.coins,
+    }).forEach(({ result, pulseColor, pulseRadius }) => {
+      this.handlePlaceableResult(result, pulseColor, pulseRadius);
+    });
+  }
+
+  private handlePlaceablePointerDown(pointer: Phaser.Input.Pointer) {
+    if (
+      this.screenMode !== "running" ||
+      this.run.isLevelingUp ||
+      !this.player
+    ) {
+      return;
+    }
+
+    handlePlaceablePointerDown({
+      scene: this,
+      state: this.placeableState,
+      keys: {
+        turretKey: this.turretKey,
+        mineKey: this.mineKey,
+        barricadeKey: this.barricadeKey,
+        removePlaceableKey: this.removePlaceableKey,
+        cancelPlaceableKey: this.cancelPlaceableKey,
+      },
+      player: this.player,
+      metaState: this.metaState,
+      runUpgrades: this.run.runUpgrades,
+      mapState: this.mapState,
+      turrets: this.run.turrets,
+      mines: this.run.mines,
+      barricades: this.run.barricades,
+      coins: this.run.coins,
+      pointer,
     }).forEach(({ result, pulseColor, pulseRadius }) => {
       this.handlePlaceableResult(result, pulseColor, pulseRadius);
     });
@@ -258,8 +305,15 @@ export class Game extends Scene {
       this.showTemporaryState(result.message);
     }
 
-    if (result.changed && pulseColor && pulseRadius && this.player) {
-      createPulse(this, this.player.x, this.player.y, pulseRadius, pulseColor, 0.22);
+    if (result.changed && pulseColor && pulseRadius) {
+      createPulse(
+        this,
+        result.x ?? this.player?.x ?? 0,
+        result.y ?? this.player?.y ?? 0,
+        pulseRadius,
+        pulseColor,
+        0.22,
+      );
     }
 
     if (result.changed) {
@@ -282,6 +336,7 @@ export class Game extends Scene {
       this.run.barricades,
       time,
     );
+    updatePlaceableVisuals(this.run.turrets, this.run.barricades);
   }
 
   private updateDrones(time: number, dt: number) {

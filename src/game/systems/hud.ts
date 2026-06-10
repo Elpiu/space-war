@@ -19,7 +19,7 @@ export const createHud = (scene: Phaser.Scene): HudElements => {
         lineSpacing: 8
     }).setDepth(200).setScrollFactor(0);
 
-    scene.add.text(20, GAME_HEIGHT - 48, 'WASD/Frecce: movimento  |  T: torretta  |  F: mina  |  B: barricata  |  E: rimuovi  |  R: restart', {
+    scene.add.text(20, GAME_HEIGHT - 48, 'WASD/Frecce: movimento  |  T/F/B: preview piazzabile  |  Click: piazza/seleziona  |  E: rimuovi  |  Esc: annulla  |  R: restart', {
         fontFamily: 'Arial',
         fontSize: 16,
         color: '#94a3b8'

@@ -8,6 +8,7 @@ import type {
   Enemy,
   Mine,
   MineDefinition,
+  PlaceableKind,
   RunUpgradeState,
   ShopItemId,
   Turret,
@@ -16,6 +17,15 @@ import type {
 import { circlesOverlap } from "../utils/geometry";
 import { createPulse } from "./effects";
 import { getShopItem } from "./metaProgression";
+import { getPlaceableCellFromWorld } from "./placeableGrid";
+
+type PlaceableCreateOptions = {
+  gridX?: number;
+  gridY?: number;
+  level?: number;
+};
+
+let nextPlaceableId = 1;
 
 export const createTurret = (
   scene: Phaser.Scene,
@@ -23,12 +33,15 @@ export const createTurret = (
   y: number,
   turretId: ShopItemId,
   runUpgrades: RunUpgradeState,
+  options: PlaceableCreateOptions = {},
 ): Turret => {
   const config = getTurretDefinition(turretId);
   const range = config.range + runUpgrades.turretRangeBonus;
   const fireRate = config.fireRate * runUpgrades.turretFireRateMultiplier;
   const damage = config.damage + runUpgrades.turretDamageBonus;
   const hp = config.hp + runUpgrades.turretHpBonus;
+  const cell = getCreateCell(x, y, options);
+  const item = getShopItem(turretId);
 
   const rangeIndicator = scene.add
     .circle(x, y, range, config.color, 0.035)
@@ -39,10 +52,30 @@ export const createTurret = (
     .rectangle(x, y, config.bodySize, config.bodySize, config.color, 0.95)
     .setStrokeStyle(2, config.strokeColor, 0.9)
     .setDepth(18);
+  const hpBar = scene.add.graphics().setDepth(31);
+  const levelText = scene.add
+    .text(x, y - 28, "", {
+      fontFamily: "Arial Black",
+      fontSize: 11,
+      color: "#e0f2fe",
+      stroke: "#020617",
+      strokeThickness: 3,
+    })
+    .setOrigin(0.5);
 
-  return {
+  const turret: Turret = {
+    id: createPlaceableId("turret"),
+    kind: "turret",
     body,
     rangeIndicator,
+    hpBar,
+    levelText,
+    gridX: cell.gridX,
+    gridY: cell.gridY,
+    level: options.level ?? getAvailablePlaceableLevel("turret", runUpgrades),
+    label: item?.title ?? "Torretta",
+    baseCost: config.cost,
+    sourceId: turretId,
     range,
     fireRate,
     damage,
@@ -54,6 +87,10 @@ export const createTurret = (
     radius: config.radius,
     damageCooldownUntil: 0,
   };
+
+  updateTurretVisuals(turret);
+
+  return turret;
 };
 
 export const createMine = (
@@ -62,9 +99,12 @@ export const createMine = (
   y: number,
   mineId: ShopItemId,
   runUpgrades: RunUpgradeState,
+  options: PlaceableCreateOptions = {},
 ): Mine => {
   const config = getMineDefinition(mineId);
   const damageRadius = config.damageRadius + runUpgrades.mineRadiusBonus;
+  const cell = getCreateCell(x, y, options);
+  const item = getShopItem(mineId);
   const body = scene.add
     .circle(x, y, config.radius, config.color, 0.95)
     .setStrokeStyle(2, config.strokeColor, 0.9)
@@ -79,7 +119,15 @@ export const createMine = (
   });
 
   return {
+    id: createPlaceableId("mine"),
+    kind: "mine",
     body,
+    gridX: cell.gridX,
+    gridY: cell.gridY,
+    level: options.level ?? getAvailablePlaceableLevel("mine", runUpgrades),
+    label: item?.title ?? "Mina",
+    baseCost: config.cost,
+    sourceId: mineId,
     triggerRadius: config.triggerRadius,
     damageRadius,
     damage: config.damage + runUpgrades.mineDamageBonus,
@@ -97,20 +145,45 @@ export const createBarricade = (
   x: number,
   y: number,
   runUpgrades: RunUpgradeState,
+  options: PlaceableCreateOptions = {},
 ): Barricade => {
+  const cell = getCreateCell(x, y, options);
   const body = scene.add
     .rectangle(x, y, 50, 50, 0x64748b, 0.96)
     .setStrokeStyle(2, 0xcbd5e1, 0.9)
     .setDepth(18);
   const hp = BARRICADE_HP + runUpgrades.barricadeHpBonus;
+  const hpBar = scene.add.graphics().setDepth(31);
+  const levelText = scene.add
+    .text(x, y - 34, "", {
+      fontFamily: "Arial Black",
+      fontSize: 11,
+      color: "#f8fafc",
+      stroke: "#020617",
+      strokeThickness: 3,
+    })
+    .setOrigin(0.5);
 
-  return {
+  const barricade: Barricade = {
+    id: createPlaceableId("barricade"),
+    kind: "barricade",
     body,
+    hpBar,
+    levelText,
+    gridX: cell.gridX,
+    gridY: cell.gridY,
+    level: options.level ?? getAvailablePlaceableLevel("barricade", runUpgrades),
+    label: "Barricata",
+    baseCost: getBarricadeCost(runUpgrades),
     hp,
     maxHp: hp,
     radius: 28,
     damageCooldownUntil: 0,
   };
+
+  updateBarricadeVisuals(barricade);
+
+  return barricade;
 };
 
 export const updateTurrets = (
@@ -232,6 +305,113 @@ export const updatePlaceableEnemyPressure = (
   });
 };
 
+export const updatePlaceableVisuals = (
+  turrets: Turret[],
+  barricades: Barricade[],
+) => {
+  turrets.forEach(updateTurretVisuals);
+  barricades.forEach(updateBarricadeVisuals);
+};
+
+export const movePlaceableToCell = (
+  placeable: Turret | Mine | Barricade,
+  cell: { gridX: number; gridY: number; x: number; y: number },
+) => {
+  placeable.gridX = cell.gridX;
+  placeable.gridY = cell.gridY;
+  placeable.body.setPosition(cell.x, cell.y);
+
+  if (placeable.kind === "turret") {
+    placeable.rangeIndicator.setPosition(cell.x, cell.y);
+    updateTurretVisuals(placeable);
+    return;
+  }
+
+  if (placeable.kind === "barricade") {
+    updateBarricadeVisuals(placeable);
+  }
+};
+
+export const getRepairCost = (placeable: Turret | Mine | Barricade) => {
+  const missingHp = Math.max(0, placeable.maxHp - placeable.hp);
+
+  if (missingHp <= 0) {
+    return 0;
+  }
+
+  return Math.max(
+    1,
+    Math.ceil((missingHp / placeable.maxHp) * placeable.baseCost * 0.6),
+  );
+};
+
+export const repairPlaceable = (placeable: Turret | Mine | Barricade) => {
+  placeable.hp = placeable.maxHp;
+
+  if (placeable.kind === "turret") {
+    updateTurretVisuals(placeable);
+  } else if (placeable.kind === "barricade") {
+    updateBarricadeVisuals(placeable);
+  }
+};
+
+export const getPlaceableUpgradeCost = (placeable: Turret | Mine | Barricade) =>
+  Math.max(1, Math.ceil(placeable.baseCost * 0.75));
+
+export const canUpgradePlaceable = (
+  placeable: Turret | Mine | Barricade,
+  runUpgrades: RunUpgradeState,
+) => placeable.level < getAvailablePlaceableLevel(placeable.kind, runUpgrades);
+
+export const upgradePlaceable = (
+  placeable: Turret | Mine | Barricade,
+  runUpgrades: RunUpgradeState,
+) => {
+  const nextLevel = getAvailablePlaceableLevel(placeable.kind, runUpgrades);
+
+  if (placeable.level >= nextLevel) {
+    return false;
+  }
+
+  placeable.level = nextLevel;
+
+  if (placeable.kind === "turret") {
+    const config = getTurretDefinition(placeable.sourceId);
+    const oldMaxHp = placeable.maxHp;
+
+    placeable.range = config.range + runUpgrades.turretRangeBonus;
+    placeable.fireRate = config.fireRate * runUpgrades.turretFireRateMultiplier;
+    placeable.damage = config.damage + runUpgrades.turretDamageBonus;
+    placeable.maxHp = config.hp + runUpgrades.turretHpBonus;
+    placeable.hp = Math.min(
+      placeable.maxHp,
+      placeable.hp + Math.max(0, placeable.maxHp - oldMaxHp),
+    );
+    placeable.rangeIndicator.setRadius(placeable.range);
+    updateTurretVisuals(placeable);
+    return true;
+  }
+
+  if (placeable.kind === "mine") {
+    const config = getMineDefinition(placeable.sourceId);
+
+    placeable.damage = config.damage + runUpgrades.mineDamageBonus;
+    placeable.damageRadius = config.damageRadius + runUpgrades.mineRadiusBonus;
+    return true;
+  }
+
+  const oldMaxHp = placeable.maxHp;
+
+  placeable.maxHp = BARRICADE_HP + runUpgrades.barricadeHpBonus;
+  placeable.hp = Math.min(
+    placeable.maxHp,
+    placeable.hp + Math.max(0, placeable.maxHp - oldMaxHp),
+  );
+  updateBarricadeVisuals(placeable);
+
+  return true;
+};
+
 export const removeNearestPlaceable = (
   x: number,
   y: number,
@@ -300,9 +480,46 @@ export const removeNearestPlaceable = (
   return false;
 };
 
+export const removePlaceableById = (
+  placeableId: string,
+  turrets: Turret[],
+  mines: Mine[],
+  barricades: Barricade[],
+) => {
+  const turretIndex = turrets.findIndex((turret) => turret.id === placeableId);
+
+  if (turretIndex >= 0) {
+    destroyTurret(turrets[turretIndex]);
+    turrets.splice(turretIndex, 1);
+    return true;
+  }
+
+  const mineIndex = mines.findIndex((mine) => mine.id === placeableId);
+
+  if (mineIndex >= 0) {
+    destroyMine(mines[mineIndex]);
+    mines.splice(mineIndex, 1);
+    return true;
+  }
+
+  const barricadeIndex = barricades.findIndex(
+    (barricade) => barricade.id === placeableId,
+  );
+
+  if (barricadeIndex >= 0) {
+    destroyBarricade(barricades[barricadeIndex]);
+    barricades.splice(barricadeIndex, 1);
+    return true;
+  }
+
+  return false;
+};
+
 export const destroyTurret = (turret: Turret) => {
   turret.body.destroy();
   turret.rangeIndicator.destroy();
+  turret.hpBar.destroy();
+  turret.levelText.destroy();
 };
 
 export const destroyMine = (mine: Mine) => {
@@ -312,6 +529,8 @@ export const destroyMine = (mine: Mine) => {
 
 export const destroyBarricade = (barricade: Barricade) => {
   barricade.body.destroy();
+  barricade.hpBar.destroy();
+  barricade.levelText.destroy();
 };
 
 export const getTurretCost = (turretId: ShopItemId) => {
@@ -332,6 +551,33 @@ export const getBarricadeCost = (runUpgrades: RunUpgradeState) => {
   return Math.max(1, BARRICADE_COST - runUpgrades.barricadeCostReduction);
 };
 
+export const getAvailablePlaceableLevel = (
+  kind: PlaceableKind,
+  runUpgrades: RunUpgradeState,
+) => {
+  if (kind === "turret") {
+    return (
+      1 +
+      (runUpgrades.stacks["turret-calibration"] ?? 0) +
+      (runUpgrades.stacks["turret-range-cache"] ?? 0)
+    );
+  }
+
+  if (kind === "mine") {
+    return (
+      1 +
+      (runUpgrades.stacks["mine-engineering"] ?? 0) +
+      (runUpgrades.stacks["mine-supply-cache"] ?? 0)
+    );
+  }
+
+  return (
+    1 +
+    (runUpgrades.stacks["barricade-kit"] ?? 0) +
+    (runUpgrades.stacks["barricade-plating"] ?? 0)
+  );
+};
+
 const damageTurretsNearEnemy = (
   scene: Phaser.Scene,
   enemy: Enemy,
@@ -348,6 +594,7 @@ const damageTurretsNearEnemy = (
       turret.hp -= enemy.damage;
       turret.damageCooldownUntil = time + 780;
       createPulse(scene, turret.body.x, turret.body.y, 20, turret.pulseColor, 0.18);
+      updateTurretVisuals(turret);
 
       if (turret.hp <= 0) {
         destroyTurret(turret);
@@ -399,6 +646,7 @@ const damageBarricadesNearEnemy = (
       barricade.hp -= enemy.damage;
       barricade.damageCooldownUntil = time + 640;
       repelEnemyFromBarricade(enemy, barricade);
+      updateBarricadeVisuals(barricade);
       createPulse(
         scene,
         barricade.body.x,
@@ -446,6 +694,64 @@ const getMineDefinition = (mineId: ShopItemId): MineDefinition => {
     getShopItem("mineBasic")?.mine ??
     FALLBACK_MINE_DEFINITION
   );
+};
+
+const getCreateCell = (
+  x: number,
+  y: number,
+  options: PlaceableCreateOptions,
+) => {
+  const fallback = getPlaceableCellFromWorld(x, y);
+
+  if (typeof options.gridX !== "number" || typeof options.gridY !== "number") {
+    return fallback;
+  }
+
+  return {
+    ...fallback,
+    gridX: options.gridX,
+    gridY: options.gridY,
+  };
+};
+
+const createPlaceableId = (kind: PlaceableKind) => {
+  const id = `${kind}-${nextPlaceableId}`;
+
+  nextPlaceableId += 1;
+
+  return id;
+};
+
+const updateTurretVisuals = (turret: Turret) => {
+  const x = turret.body.x;
+  const y = turret.body.y;
+  const ratio = Math.max(0, Math.min(1, turret.hp / turret.maxHp));
+
+  turret.hpBar.clear();
+  turret.hpBar.fillStyle(0x020617, 0.82);
+  turret.hpBar.fillRect(x - 24, y + 22, 48, 6);
+  turret.hpBar.fillStyle(0x38bdf8, 0.95);
+  turret.hpBar.fillRect(x - 23, y + 23, 46 * ratio, 4);
+  turret.hpBar.lineStyle(1, 0xe0f2fe, 0.68);
+  turret.hpBar.strokeRect(x - 24, y + 22, 48, 6);
+  turret.levelText.setPosition(x, y - 28);
+  turret.levelText.setText(`Lv.${turret.level}`);
+};
+
+const updateBarricadeVisuals = (barricade: Barricade) => {
+  const x = barricade.body.x;
+  const y = barricade.body.y;
+  const ratio = Math.max(0, Math.min(1, barricade.hp / barricade.maxHp));
+
+  barricade.hpBar.clear();
+  barricade.hpBar.fillStyle(0x020617, 0.82);
+  barricade.hpBar.fillRect(x - 28, y + 30, 56, 7);
+  barricade.hpBar.fillStyle(0xcbd5e1, 0.96);
+  barricade.hpBar.fillRect(x - 27, y + 31, 54 * ratio, 5);
+  barricade.hpBar.lineStyle(1, 0xf8fafc, 0.72);
+  barricade.hpBar.strokeRect(x - 28, y + 30, 56, 7);
+  barricade.levelText.setPosition(x, y - 34);
+  barricade.levelText.setText(`Lv.${barricade.level}`);
 };
 
 const FALLBACK_TURRET_DEFINITION: TurretDefinition = {
