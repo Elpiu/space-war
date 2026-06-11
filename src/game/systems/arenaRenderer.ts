@@ -1,9 +1,11 @@
 import {
   GAME_WIDTH,
+  PLACEABLE_UNIT_SIZE,
   SCREEN_CENTER_X,
   SECTOR_SIZE_CONFIG,
 } from "../config/gameplay";
 import { getMapBounds } from "./mapSectors";
+import { getSharedSectorPassage } from "../utils/passages";
 import type {
   MapDirection,
   MapHazard,
@@ -93,11 +95,19 @@ const renderWorldSectors = (
 
     graphics.lineStyle(1, sector.accentColor, 0.13);
 
-    for (let x = sector.x + 84; x < sector.x + sector.width; x += 84) {
+    for (
+      let x = sector.x + PLACEABLE_UNIT_SIZE;
+      x < sector.x + sector.width;
+      x += PLACEABLE_UNIT_SIZE
+    ) {
       graphics.lineBetween(x, sector.y, x, sector.y + sector.height);
     }
 
-    for (let y = sector.y + 84; y < sector.y + sector.height; y += 84) {
+    for (
+      let y = sector.y + PLACEABLE_UNIT_SIZE;
+      y < sector.y + sector.height;
+      y += PLACEABLE_UNIT_SIZE
+    ) {
       graphics.lineBetween(sector.x, y, sector.x + sector.width, y);
     }
 
@@ -180,7 +190,7 @@ const drawSectorPassages = (
         }
 
         const fromDirection = from.x + from.width === to.x ? "east" : "west";
-        const passage = getSharedPassage(
+        const passage = getSharedSectorPassage(
           from,
           to,
           fromDirection,
@@ -222,7 +232,7 @@ const drawSectorPassages = (
         }
 
         const fromDirection = from.y + from.height === to.y ? "south" : "north";
-        const passage = getSharedPassage(
+        const passage = getSharedSectorPassage(
           from,
           to,
           fromDirection,
@@ -255,32 +265,6 @@ const drawSectorPassages = (
       }
     });
   });
-};
-
-const getSharedPassage = (
-  from: MapSector,
-  to: MapSector,
-  fromDirection: MapDirection,
-  toDirection: MapDirection,
-  overlapStart: number,
-  overlapEnd: number,
-) => {
-  const overlap = overlapEnd - overlapStart;
-  const fromOpening = from.openings.find(
-    (opening) => opening.direction === fromDirection,
-  );
-  const toOpening = to.openings.find(
-    (opening) => opening.direction === toDirection,
-  );
-  const sizeRatio =
-    ((fromOpening?.sizeRatio ?? 0.34) + (toOpening?.sizeRatio ?? 0.34)) / 2;
-  const centerRatio =
-    ((fromOpening?.centerRatio ?? 0.5) + (toOpening?.centerRatio ?? 0.5)) / 2;
-
-  return {
-    center: overlapStart + overlap * centerRatio,
-    size: Math.min(Math.max(72, overlap * sizeRatio), overlap),
-  };
 };
 
 const getOppositeDirection = (direction: MapDirection): MapDirection => {

@@ -3,6 +3,7 @@ import { PLAYER_RADIUS } from "../config/gameplay";
 import type { Chest, ChestKind, MapSector } from "../types/gameplay";
 import { circlesOverlap } from "../utils/geometry";
 import { createPulse } from "./effects";
+import { getPlaceableCellFromWorld } from "./placeableGrid";
 
 export const createChest = (
   scene: Phaser.Scene,
@@ -73,14 +74,20 @@ export const getChestSpawnPoint = (sector: MapSector, seed = 0) => {
   const inset = 72;
   const centerBias = seed % 2 === 0 ? 0.42 : 0.58;
 
-  return {
-    x: PhaserMath.Between(
+  const cell = getPlaceableCellFromWorld(
+    PhaserMath.Between(
       Math.floor(sector.x + inset),
       Math.floor(sector.x + sector.width - inset),
     ),
-    y: PhaserMath.Between(
+    PhaserMath.Between(
       Math.floor(sector.y + sector.height * centerBias - 80),
       Math.floor(sector.y + sector.height * centerBias + 80),
     ),
+    "turret",
+  );
+
+  return {
+    x: cell.x,
+    y: cell.y,
   };
 };

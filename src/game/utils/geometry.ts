@@ -1,4 +1,5 @@
-import type { MapDirection, MapHazard, MapOpening, MapSector } from '../types/gameplay';
+import type { MapDirection, MapHazard, MapSector } from '../types/gameplay';
+import { getSharedSectorPassage } from './passages';
 
 type Position = {
     x: number;
@@ -153,7 +154,7 @@ const getSectorPassages = (
                 }
 
                 const fromDirection = from.x + from.width === to.x ? 'east' : 'west';
-                const passage = getSharedPassage(
+                const passage = getSharedSectorPassage(
                     from,
                     to,
                     fromDirection,
@@ -181,7 +182,7 @@ const getSectorPassages = (
                 }
 
                 const fromDirection = from.y + from.height === to.y ? 'south' : 'north';
-                const passage = getSharedPassage(
+                const passage = getSharedSectorPassage(
                     from,
                     to,
                     fromDirection,
@@ -203,31 +204,6 @@ const getSectorPassages = (
 
     return passages;
 };
-
-const getSharedPassage = (
-    from: MapSector,
-    to: MapSector,
-    fromDirection: MapDirection,
-    toDirection: MapDirection,
-    overlapStart: number,
-    overlapEnd: number
-) => {
-    const overlap = overlapEnd - overlapStart;
-    const fromOpening = findOpening(from.openings, fromDirection);
-    const toOpening = findOpening(to.openings, toDirection);
-    const sizeRatio =
-        ((fromOpening?.sizeRatio ?? 0.34) + (toOpening?.sizeRatio ?? 0.34)) / 2;
-    const centerRatio =
-        ((fromOpening?.centerRatio ?? 0.5) + (toOpening?.centerRatio ?? 0.5)) / 2;
-
-    return {
-        center: overlapStart + overlap * centerRatio,
-        size: Math.min(Math.max(72, overlap * sizeRatio), overlap)
-    };
-};
-
-const findOpening = (openings: MapOpening[], direction: MapDirection) =>
-    openings.find((opening) => opening.direction === direction);
 
 const getOppositeDirection = (direction: MapDirection): MapDirection => {
     if (direction === 'north') {

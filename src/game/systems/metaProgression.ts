@@ -121,6 +121,18 @@ export const SHOP_ITEMS: ShopItem[] = [
         operation: "add",
         value: 2,
       },
+      {
+        target: "runUpgrade",
+        stat: "barricadeUnlocked",
+        operation: "set",
+        value: true,
+      },
+      {
+        target: "runUpgrade",
+        stat: "maxBarricades",
+        operation: "add",
+        value: 2,
+      },
     ],
   },
   {

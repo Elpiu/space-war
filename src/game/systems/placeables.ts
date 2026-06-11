@@ -2,6 +2,7 @@ import { Math as PhaserMath } from "phaser";
 import {
   BARRICADE_COST,
   BARRICADE_HP,
+  PLACEABLE_UNIT_SIZE,
 } from "../config/gameplay";
 import type {
   Barricade,
@@ -17,7 +18,7 @@ import type {
 import { circlesOverlap } from "../utils/geometry";
 import { createPulse } from "./effects";
 import { getShopItem } from "./metaProgression";
-import { getPlaceableCellFromWorld } from "./placeableGrid";
+import { getKindRadius, getPlaceableCellFromWorld } from "./placeableGrid";
 
 type PlaceableCreateOptions = {
   gridX?: number;
@@ -40,7 +41,7 @@ export const createTurret = (
   const fireRate = config.fireRate * runUpgrades.turretFireRateMultiplier;
   const damage = config.damage + runUpgrades.turretDamageBonus;
   const hp = config.hp + runUpgrades.turretHpBonus;
-  const cell = getCreateCell(x, y, options);
+  const cell = getCreateCell(x, y, options, "turret");
   const item = getShopItem(turretId);
 
   const rangeIndicator = scene.add
@@ -103,7 +104,7 @@ export const createMine = (
 ): Mine => {
   const config = getMineDefinition(mineId);
   const damageRadius = config.damageRadius + runUpgrades.mineRadiusBonus;
-  const cell = getCreateCell(x, y, options);
+  const cell = getCreateCell(x, y, options, "mine");
   const item = getShopItem(mineId);
   const body = scene.add
     .circle(x, y, config.radius, config.color, 0.95)
@@ -147,9 +148,10 @@ export const createBarricade = (
   runUpgrades: RunUpgradeState,
   options: PlaceableCreateOptions = {},
 ): Barricade => {
-  const cell = getCreateCell(x, y, options);
+  const cell = getCreateCell(x, y, options, "barricade");
+  const bodySize = PLACEABLE_UNIT_SIZE - 6;
   const body = scene.add
-    .rectangle(x, y, 50, 50, 0x64748b, 0.96)
+    .rectangle(x, y, bodySize, bodySize, 0x64748b, 0.96)
     .setStrokeStyle(2, 0xcbd5e1, 0.9)
     .setDepth(18);
   const hp = BARRICADE_HP + runUpgrades.barricadeHpBonus;
@@ -177,7 +179,7 @@ export const createBarricade = (
     baseCost: getBarricadeCost(runUpgrades),
     hp,
     maxHp: hp,
-    radius: 28,
+    radius: getKindRadius("barricade"),
     damageCooldownUntil: 0,
   };
 
@@ -700,8 +702,9 @@ const getCreateCell = (
   x: number,
   y: number,
   options: PlaceableCreateOptions,
+  kind: PlaceableKind,
 ) => {
-  const fallback = getPlaceableCellFromWorld(x, y);
+  const fallback = getPlaceableCellFromWorld(x, y, kind);
 
   if (typeof options.gridX !== "number" || typeof options.gridY !== "number") {
     return fallback;
@@ -745,12 +748,12 @@ const updateBarricadeVisuals = (barricade: Barricade) => {
 
   barricade.hpBar.clear();
   barricade.hpBar.fillStyle(0x020617, 0.82);
-  barricade.hpBar.fillRect(x - 28, y + 30, 56, 7);
+  barricade.hpBar.fillRect(x - 36, y + 45, 72, 7);
   barricade.hpBar.fillStyle(0xcbd5e1, 0.96);
-  barricade.hpBar.fillRect(x - 27, y + 31, 54 * ratio, 5);
+  barricade.hpBar.fillRect(x - 35, y + 46, 70 * ratio, 5);
   barricade.hpBar.lineStyle(1, 0xf8fafc, 0.72);
-  barricade.hpBar.strokeRect(x - 28, y + 30, 56, 7);
-  barricade.levelText.setPosition(x, y - 34);
+  barricade.hpBar.strokeRect(x - 36, y + 45, 72, 7);
+  barricade.levelText.setPosition(x, y - 47);
   barricade.levelText.setText(`Lv.${barricade.level}`);
 };
 

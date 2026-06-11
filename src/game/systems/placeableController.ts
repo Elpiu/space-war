@@ -35,6 +35,8 @@ import {
   getPlaceableById,
   getPlaceableCellFromGrid,
   getPlaceableCellFromWorld,
+  getPlaceableUnitBounds,
+  getSubcellBounds,
   validatePlaceableCell,
   type PlaceableEntity,
   type PlaceableGridCell,
@@ -54,6 +56,7 @@ type PlaceableMode =
 type PlaceablePreview = {
   body: Phaser.GameObjects.Arc | Phaser.GameObjects.Rectangle;
   range: Phaser.GameObjects.Arc | null;
+  guide: Phaser.GameObjects.Graphics;
   cell: PlaceableGridCell | null;
   valid: boolean;
   message: string;
@@ -209,7 +212,8 @@ export const handlePlaceablePointerDown = (
   }
 
   const validation = validatePlaceableCell({
-    cell: getPlaceableCellFromGrid(selected.gridX, selected.gridY),
+    cell: getPlaceableCellFromGrid(selected.gridX, selected.gridY, selected.kind),
+    kind: selected.kind,
     player: options.player,
     mapState: options.mapState,
     turrets: [],
@@ -274,6 +278,7 @@ const commitActiveMode = (
 
   const validation = validatePlaceableCell({
     cell,
+    kind: mode.target,
     player: options.player,
     mapState: options.mapState,
     turrets: options.turrets,
@@ -526,9 +531,14 @@ const updatePreview = (options: PlaceableInputOptions) => {
   }
 
   const pointer = options.scene.input.activePointer;
-  const cell = getPlaceableCellFromWorld(pointer.worldX, pointer.worldY);
+  const cell = getPlaceableCellFromWorld(
+    pointer.worldX,
+    pointer.worldY,
+    state.mode.target,
+  );
   const validation = validatePlaceableCell({
     cell,
+    kind: state.mode.target,
     player: options.player,
     mapState: options.mapState,
     turrets: options.turrets,
@@ -542,6 +552,7 @@ const updatePreview = (options: PlaceableInputOptions) => {
   state.preview.valid = validation.valid;
   state.preview.message = validation.reason;
   state.preview.body.setPosition(cell.x, cell.y);
+  renderPreviewGuide(state.preview.guide, cell, state.mode.target, validation.valid);
   state.preview.body.setAlpha(validation.valid ? 0.72 : 0.36);
   state.preview.body.setStrokeStyle(
     2,
@@ -563,7 +574,7 @@ const createPreview = (
   clearPreview(state);
 
   const pointer = scene.input.activePointer;
-  const cell = getPlaceableCellFromWorld(pointer.worldX, pointer.worldY);
+  const cell = getPlaceableCellFromWorld(pointer.worldX, pointer.worldY, target);
   const color = getPulseColor(target);
   const body =
     target === "mine"
@@ -571,8 +582,8 @@ const createPreview = (
       : scene.add.rectangle(
           cell.x,
           cell.y,
-          target === "barricade" ? 50 : 24,
-          target === "barricade" ? 50 : 24,
+          target === "barricade" ? 78 : 24,
+          target === "barricade" ? 78 : 24,
           color,
           0.55,
         );
@@ -583,10 +594,13 @@ const createPreview = (
 
   body.setDepth(70).setStrokeStyle(2, 0xe0f2fe, 0.92);
   range?.setDepth(69).setStrokeStyle(1, color, 0.16);
+  const guide = scene.add.graphics().setDepth(68);
+  renderPreviewGuide(guide, cell, target, false);
 
   state.preview = {
     body,
     range,
+    guide,
     cell,
     valid: false,
     message: "",
@@ -895,6 +909,7 @@ const cancelMode = (state: PlaceableControllerState) => {
 const clearPreview = (state: PlaceableControllerState) => {
   state.preview?.body.destroy();
   state.preview?.range?.destroy();
+  state.preview?.guide.destroy();
   state.preview = null;
 };
 
@@ -931,4 +946,42 @@ const getPulseColor = (kind: PlaceableKind) => {
   }
 
   return 0x38bdf8;
+};
+
+const renderPreviewGuide = (
+  graphics: Phaser.GameObjects.Graphics,
+  cell: PlaceableGridCell,
+  kind: PlaceableKind,
+  valid: boolean,
+) => {
+  const unit = getPlaceableUnitBounds(cell);
+  const color = valid ? 0x7dd3fc : 0xfb7185;
+
+  graphics.clear();
+  graphics.fillStyle(color, kind === "barricade" ? 0.08 : 0.035);
+  graphics.fillRect(unit.x, unit.y, unit.size, unit.size);
+  graphics.lineStyle(2, color, valid ? 0.72 : 0.48);
+  graphics.strokeRect(unit.x, unit.y, unit.size, unit.size);
+  graphics.lineStyle(1, color, valid ? 0.42 : 0.28);
+  graphics.lineBetween(
+    unit.x + unit.size / 2,
+    unit.y,
+    unit.x + unit.size / 2,
+    unit.y + unit.size,
+  );
+  graphics.lineBetween(
+    unit.x,
+    unit.y + unit.size / 2,
+    unit.x + unit.size,
+    unit.y + unit.size / 2,
+  );
+
+  if (kind !== "barricade") {
+    const subcell = getSubcellBounds(cell);
+
+    graphics.fillStyle(color, valid ? 0.16 : 0.1);
+    graphics.fillRect(subcell.x, subcell.y, subcell.size, subcell.size);
+    graphics.lineStyle(2, color, valid ? 0.78 : 0.5);
+    graphics.strokeRect(subcell.x + 2, subcell.y + 2, subcell.size - 4, subcell.size - 4);
+  }
 };

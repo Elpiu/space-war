@@ -1,6 +1,7 @@
 import {
   PLACEABLE_CELL_SIZE,
   PLACEABLE_INTERACTION_RANGE,
+  PLACEABLE_UNIT_SIZE,
 } from "../config/gameplay";
 import type {
   Barricade,
@@ -22,6 +23,7 @@ export type PlaceableGridCell = {
   gridY: number;
   x: number;
   y: number;
+  size: number;
 };
 
 export type PlaceableValidation = {
@@ -34,21 +36,25 @@ export type PlaceableEntity = Turret | Mine | Barricade;
 export const getPlaceableCellFromWorld = (
   x: number,
   y: number,
+  kind: PlaceableKind = "turret",
 ): PlaceableGridCell => {
-  const gridX = Math.round(x / PLACEABLE_CELL_SIZE);
-  const gridY = Math.round(y / PLACEABLE_CELL_SIZE);
+  const cellSize = getPlacementCellSize(kind);
+  const gridX = Math.floor(x / cellSize);
+  const gridY = Math.floor(y / cellSize);
 
-  return getPlaceableCellFromGrid(gridX, gridY);
+  return getPlaceableCellFromGrid(gridX, gridY, kind);
 };
 
 export const getPlaceableCellFromGrid = (
   gridX: number,
   gridY: number,
+  kind: PlaceableKind = "turret",
 ): PlaceableGridCell => ({
   gridX,
   gridY,
-  x: gridX * PLACEABLE_CELL_SIZE,
-  y: gridY * PLACEABLE_CELL_SIZE,
+  x: gridX * getPlacementCellSize(kind) + getPlacementCellSize(kind) / 2,
+  y: gridY * getPlacementCellSize(kind) + getPlacementCellSize(kind) / 2,
+  size: getPlacementCellSize(kind),
 });
 
 export const getPlaceableGridKey = (gridX: number, gridY: number) =>
@@ -62,6 +68,7 @@ export const getAllPlaceables = (
 
 export const validatePlaceableCell = (options: {
   cell: PlaceableGridCell;
+  kind: PlaceableKind;
   player: Position;
   mapState: MapSectorState;
   turrets: Turret[];
@@ -71,7 +78,7 @@ export const validatePlaceableCell = (options: {
   radius?: number;
 }): PlaceableValidation => {
   const { cell } = options;
-  const radius = options.radius ?? getPlacementRadius();
+  const radius = options.radius ?? getKindRadius(options.kind);
 
   if (
     distanceSquared(cell.x, cell.y, options.player.x, options.player.y) >
@@ -92,12 +99,19 @@ export const validatePlaceableCell = (options: {
     options.turrets,
     options.mines,
     options.barricades,
-  ).some(
-    (placeable) =>
-      placeable.id !== options.ignoreId &&
-      placeable.gridX === cell.gridX &&
-      placeable.gridY === cell.gridY,
-  );
+  ).some((placeable) => {
+    if (placeable.id === options.ignoreId) {
+      return false;
+    }
+
+    return cellsOverlap(
+      getOccupiedGridKeys(cell, options.kind),
+      getOccupiedGridKeys(
+        getPlaceableCellFromGrid(placeable.gridX, placeable.gridY, placeable.kind),
+        placeable.kind,
+      ),
+    );
+  });
 
   if (occupied) {
     return { valid: false, reason: "Cella occupata" };
@@ -112,10 +126,17 @@ export const findPlaceableAtCell = (
   mines: Mine[],
   barricades: Barricade[],
 ): PlaceableEntity | null => {
+  const targetKeys = getOccupiedGridKeys(cell, "turret");
+
   return (
     getAllPlaceables(turrets, mines, barricades).find(
-      (placeable) =>
-        placeable.gridX === cell.gridX && placeable.gridY === cell.gridY,
+      (placeable) => cellsOverlap(
+        targetKeys,
+        getOccupiedGridKeys(
+          getPlaceableCellFromGrid(placeable.gridX, placeable.gridY, placeable.kind),
+          placeable.kind,
+        ),
+      ),
     ) ?? null
   );
 };
@@ -139,13 +160,55 @@ export const getKindRadius = (kind: PlaceableKind) => {
   }
 
   if (kind === "barricade") {
-    return 28;
+    return 40;
   }
 
   return 20;
 };
 
-const getPlacementRadius = () => PLACEABLE_CELL_SIZE * 0.38;
+export const getPlacementCellSize = (kind: PlaceableKind) =>
+  kind === "barricade" ? PLACEABLE_UNIT_SIZE : PLACEABLE_CELL_SIZE;
+
+export const getPlaceableUnitBounds = (cell: PlaceableGridCell) => {
+  const unitGridX =
+    cell.size === PLACEABLE_UNIT_SIZE ? cell.gridX : Math.floor(cell.gridX / 2);
+  const unitGridY =
+    cell.size === PLACEABLE_UNIT_SIZE ? cell.gridY : Math.floor(cell.gridY / 2);
+
+  return {
+    x: unitGridX * PLACEABLE_UNIT_SIZE,
+    y: unitGridY * PLACEABLE_UNIT_SIZE,
+    size: PLACEABLE_UNIT_SIZE,
+  };
+};
+
+export const getSubcellBounds = (cell: PlaceableGridCell) => ({
+  x: cell.gridX * PLACEABLE_CELL_SIZE,
+  y: cell.gridY * PLACEABLE_CELL_SIZE,
+  size: PLACEABLE_CELL_SIZE,
+});
+
+const getOccupiedGridKeys = (
+  cell: PlaceableGridCell,
+  kind: PlaceableKind,
+) => {
+  if (kind !== "barricade") {
+    return [getPlaceableGridKey(cell.gridX, cell.gridY)];
+  }
+
+  const originX = cell.gridX * 2;
+  const originY = cell.gridY * 2;
+
+  return [
+    getPlaceableGridKey(originX, originY),
+    getPlaceableGridKey(originX + 1, originY),
+    getPlaceableGridKey(originX, originY + 1),
+    getPlaceableGridKey(originX + 1, originY + 1),
+  ];
+};
+
+const cellsOverlap = (from: string[], to: string[]) =>
+  from.some((key) => to.includes(key));
 
 const distanceSquared = (
   ax: number,

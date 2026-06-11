@@ -49,6 +49,8 @@ Per sviluppo locale del gioco, preferire `npm run dev-nolog`.
   - torrette piazzabili con `T`, costo in monete run, limite massimo e fuoco automatico;
   - mine piazzabili con `F`, costo in monete run, limite massimo ed esplosione ad area;
   - barricate piazzabili con `B` dopo sblocco in-run;
+  - griglia piazzabili allineata alla griglia ambientale: barricata su unita' 84px, torrette/mine/chest su sottocelle 42px;
+  - aperture tra settori quantizzate in quarti dell'unita' tattica: minimo 1 unita', massimo 4 unita';
   - rimozione del piazzabile vicino con `E`;
   - piazzabili con HP, distruttibili dai nemici;
   - mini navicelle follower sbloccabili tramite upgrade;

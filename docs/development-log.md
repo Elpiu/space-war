@@ -17,6 +17,22 @@ Verifica:
 
 - non eseguita su richiesta del proprietario del progetto.
 
+## 2026-06-10 - Griglia tattica piazzabili
+
+Stato:
+
+- allineata la griglia dei piazzabili alla griglia ambientale dei settori;
+- introdotta un'unita' tattica da 84px per le barricate;
+- torrette, mine e chest usano sottocelle da 42px, pari a un quarto dell'unita' tattica;
+- le aperture tra settori vengono calcolate in quarti dell'unita' tattica, con dimensione minima 1 unita' e massima 4 unita';
+- la validazione occupazione ora impedisce sovrapposizioni tra una barricata intera e i quattro slot piccoli al suo interno;
+- aggiunta una preview di piazzamento che mostra l'unita' intera e, per i piazzabili piccoli, il quarto selezionato;
+- aumentata la dimensione visiva e il raggio di blocco della barricata per renderla adatta a chiudere passaggi stretti.
+
+Verifica:
+
+- non eseguita.
+
 ## 2026-06-04 - Shop item e piazzabili data-driven
 
 Stato:

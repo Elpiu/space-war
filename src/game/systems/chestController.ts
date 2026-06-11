@@ -12,6 +12,7 @@ import {
 } from "./chests";
 import { createPulse } from "./effects";
 import { getSectorAt } from "./mapSectors";
+import { getPlaceableCellFromWorld } from "./placeableGrid";
 import { pickChestUpgrade } from "./upgradeSystem";
 import { pickChestSector } from "./waveSystem";
 import type { RunState } from "./runState";
@@ -51,7 +52,8 @@ export const spawnChest = (options: {
     options.kind === "shop"
       ? CHEST_COST + Math.max(0, options.run.wave - 1) * 2
       : 0;
-  const chest = createChest(options.scene, options.x, options.y, options.kind, cost);
+  const cell = getPlaceableCellFromWorld(options.x, options.y, "turret");
+  const chest = createChest(options.scene, cell.x, cell.y, options.kind, cost);
 
   clampInsideMap(chest.body, chest.radius, options.mapState.sectors);
   chest.label.setPosition(chest.body.x, chest.body.y - 28);
