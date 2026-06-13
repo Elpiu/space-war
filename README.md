@@ -10,6 +10,10 @@ Sei un pilota indipendente, un "Orbital Survivor". La tua navicella è un mosaic
 
 ---
 
+<video src="clip_video.mp4" width="100%" controls autoplay loop muted></video>
+
+---
+
 ### 🛸 Space War – Credits & Attributions
 
 🎮 Game Engine & Hosting
