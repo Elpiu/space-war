@@ -10,12 +10,7 @@ Sei un pilota indipendente, un "Orbital Survivor". La tua navicella è un mosaic
 
 ---
 
-Ecco una struttura pronta per i tuoi Crediti e Ringraziamenti (Credits / Attributions), pensata per essere inserita in una schermata dedicata del gioco o in un file README.md su GitHub.
-
-Ho organizzato il tutto in modo chiaro, pulito e professionale, mantenendo quel tocco arcade e tech in linea con il gioco.
-
-🛸 Space War – Credits & Attributions
-Un ringraziamento speciale a tutte le piattaforme, gli strumenti e le intelligenze artificiali che hanno reso possibile lo sviluppo, la sonorizzazione e la quotazione al NASDAQ di questo progetto.
+### 🛸 Space War – Credits & Attributions
 
 🎮 Game Engine & Hosting
 Engine: Sviluppato con orgoglio utilizzando Phaser 4, il framework per eccellenza dell'arcade web.
