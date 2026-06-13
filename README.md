@@ -10,8 +10,11 @@ Sei un pilota indipendente, un "Orbital Survivor". La tua navicella è un mosaic
 
 ---
 
-<video src="https://github.com/Elpiu/space-war/blob/main/clip_video.mp4?raw=true" width="100%" controls autoplay loop muted></video>
+### 🎮 Demo di Gioco
 
+![Anteprima Space War](clip_video.gif)
+
+🍿 [Se la GIF non si carica, clicca qui!](https://raw.githubusercontent.com/Elpiu/space-war/main/clip_video.mp4)
 ---
 
 ### 🛸 Space War – Credits & Attributions
