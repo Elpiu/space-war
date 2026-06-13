@@ -1,30 +1,43 @@
 # Gameplay Loop
 
-Il loop del gioco deve essere rapido da capire e profondo da padroneggiare. Il giocatore combatte wave in tempo reale, raccoglie risorse, sceglie upgrade e usa la mappa continua a settori per trovare il terreno piu' favorevole.
+Il loop del gioco deve essere rapido da capire e profondo da padroneggiare. Il giocatore combatte wave in tempo reale, raccoglie risorse, sceglie tomi e usa la mappa continua a settori per trovare il terreno piu' favorevole.
 
 ## Loop core della run
 
 1. Il giocatore inizia dal settore centrale con una navicella base.
 2. Le prime wave introducono movimento, shooting, schivata e raccolta.
 3. I nemici rilasciano esperienza e monete.
-4. L'esperienza permette di salire di livello e scegliere upgrade.
+4. L'esperienza permette di salire di livello e scegliere uno tra tre tomi.
 5. La mappa genera nuovi settori agganciati a quelli esistenti.
 6. Il giocatore decide dove spostarsi per affrontare meglio le wave.
 7. Difese e trappole vengono piazzate nei settori.
 8. Le wave diventano piu' numerose, aggressive e varie.
 9. Elite o boss interrompono il ritmo e costringono a cambiare strategia.
-10. Alla morte, la run termina ma le monete permanenti vengono conservate.
-11. Il giocatore spende monete nel mercato permanente e riparte.
+10. Le chest assegnano oggetti passivi con rarita' senza interrompere la run.
+11. Alla morte, la run termina e vengono assegnati crediti post-run.
+12. Il giocatore sblocca o filtra tomi e oggetti nello shop, poi riparte.
+
+La run puo' essere messa in pausa e ripresa con `P`. Pausa, level-up e altre
+modali devono fermare il gameplay senza consumare timer di wave, attacchi o
+buff temporanei.
+
+## Tutorial
+
+Il tutorial e' una scena separata accessibile dal menu. Introduce in ordine
+movimento, shooting automatico, pickup, tomi, torretta, mina, barricata,
+attraversamento dei settori e chest. Usa i sistemi reali della run, mantiene
+gli HP almeno a 1 e non assegna crediti o sblocchi persistenti. Al termine
+avvia automaticamente una run normale.
 
 ## Ritmo desiderato
 
 ### Inizio run
 
-La partita deve iniziare semplice: pochi nemici, un settore centrale, una navicella base e una sola arma affidabile. Il giocatore impara movimento, range, raccolta dei pickup e primi pattern nemici.
+La partita deve iniziare semplice: pochi nemici, un settore centrale, una navicella base, una sola arma affidabile, una torretta base e una mina base. Nessun loadout altera le statistiche iniziali.
 
 ### Primo sviluppo
 
-Dopo pochi minuti, la mappa inizia ad aprirsi. Il giocatore vede nuovi settori, sceglie dove spostarsi nello spazio continuo, affronta wave piu' dense e comincia a costruire una build tramite upgrade.
+Dopo pochi minuti, la mappa inizia ad aprirsi. Il giocatore costruisce una build scegliendo fino a quattro tomi e raccogliendo oggetti dalle chest.
 
 ### Fase intermedia
 
@@ -47,7 +60,7 @@ Il gioco deve creare tensione continua tra:
 
 ## Morte e ripartenza
 
-La morte deve sembrare giusta. Idealmente e' il risultato di una posizione sbagliata, una decisione rischiosa o una wave troppo intensa. Subito dopo, le monete permanenti devono dare un motivo concreto per tornare all'hangar, migliorare qualcosa e ripartire.
+La morte deve sembrare giusta. Idealmente e' il risultato di una posizione sbagliata, una decisione rischiosa o una wave troppo intensa. Subito dopo, i crediti post-run devono dare un motivo concreto per sbloccare nuove possibilita' e ripartire.
 
 ## Successo del loop
 

@@ -56,8 +56,8 @@ type BlueprintAnchor = MapSectorBlueprint & {
     childCount: number;
 };
 
-export const createInitialMapSectors = (): MapSectorState => {
-    const seed = createRunSeed();
+export const createInitialMapSectors = (requestedSeed?: number): MapSectorState => {
+    const seed = requestedSeed ?? createRunSeed();
     const profile = { ...DEFAULT_MAP_GENERATION_PROFILE };
     const startSector = createMapSector({
         id: 'sector-0',

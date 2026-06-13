@@ -16,7 +16,7 @@ La navicella puo' partire vulnerabile, ma non deve mai sembrare pesante o imprec
 
 ## Shooting
 
-L'arma iniziale deve essere semplice e affidabile. Gli upgrade devono poi cambiare pattern, volume di fuoco, effetti e comportamento.
+L'arma iniziale deve essere semplice e affidabile. I tomi ne aumentano le statistiche, mentre gli oggetti chest possono cambiarne pattern e volume di fuoco.
 
 Direzioni possibili:
 
@@ -29,6 +29,12 @@ Direzioni possibili:
 - missili;
 - droni offensivi;
 - esplosioni ad area.
+
+Il Tomo del Vampirismo cura soltanto il danno inflitto dai proiettili della
+nave. Danno di torrette, mine e droni non attiva lifesteal.
+
+Munizioni Venom e futuri effetti temporanei possono modificare i proiettili
+della nave per una durata limitata senza diventare oggetti chest.
 
 Per il primo prototipo e' consigliato uno shooting automatico o semi-automatico, cosi' il focus resta su movimento, posizionamento e scelte di build.
 

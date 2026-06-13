@@ -2,6 +2,102 @@
 
 Log cronologico dei progressi del progetto. Ogni voce deve indicare data, tipo di cambiamento e stato del lavoro.
 
+## 2026-06-13 - Scene tutorial e staging
+
+### Completato
+
+- estratto `GameplayScene` come runtime condiviso della run;
+- mantenuto `Game` come ingresso per menu, shop e partita normale;
+- aggiunto tutorial guidato su movimento, combattimento, pickup, tomi,
+  piazzabili, settori, chest e controlli avanzati;
+- resa la nave invulnerabile nel tutorial e disattivata ogni ricompensa
+  persistente;
+- aggiunta staging dev-only con pannello comprimibile, spawn, god mode, wave,
+  build, chest, effetti, seed, teletrasporto e preset;
+- aggiunti hook condivisi per kill, pickup, tomi, oggetti, piazzabili e cambio
+  settore;
+- resi configurabili seed mappa e reward chest;
+- aggiunto cleanup di HUD, pannelli DOM, entita', input e musica al cambio
+  scena;
+- verificati type-check TypeScript e build Vite di produzione.
+
+## 2026-06-13 - Immagini nemici e boss variabili
+
+### Completato
+
+- collegate le immagini disponibili di chaser, swarm, brute e shooter;
+- normalizzate le dimensioni visive per archetipo preservando le proporzioni;
+- corretto il feedback al colpo per evitare immagini ingrandite alla scala 1;
+- mantenuto il renderer geometrico come fallback per asset assenti;
+- aggiunta selezione casuale dei boss tra le varianti numerate caricate;
+- predisposte immagini opzionali per charger, sniper ed elite brute;
+- predisposte immagini specifiche per i proiettili di ogni archetipo;
+- associato al boss, quando presente, il proiettile della stessa variante.
+
+## 2026-06-13 - Icone chest e pickup
+
+### Completato
+
+- centralizzato il precaricamento delle immagini di gameplay;
+- assegnata `doge-turret.png` alla torretta piazzabile;
+- sostituito il placeholder geometrico delle chest con l'icona dedicata;
+- aggiunte icone a salute, Magnet Overload e Munizioni Venom;
+- aggiunti alone colorato e pulsazione ai pickup speciali;
+- usata `starship.png` come immagine della navicella giocabile;
+- usata l'icona della chest anche nel toast delle ricompense;
+- mantenute invariate le logiche di movimento, raccolta e durata.
+
+## 2026-06-13 - Progressione tomi e oggetti chest
+
+### Completato
+
+- rimosso il loadout funzionale e uniformato l'inizio di ogni run;
+- aggiunti 12 tomi con limite di 4 tipi per run e livello massimo 10;
+- aggiunte quattro rarita' influenzate dalla Fortuna;
+- convertite le chest a un pool di 12 oggetti automatici con duplicati;
+- aggiunti Vampirismo percentuale e Difficolta' a rischio/ricompensa;
+- trasformato lo shop in catalogo di sblocchi e gestione pool;
+- aggiunta migrazione meta-state v3 che conserva i crediti precedenti;
+- separati tomi e oggetti nella strip HUD;
+- rese torretta e mina base indipendenti dallo shop.
+
+## 2026-06-13 - Kit base, effetti temporanei e crescita HP
+
+### Completato
+
+- fissata la capacita' iniziale a 1 torretta, 2 mine e 1 barricata;
+- limitato il Vampirismo ai proiettili sparati dalla nave;
+- aggiunto il drop raro Magnet Overload da 20 secondi;
+- aggiunte Munizioni Venom con `+20%` danno nave per 30 secondi;
+- introdotto un catalogo data-driven per futuri effetti temporanei;
+- aggiunte Paratia Rinforzata e Scafo Adattivo al pool sbloccabile;
+- aggiunta crescita degli HP massimi ogni 100 kill con Scafo Adattivo.
+
+## 2026-06-13 - Pausa, audio e reroll tomi
+
+### Completato
+
+- aggiunta pausa della run con tasto `P` e overlay di ripresa;
+- traslati timer, cooldown e buff della durata della pausa;
+- precaricati e collegati `level-up.mp3` e `reward.mp3`;
+- aggiunti due reroll gratuiti condivisi per run;
+- aggiunta curva di costo reroll `50, 150, 300, 500, 750...`;
+- protette card e reroll dai click involontari per 320 ms e fino al rilascio
+  del puntatore.
+
+## 2026-06-13 - Musica menu e gameplay
+
+Stato:
+
+- caricata `Server Drift Intro.mp3` come musica in loop per menu principale e shop;
+- caricata `Server Drones Game.mp3` come musica in loop per le nuove run;
+- centralizzato il cambio traccia in un sottosistema musicale che evita sovrapposizioni;
+- fermata la musica gameplay al game over.
+
+Verifica:
+
+- build produzione eseguita.
+
 ## 2026-06-10 - Generazione mappa non deterministica
 
 Stato:

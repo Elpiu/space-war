@@ -1,88 +1,31 @@
 # Economy
 
-L'economia collega sopravvivenza immediata, scelte tattiche e meta-progressione. Deve dare valore alle run anche quando finiscono con la morte.
+Space War usa due risorse separate.
 
-## Stato attuale del prototipo
+## Risorsa run
 
-Al 2026-06-04 lo shop/hangar e' tutto sbloccato: fuori run il giocatore equipaggia loadout, ma non compra item. Le monete raccolte in partita sono risorsa run e non vengono piu' sommate a un totale permanente alla morte.
+Le monete raccolte durante la partita non sono permanenti. Servono per:
 
-La risorsa run serve per:
+- piazzare torrette e mine;
+- piazzare barricate dopo aver trovato il relativo oggetto;
+- riparare, spostare o migliorare piazzabili;
+- aprire chest acquistabili.
 
-- piazzare torrette;
-- piazzare mine;
-- piazzare barricate quando sbloccate;
-- aprire chest acquistabili nella mappa.
+Le chest gratuite arrivano dopo una soglia di kill. Fortuna e Tomo della
+Difficolta' riducono moderatamente la soglia; la Difficolta' aumenta anche XP e
+monete ottenute.
 
-Le chest possono anche apparire gratuitamente dopo circa 80 nemici eliminati. All'apertura applicano un upgrade non scelto dal giocatore, pescato da una loot table pesata.
+I drop temporanei di campo non costano risorse e sono molto rari. Fortuna ne
+aumenta moderatamente la probabilita', senza renderli affidabili.
 
-La pesca chest non e' piu' uniforme: la categoria dell'upgrade viene influenzata dal loadout e dagli upgrade gia presi nella run. Una build con mine equipaggiate vede piu' spesso upgrade mine, una run che ha gia sbloccato droni riceve piu' spesso upgrade drone, e le categorie non ancora rilevanti restano nel pool ma con peso ridotto.
+## Crediti post-run
 
-## Monete permanenti
+Alla morte vengono calcolati crediti in base a livello e wave raggiunti. I
+crediti persistono e servono esclusivamente a sbloccare nuovi tomi e oggetti.
 
-La meta-valuta permanente e' parcheggiata nel prototipo attuale. In futuro potra' tornare come risorsa separata dalle monete run, senza riusare automaticamente le monete raccolte in partita.
+Non esistono conversione diretta delle monete run residue, bonus statistici
+permanenti, livelli permanenti degli item o loadout che modifica l'inizio della
+run.
 
-Dal refactor del 2026-06-04 il tipo `MetaProgressionState` contiene anche `postRunCredits`, pensato come valuta post-run separata. Il campo viene normalizzato/persistito ma non e' ancora mostrato nello shop e non sblocca item: serve come hook per la prossima iterazione.
-
-Formula iniziale consigliata quando verra' attivata:
-
-- base: `livello raggiunto * 2`;
-- bonus wave: `wave raggiunta * 3`;
-- bonus sopravvivenza: piccolo moltiplicatore o flat bonus oltre soglie come wave 5/10/15;
-- nessuna conversione diretta 1:1 delle monete run residue, per mantenere separate economia tattica e progressione permanente.
-
-Fuori dalla run, il giocatore puo' spenderle per:
-
-- sbloccare nuove navicelle;
-- migliorare statistiche iniziali;
-- ottenere nuovi tipi di armi;
-- sbloccare nuove difese;
-- sbloccare nuove trappole;
-- ampliare il set di upgrade disponibili;
-- acquistare equipaggiamenti permanenti;
-- personalizzare lo stile della navicella.
-
-## Risorsa in-run
-
-Oltre alle monete permanenti, puo' esistere una risorsa spendibile solo durante la partita. Serve per decisioni immediate.
-
-Spese possibili:
-
-- piazzare una torretta;
-- installare una trappola;
-- riparare la navicella;
-- attivare un potenziamento temporaneo;
-- aprire un collegamento speciale;
-- modificare un nodo;
-- richiamare un drone;
-- potenziare una difesa gia' piazzata.
-
-## Tensione economica
-
-Ogni spesa deve creare tradeoff:
-
-- sopravvivere ora o investire per dopo;
-- aumentare potenza personale o controllo della mappa;
-- raccogliere pickup rischiosi o mantenere posizione sicura;
-- usare una risorsa subito o aspettare una wave piu' pericolosa.
-
-## Mercato permanente
-
-Il mercato permanente deve essere semplice nella prima versione. La priorita' non e' creare un negozio complesso, ma rendere chiaro che la run produce progresso.
-
-Regole consigliate:
-
-- evitare bonus che rendono banale l'inizio;
-- preferire sblocchi di opzioni rispetto a potenza pura;
-- mantenere costi leggibili;
-- mostrare chiaramente cosa e' permanente e cosa vale solo per la run.
-
-## Primo prototipo
-
-Per il primo prototipo bastano:
-
-- drop monete dai nemici;
-- raccolta con feedback visivo;
-- contatore monete run;
-- totale permanente salvato almeno in memoria o local storage;
-- 2-3 acquisti permanenti provvisori;
-- costo per piazzare difesa/trappola durante la run.
+Lo shop permette anche di gestire i pool attivi, ma impone un minimo di otto
+contenuti per impedire pool deterministici troppo piccoli.

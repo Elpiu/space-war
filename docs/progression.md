@@ -1,88 +1,87 @@
 # Progression
 
-La progressione e' divisa in due livelli: crescita dentro la run e crescita permanente tra una run e l'altra. Entrambe devono dare nuove possibilita' senza eliminare la pressione delle wave.
+La progressione e' concentrata nella run. Il giocatore parte sempre con nave,
+arma, torretta e mina base; la build nasce dalle scelte fatte durante la
+partita.
 
-## Esperienza e level-up
+## Tomi e level-up
 
-I nemici eliminati rilasciano esperienza. Il giocatore raccoglie XP durante la run e, al raggiungimento di una soglia, sale di livello.
+Ogni level-up propone tre tomi differenti. Ogni proposta tira una rarita'
+indipendente:
 
-Ogni level-up deve proporre una scelta chiara tra upgrade. La scelta deve essere immediata da capire e visivamente percepibile dopo l'applicazione.
+- comune: 70%, incremento `1x`;
+- non comune: 22%, incremento `1.5x`;
+- raro: 7%, incremento `2.25x`;
+- leggendario: 1%, incremento `3.5x`.
 
-## Upgrade in-run
+La Fortuna sposta gradualmente il peso verso le rarita' alte. La rarita' vale
+solo per il singolo incremento, non resta legata al tomo per tutta la run.
 
-Le scelte migliori non aumentano solo numeri: cambiano il comportamento del gioco.
+Ogni run dispone di due reroll gratuiti condivisi tra tutti i level-up. Dopo
+averli consumati, i reroll costano risorsa run secondo la curva:
 
-Nel prototipo attuale gli upgrade in-run sono divisi per fonte:
+- 50;
+- 150;
+- 300;
+- 500;
+- 750;
+- incremento successivo secondo la stessa progressione quadratica.
 
-- upgrade da XP: il giocatore sceglie una carta tra 3 opzioni al level-up;
-- upgrade da chest: il giocatore apre una chest e riceve subito un upgrade casuale non scelto.
+La modale non accetta input per i primi 320 ms e resta bloccata finche' il
+click precedente non viene rilasciato. Questo evita selezioni involontarie
+quando il level-up avviene durante combattimento o piazzamento.
 
-Le chest servono a spingere build emergenti su piazzabili, droni e controllo mappa, mentre il level-up mantiene piu' controllo sulla direzione principale della run.
+Una run puo' contenere massimo quattro tipi di tomo. Finche' esistono slot
+liberi possono comparire tomi nuovi o gia' scelti; raggiunto il limite,
+compaiono soltanto i quattro tomi posseduti. Ogni tomo arriva al livello 10.
 
-Dal 2026-06-04 XP e chest usano una loot table pesata invece di una scelta uniforme. Ogni upgrade puo' avere un peso base che rappresenta rarita' o frequenza desiderata. La pesca viene poi corretta da tre segnali:
+Catalogo:
 
-- loadout equipaggiato: mine, torrette speciali, booster magnete e armi non base aumentano le categorie coerenti;
-- build gia avviata nella run: se il giocatore ha gia preso droni, mine, torrette o barricate, la categoria collegata diventa piu' probabile;
-- gate morbidi: alcune categorie restano possibili ma meno frequenti finche' non sono state sbloccate o rese rilevanti.
+- Potenza: danno;
+- Cadenza: velocita' d'attacco;
+- Vitalita': HP massimi e cura;
+- Mobilita': velocita' di movimento;
+- Sapienza: esperienza ottenuta;
+- Magnetismo: raggio pickup;
+- Fortuna: rarita' e drop;
+- Difficolta': nemici piu' forti e densi, ricompense migliori;
+- Vampirismo: cura percentuale sul danno dei soli proiettili della nave;
+- Balistica: velocita' e gittata dei proiettili;
+- Ingegneria: torrette, mine e barricate;
+- Sciame: droni.
 
-Il level-up pesca le 3 carte senza duplicati, ma ogni carta segue i pesi aggiornati. Le chest pescano un singolo upgrade dallo stesso sistema di bias, con un pool separato.
+## Oggetti chest
 
-Categorie possibili:
+Le chest non propongono una scelta: assegnano automaticamente un oggetto e ne
+mostrano il risultato senza interrompere la run. Gli oggetti hanno le stesse
+quattro rarita', possono uscire piu' volte e raggiungono il livello 10.
 
-- danno;
-- cadenza di fuoco;
-- numero di proiettili;
-- proiettili rimbalzanti;
-- laser;
-- missili;
-- droni;
-- magnete per pickup;
-- scudi;
-- velocita';
-- rigenerazione;
-- esplosioni ad area;
-- effetti elettrici o catene di danno;
-- miglioramenti alle torrette;
-- miglioramenti alle trappole.
+Il pool iniziale contiene Camera Splitter, Faro Sentinella, Ottiche Torretta,
+Slot Torretta, Scorta Mine, Carica Esplosiva, Kit Barricata e Piastre Reattive.
+Nucleo Pesante, Caricatore Rapido, Arsenale Drone e Reattore Overdrive si
+sbloccano nello shop insieme a:
 
-## Build desiderate
+- Paratia Rinforzata: HP massimi flat e cura immediata;
+- Scafo Adattivo: ogni 100 kill aumenta gli HP massimi per la run.
 
-Ogni run dovrebbe poter prendere una direzione leggibile:
+## Effetti di campo
 
-- build proiettili rapidi: molti colpi, alta pressione costante;
-- build laser: danno lineare, controllo di corridoi e nodi stretti;
-- build droni: supporto mobile, copertura extra e autonomia;
-- build mine/trappole: controllo del territorio e preparazione;
-- build area: esplosioni, impulsi e pulizia degli sciami;
-- build elettrica: catene di danno e controllo di gruppi;
-- build sopravvivenza: scudi, rigenerazione e mobilita'.
+I nemici possono rilasciare molto raramente effetti temporanei separati dalle
+chest:
+
+- Magnet Overload: attrae tutti i pickup della mappa per 20 secondi;
+- Munizioni Venom: aumenta del 20% il danno dei proiettili della nave per 30
+  secondi.
+
+Raccogliere nuovamente lo stesso effetto ne estende la durata. Il catalogo e'
+data-driven e puo' essere ampliato con altri effetti temporanei.
 
 ## Meta-progressione
 
-La meta-progressione economica e' sospesa nel prototipo attuale: lo shop/hangar e' tutto sbloccato e serve a scegliere loadout. Quando tornera', dovra' usare una valuta separata dalla risorsa run.
+Lo shop non aumenta statistiche iniziali e non contiene loadout. I crediti
+post-run sbloccano nuovi tomi e oggetti. Il giocatore puo' includere o escludere
+contenuti sbloccati, mantenendo almeno otto tomi e otto oggetti nei rispettivi
+pool attivi.
 
-Possibili sblocchi:
-
-- nuove navicelle;
-- statistiche iniziali migliori;
-- nuovi tipi di armi;
-- nuove difese;
-- nuove trappole;
-- set di upgrade piu' ampio;
-- equipaggiamenti permanenti;
-- personalizzazione visiva della navicella.
-
-## Regola di bilanciamento
-
-La meta-progressione deve dare senso di avanzamento, ma non deve rendere banali le prime fasi. Preferire sblocchi che aprono stili di gioco rispetto a bonus puramente numerici.
-
-## Primo prototipo
-
-Per il primo prototipo bastano:
-
-- barra XP;
-- level-up con 3 scelte;
-- 6-10 upgrade semplici ma percepibili;
-- monete raccolte durante la run;
-- totale monete conservato dopo morte o restart;
-- una schermata o stato minimo di spesa permanente, anche provvisorio.
+La meta-progressione amplia le possibilita' senza rendere piu' facile l'inizio
+della run.

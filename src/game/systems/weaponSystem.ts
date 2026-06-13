@@ -12,12 +12,13 @@ import { getBlockingHazards } from "./mapSectors";
 
 export const updatePlayerShooting = (options: {
   scene: Phaser.Scene;
-  player: Phaser.GameObjects.Triangle;
+  player: Phaser.GameObjects.Image;
   enemies: Enemy[];
   bullets: Bullet[];
   stats: PlayerStats;
   time: number;
   nextShotAt: number;
+  damageMultiplier?: number;
 }) => {
   if (options.time < options.nextShotAt || options.enemies.length === 0) {
     return options.nextShotAt;
@@ -47,7 +48,7 @@ export const updatePlayerShooting = (options: {
     options.bullets.push({
       body: bullet,
       velocity,
-      damage: options.stats.damage,
+      damage: options.stats.damage * (options.damageMultiplier ?? 1),
       distanceLeft: options.stats.bulletRange,
       radius: BULLET_RADIUS,
     });
@@ -113,7 +114,7 @@ export const updatePlayerBullets = (options: {
 };
 
 export const findNearestEnemy = (
-  player: Phaser.GameObjects.Triangle,
+  player: Phaser.GameObjects.Image,
   enemies: Enemy[],
 ) => {
   let nearest: Enemy | null = null;

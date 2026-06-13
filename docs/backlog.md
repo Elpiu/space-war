@@ -1,64 +1,60 @@
 # Backlog
 
-Backlog ordinato per fase. Le feature possono spostarsi quando il design o il prototipo chiariscono meglio le priorita'.
+## Vertical slice completata
 
-## Prototipo core
+- [x] Movimento e shooting automatico.
+- [x] Nemici, wave, pickup, HP, morte e restart.
+- [x] Mappa continua S/M/L con generazione e reveal progressivo.
+- [x] Hazard, ostacoli, camera follow e mini-mappa.
+- [x] Capacita' base di 1 torretta, 2 mine e 1 barricata.
+- [x] Dodici tomi con limite di quattro per run.
+- [x] Rarita' comune, non comune, rara e leggendaria.
+- [x] Fortuna applicata a rarita', drop e chest.
+- [x] Difficolta' con rischio e ricompensa.
+- [x] Quattordici oggetti chest con duplicati a livelli.
+- [x] Oggetti per HP flat e crescita ogni 100 kill.
+- [x] Drop temporanei rari Magnet Overload e Munizioni Venom.
+- [x] Vampirismo limitato ai proiettili della nave.
+- [x] Shop di sblocchi e gestione pool.
+- [x] Migrazione salvataggio che conserva i crediti.
+- [x] HUD separato per tomi e oggetti.
+- [x] Musica per menu e run.
+- [x] Pausa con `P` e timer congelati.
+- [x] Sound effect per level-up e chest.
+- [x] Due reroll gratuiti e reroll a costo crescente.
+- [x] Protezione anti-missclick nella scelta tomi.
+- [x] Runtime gameplay condiviso tra scene specializzate.
+- [x] Tutorial guidato interattivo senza ricompense persistenti.
+- [x] Staging dev-only con console completa e preset di test.
 
-- [x] Sostituire scena placeholder con scena di gioco.
-- [x] Navicella controllabile.
-- [x] Shooting automatico o semi-automatico.
-- [x] Nemico inseguitore base.
-- [x] Wave con timer e scaling.
-- [x] Pickup XP.
-- [x] Pickup monete.
-- [x] Level-up con 3 scelte.
-- [x] 6-10 upgrade base.
-- [x] Mappa continua minima con settori S/M/L.
-- [x] Espansione mappa durante run.
-- [x] Movimento tra settori.
-- [x] Torretta piazzabile.
-- [x] Trappola o mina piazzabile.
-- [x] HP, morte e restart.
-- [x] UI base per HP, XP, livello, monete, wave.
-- [x] Feedback visivi minimi.
+## Priorita' v1
 
-Nota: la vertical slice attuale include una mappa continua con settori S/M/L, mini-mappa, camera follow, ostacoli/pericoli e blueprint random per run rivelata ogni 2 wave dopo la seconda. Include anche torrette e mine piazzabili con costo in monete run.
+- Bilanciare incrementi, rarita', Fortuna e Difficolta'.
+- Bilanciare costi, frequenza chest e crediti post-run.
+- Aggiungere elite con pattern riconoscibili.
+- Aggiungere boss periodici.
+- Migliorare varieta' e leggibilita' dei settori.
+- Aggiungere sinergie tra tomi e oggetti.
+- Ampliare il catalogo degli effetti di campo temporanei.
+- Aggiungere evoluzioni al raggiungimento di soglie.
+- Rifinire feedback visivi e audio delle rarita'.
+- Rendere piu' leggibili statistiche e bonus totali della run.
 
-## Versione v1
+## Contenuti futuri
 
-- Piu' archetipi nemici.
-- Elite con pattern riconoscibili.
-- Boss periodici.
-- Piu' varieta' di settori, ostacoli e pericoli.
-- [x] Generazione mappa piu' varia.
-- Upgrade sinergici.
-- [x] Meta-progressione con shop/hangar e menu/loadout base.
-- [x] Nuove navicelle prototipo.
-- [x] Nuove armi prototipo.
-- [x] Nuove difese e trappole prototipo.
-- [x] Shop visuale con schede, preview item e archetipi navicella bilanciati.
-- [x] Salvataggio persistente localStorage iniziale.
-- Bilanciamento delle run.
-- Effetti visivi piu' ricchi.
-- Audio e musica.
-
-## Espansioni future
-
-- Eventi speciali nei settori.
-- Settori speciali apribili con risorse.
-- Settori instabili con pericoli temporanei.
-- Modifiche permanenti alla mappa durante la run.
-- Droni avanzati.
-- Build elementali.
-- Boss con interazioni specifiche con la mappa.
-- Sfide giornaliere o seed condivisi.
+- Laser, missili, rimbalzi ed elettricita'.
+- Droni avanzati e oggetti dedicati.
+- Oggetti che modificano hazard o settori.
+- Eventi speciali e settori instabili.
+- Boss che interagiscono con la mappa.
+- Sfide giornaliere e seed condivisi.
 - Modalita' endless raffinata.
-- Personalizzazione estetica della navicella.
+- Personalizzazione estetica senza bonus funzionali.
 
-## Idee da validare
+## Decisioni da validare
 
-- Risorsa separata per spese in-run.
-- Upgrade che migliorano direttamente settori o hazard.
-- Nemici che rendono temporaneamente pericolosa una zona.
-- Trappole che cambiano effetto in base alla dimensione del settore.
-- Ricompense maggiori in settori piccoli o instabili.
+- Evoluzione automatica o scelta al livello massimo di un tomo.
+- Possibili sinergie esplicite tra due tomi.
+- Reroll limitati per level-up o chest.
+- Ricompense speciali per settori ad alto rischio.
+- Numero ottimale di tomi e oggetti attivi quando il catalogo crescera'.

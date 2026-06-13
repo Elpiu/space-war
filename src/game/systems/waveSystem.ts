@@ -8,16 +8,13 @@ import {
 } from "../config/gameplay";
 import { pickEnemyTypeForSpawn } from "../data/enemies";
 import type { Enemy, MapSector, MapSectorState } from "../types/gameplay";
-import {
-  expandMapForWave,
-  getSectorCenter,
-} from "./mapSectors";
+import { expandMapForWave, getSectorCenter } from "./mapSectors";
 import type { RunState } from "./runState";
 
 export const updateWaveSystem = (options: {
   run: RunState;
   mapState: MapSectorState;
-  player: Phaser.GameObjects.Triangle | null;
+  player: Phaser.GameObjects.Image | null;
   time: number;
   spawnEnemyAt: (x: number, y: number, enemyType: Enemy["typeId"]) => void;
   onMapExpanded: () => void;
@@ -33,7 +30,10 @@ export const updateWaveSystem = (options: {
     return;
   }
 
-  if (options.run.waveEndsAt > 0 && options.time >= options.run.nextSpawnPulseAt) {
+  if (
+    options.run.waveEndsAt > 0 &&
+    options.time >= options.run.nextSpawnPulseAt
+  ) {
     spawnWavePulse(options);
   }
 };
@@ -41,7 +41,7 @@ export const updateWaveSystem = (options: {
 export const startWave = (options: {
   run: RunState;
   mapState: MapSectorState;
-  player: Phaser.GameObjects.Triangle | null;
+  player: Phaser.GameObjects.Image | null;
   time: number;
   spawnEnemyAt: (x: number, y: number, enemyType: Enemy["typeId"]) => void;
   onMapExpanded: () => void;
@@ -84,14 +84,18 @@ export const finishWave = (
 export const spawnWavePulse = (options: {
   run: RunState;
   mapState: MapSectorState;
-  player: Phaser.GameObjects.Triangle | null;
+  player: Phaser.GameObjects.Image | null;
   time: number;
   spawnEnemyAt: (x: number, y: number, enemyType: Enemy["typeId"]) => void;
 }) => {
   const phase = getWavePhase(options.run, options.time);
   const spawnSectors = getActiveSpawnSectors(options.mapState, options.player);
+
+  //const multiplier = Math.random() < 1 / 3 ? 2 : 1;
+
   const pulseCount = Math.round(
     (phase.count + options.run.wave) *
+      options.run.difficulty.spawnDensityMultiplier *
       (spawnSectors.reduce((total, sector) => total + sector.risk, 0) /
         Math.max(1, spawnSectors.length)),
   );
@@ -111,7 +115,7 @@ export const spawnWavePulse = (options: {
 
 export const pickFarSpawnSectors = (
   mapState: MapSectorState,
-  player: Phaser.GameObjects.Triangle | null,
+  player: Phaser.GameObjects.Image | null,
   wave: number,
 ) => {
   if (!player) {
@@ -144,7 +148,7 @@ export const pickFarSpawnSectors = (
 
 export const pickChestSector = (
   mapState: MapSectorState,
-  player: Phaser.GameObjects.Triangle | null,
+  player: Phaser.GameObjects.Image | null,
 ) => {
   if (!player) {
     return mapState.sectors[0];
@@ -154,8 +158,18 @@ export const pickChestSector = (
     [...mapState.sectors].sort((a, b) => {
       const aCenter = getSectorCenter(a);
       const bCenter = getSectorCenter(b);
-      const aDistance = PhaserMath.Distance.Squared(player.x, player.y, aCenter.x, aCenter.y);
-      const bDistance = PhaserMath.Distance.Squared(player.x, player.y, bCenter.x, bCenter.y);
+      const aDistance = PhaserMath.Distance.Squared(
+        player.x,
+        player.y,
+        aCenter.x,
+        aCenter.y,
+      );
+      const bDistance = PhaserMath.Distance.Squared(
+        player.x,
+        player.y,
+        bCenter.x,
+        bCenter.y,
+      );
       const aScore = aDistance * (0.75 + a.rewardMultiplier * 0.25);
       const bScore = bDistance * (0.75 + b.rewardMultiplier * 0.25);
 
@@ -166,10 +180,12 @@ export const pickChestSector = (
 
 const getActiveSpawnSectors = (
   mapState: MapSectorState,
-  player: Phaser.GameObjects.Triangle | null,
+  player: Phaser.GameObjects.Image | null,
 ) => {
   const sectors = mapState.activeSpawnSectorIds
-    .map((sectorId) => mapState.sectors.find((sector) => sector.id === sectorId))
+    .map((sectorId) =>
+      mapState.sectors.find((sector) => sector.id === sectorId),
+    )
     .filter((sector): sector is MapSector => Boolean(sector));
 
   if (sectors.length > 0) {

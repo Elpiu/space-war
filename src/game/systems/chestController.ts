@@ -3,7 +3,12 @@ import {
   CHEST_COST,
   MAX_BUYABLE_CHESTS,
 } from "../config/gameplay";
-import type { Chest, MapSectorState, ShopLoadout, Upgrade } from "../types/gameplay";
+import type {
+  Chest,
+  ChestItemReward,
+  MapSectorState,
+  MetaProgressionState,
+} from "../types/gameplay";
 import { clampInsideMap } from "../utils/geometry";
 import {
   createChest,
@@ -13,20 +18,22 @@ import {
 import { createPulse } from "./effects";
 import { getSectorAt } from "./mapSectors";
 import { getPlaceableCellFromWorld } from "./placeableGrid";
-import { pickChestUpgrade } from "./upgradeSystem";
+import { pickChestItemReward } from "./upgradeSystem";
 import { pickChestSector } from "./waveSystem";
 import type { RunState } from "./runState";
 
 export const updateChestController = (options: {
   scene: Phaser.Scene;
   run: RunState;
+  metaState: MetaProgressionState;
   mapState: MapSectorState;
-  player: Phaser.GameObjects.Triangle;
+  player: Phaser.GameObjects.Image;
   time: number;
   showMessage: (message: string) => void;
+  showChestReward?: (reward: ChestItemReward, detail: string) => void;
+  pickReward?: () => ChestItemReward | undefined;
   renderMap: () => void;
-  applyUpgrade: (upgrade: Upgrade) => void;
-  loadout?: ShopLoadout;
+  applyReward: (reward: ChestItemReward) => void;
 }) => {
   spawnBuyableChestIfNeeded(options);
   updateChestSystem(
@@ -56,7 +63,7 @@ export const spawnChest = (options: {
   const chest = createChest(options.scene, cell.x, cell.y, options.kind, cost);
 
   clampInsideMap(chest.body, chest.radius, options.mapState.sectors);
-  chest.label.setPosition(chest.body.x, chest.body.y - 28);
+  chest.label.setPosition(chest.body.x, chest.body.y - 34);
   options.run.chests.push(chest);
   createPulse(
     options.scene,
@@ -72,7 +79,7 @@ const spawnBuyableChestIfNeeded = (options: {
   scene: Phaser.Scene;
   run: RunState;
   mapState: MapSectorState;
-  player: Phaser.GameObjects.Triangle;
+  player: Phaser.GameObjects.Image;
   time: number;
   renderMap: () => void;
 }) => {
@@ -99,18 +106,22 @@ const spawnBuyableChestIfNeeded = (options: {
     kind: "shop",
   });
   options.renderMap();
-  options.run.nextBuyableChestAt = options.time + BUYABLE_CHEST_INTERVAL;
+  options.run.nextBuyableChestAt =
+    options.time +
+    BUYABLE_CHEST_INTERVAL / options.run.difficulty.chestFrequencyMultiplier;
 };
 
 const openChest = (options: {
   scene: Phaser.Scene;
   run: RunState;
+  metaState: MetaProgressionState;
   chest: Chest;
   index: number;
   showMessage: (message: string) => void;
-  applyUpgrade: (upgrade: Upgrade) => void;
+  showChestReward?: (reward: ChestItemReward, detail: string) => void;
+  pickReward?: () => ChestItemReward | undefined;
+  applyReward: (reward: ChestItemReward) => void;
   mapState: MapSectorState;
-  loadout?: ShopLoadout;
 }) => {
   if (options.chest.opened) {
     return;
@@ -118,29 +129,38 @@ const openChest = (options: {
 
   options.chest.opened = true;
   options.run.coins -= options.chest.cost;
-  const upgrade = pickChestUpgrade({
-    runUpgrades: options.run.runUpgrades,
-    loadout: options.loadout,
-  });
+  const reward =
+    options.pickReward?.() ??
+    pickChestItemReward(options.run, options.metaState);
   const sector = getSectorAt(
     options.mapState,
     options.chest.body.x,
     options.chest.body.y,
   );
 
-  if (upgrade) {
-    options.applyUpgrade(upgrade);
-    const bonusCoins = sector ? Math.floor((sector.rewardMultiplier - 1) * 6) : 0;
+  if (reward) {
+    options.applyReward(reward);
+    const bonusCoins = sector
+      ? Math.floor(
+          Math.max(0, sector.rewardMultiplier - 1) *
+            6 *
+            options.run.difficulty.rewardMultiplier,
+        )
+      : 0;
 
     if (bonusCoins > 0) {
       options.run.coins += bonusCoins;
     }
 
-    options.showMessage(
+    const detail =
       bonusCoins > 0
-        ? `Chest ${sector?.name}: ${upgrade.title} (+${bonusCoins} risorse)`
-        : `Chest: ${upgrade.title}`,
-    );
+        ? `${sector?.name ?? "Settore"}: +${bonusCoins} risorse`
+        : sector?.name ?? "Ricompensa campo";
+
+    options.showMessage(`Chest: ${reward.item.title}`);
+    options.showChestReward?.(reward, detail);
+  } else {
+    options.showMessage("Pool oggetti completato");
   }
 
   options.chest.body.destroy();

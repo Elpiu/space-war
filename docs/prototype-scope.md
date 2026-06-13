@@ -1,57 +1,52 @@
 # Prototype Scope
 
-Il primo prototipo deve dimostrare il cuore dell'esperienza. Non deve contenere tutte le feature finali: deve provare che movimento, wave, progressione e mappa continua funzionano insieme.
+La vertical slice deve dimostrare che combattimento, mappa continua,
+progressione a tomi e controllo del terreno funzionano insieme.
 
-## Obiettivo del prototipo
+## Obiettivo
 
-Costruire una run breve ma giocabile dove il giocatore:
+Una run breve deve permettere al giocatore di:
 
-- controlla una navicella piacevole;
-- combatte nemici a ondate;
-- raccoglie esperienza e monete;
-- sale di livello e sceglie upgrade;
-- si sposta liberamente tra settori adiacenti;
-- usa una difesa e una trappola;
-- muore, conserva monete e puo' ripartire.
+- controllare una navicella standard piacevole;
+- combattere nemici a wave;
+- raccogliere XP e risorsa run;
+- scegliere fino a quattro tomi;
+- trovare oggetti passivi nelle chest;
+- attraversare settori differenti;
+- piazzare torretta, mina e barricata;
+- morire, ricevere crediti e ripartire.
 
-## Must have
+## Implementato
 
-- Scena Phaser sostitutiva del placeholder.
-- Navicella controllabile con movimento fluido.
-- Shooting automatico o semi-automatico.
-- Nemici base che inseguono il giocatore.
-- Wave con scaling semplice.
-- Pickup XP e monete.
-- Level-up con scelta tra 3 upgrade.
-- Mappa continua minima con settori S/M/L.
-- Espansione della mappa durante la run.
-- Movimento in tempo reale tra settori senza portali.
-- Torretta piazzabile.
-- Trappola semplice piazzabile.
-- HP, morte e restart della run.
-- Feedback visivi per spari, impatti, pickup e level-up.
+- Movimento e shooting automatico.
+- Nemici multipli, proiettili nemici e wave a fasi.
+- Pickup XP, monete e cura.
+- Level-up con tre tomi differenti.
+- Dodici tomi, quattro rarita' e Fortuna.
+- Limite di quattro tipi di tomo per run.
+- Quattordici oggetti chest con duplicati a livelli.
+- Paratia Rinforzata e Scafo Adattivo per la crescita degli HP.
+- Drop temporanei Magnet Overload e Munizioni Venom.
+- Tomo della Difficolta' a rischio/ricompensa.
+- Mappa continua con settori S/M/L e reveal progressivo.
+- Hazard, ostacoli, mini-mappa e camera follow.
+- Capacita' base garantita di 1 torretta, 2 mine e 1 barricata.
+- Torretta, mine e barricata piazzabili e distruttibili.
+- Crediti post-run e shop di sblocchi/pool.
+- HUD, game over, restart, musica e persistenza locale.
 
-## Should have
-
-- Settori piccoli, medi e grandi.
-- Almeno 3 archetipi nemici.
-- Un elite semplice.
-- Monete permanenti salvate in local storage.
-- Mini schermata hangar o shop provvisorio.
-- UI base: HP, XP, livello, monete, wave.
-
-## Out of scope per il primo prototipo
+## Fuori scope attuale
 
 - Boss complessi.
-- Biomi narrativi.
-- Storia o dialoghi.
-- Sistema completo di navicelle multiple.
-- Mercato permanente definitivo.
-- Bilanciamento raffinato.
-- Asset finali.
-- Audio completo.
+- Laser, missili ed effetti elettrici avanzati.
+- Evoluzioni finali dei tomi.
+- Biomi narrativi, storia o dialoghi.
 - Multiplayer.
+- Bilanciamento definitivo.
+- Asset e audio finali completi.
 
 ## Criterio di successo
 
-Il prototipo e' riuscito se una run di 5-10 minuti e' gia' interessante anche con asset provvisori. Il giocatore deve sentire che la scelta del settore, la build e il piazzamento di difese/trappole cambiano davvero la sopravvivenza.
+Una run di 5-10 minuti deve produrre una build leggibile e una piccola storia
+tattica. Tomi, oggetti, posizione e piazzabili devono cambiare concretamente il
+modo di sopravvivere.

@@ -9,7 +9,8 @@ export type PlayerStats = {
   pickupRadius: number;
   multiShot: number;
   xpMultiplier: number;
-  lifeSteal: number;
+  luck: number;
+  lifeStealPercent: number;
 };
 
 export type SectorSize = "small" | "medium" | "large";
@@ -141,11 +142,14 @@ export type EnemyDefinition = {
 };
 
 export type Enemy = {
-  body: Phaser.GameObjects.Arc;
+  body: Phaser.GameObjects.Arc | Phaser.GameObjects.Image;
   marker?:
     | Phaser.GameObjects.Arc
     | Phaser.GameObjects.Rectangle
     | Phaser.GameObjects.Triangle;
+  projectileImageKey?: string;
+  baseScaleX: number;
+  baseScaleY: number;
   typeId: EnemyTypeId;
   definition: EnemyDefinition;
   hp: number;
@@ -167,7 +171,7 @@ export type Bullet = {
 };
 
 export type EnemyProjectile = {
-  body: Phaser.GameObjects.Arc;
+  body: Phaser.GameObjects.Arc | Phaser.GameObjects.Image;
   velocity: Phaser.Math.Vector2;
   damage: number;
   distanceLeft: number;
@@ -175,13 +179,34 @@ export type EnemyProjectile = {
 };
 
 export type Pickup = {
-  body: Phaser.GameObjects.Arc;
-  kind: "xp" | "coin" | "hp";
+  body: Phaser.GameObjects.Arc | Phaser.GameObjects.Container;
+  kind: "xp" | "coin" | "hp" | "special";
   value: number;
   radius: number;
+  specialEffectId?: SpecialDropId;
 };
 
-export type UpgradeSource = "xp" | "chest";
+export type DamageSource =
+  | "shipProjectile"
+  | "turret"
+  | "mine"
+  | "drone";
+
+export type SpecialDropId = "magnet-overload" | "venom-rounds";
+
+export type SpecialDropDefinition = {
+  id: SpecialDropId;
+  title: string;
+  description: string;
+  durationMs: number;
+  color: number;
+  iconKey: string;
+};
+
+export type TemporaryEffectState = {
+  magnetOverloadUntil: number;
+  venomRoundsUntil: number;
+};
 
 export type UpgradeCategory =
   | "weapon"
@@ -192,6 +217,18 @@ export type UpgradeCategory =
   | "barricade"
   | "drone"
   | "economy";
+
+export type Rarity = "common" | "uncommon" | "rare" | "legendary";
+export type UpgradeCardRarity = Rarity;
+
+export type UpgradeCardVisual = {
+  iconKey: string;
+  backgroundKey: string;
+  accentColor: number;
+  familyLabel: string;
+  shortEffect: string;
+  rarity: UpgradeCardRarity;
+};
 
 export type RunUpgradeState = {
   stacks: Record<string, number>;
@@ -212,59 +249,116 @@ export type RunUpgradeState = {
   droneDamageBonus: number;
   droneFireRateMultiplier: number;
   xpMultiplierBonus: number;
-  lifeStealBonus: number;
   shipSlotBonus: number;
+  engineeringMultiplier: number;
+  swarmMultiplier: number;
+  maxHpPer100Kills: number;
 };
 
-export type UpgradeApplyContext = {
+export type RunTomeState = {
+  levels: Partial<Record<TomeId, number>>;
+  totalBonuses: Partial<Record<TomeId, number>>;
+};
+
+export type RunItemState = {
+  levels: Partial<Record<ChestItemId, number>>;
+};
+
+export type RunDifficultyState = {
+  enemyHpMultiplier: number;
+  enemyDamageMultiplier: number;
+  spawnDensityMultiplier: number;
+  rewardMultiplier: number;
+  chestFrequencyMultiplier: number;
+};
+
+export type TomeId =
+  | "power"
+  | "cadence"
+  | "vitality"
+  | "mobility"
+  | "wisdom"
+  | "magnetism"
+  | "fortune"
+  | "difficulty"
+  | "vampirism"
+  | "ballistics"
+  | "engineering"
+  | "swarm";
+
+export type ChestItemId =
+  | "splitter-camera"
+  | "sentinel-beacon"
+  | "turret-optics"
+  | "turret-slot"
+  | "mine-supply"
+  | "blast-charge"
+  | "barricade-kit"
+  | "reactive-plating"
+  | "heavy-core"
+  | "rapid-loader"
+  | "drone-arsenal"
+  | "overdrive-reactor"
+  | "reinforced-bulkhead"
+  | "adaptive-hull";
+
+export type ContentKind = "tome" | "item";
+
+export type TomeApplyContext = {
   stats: PlayerStats;
   runUpgrades: RunUpgradeState;
+  difficulty: RunDifficultyState;
 };
 
-export type NumericModifierOperation = "add" | "multiply" | "set";
-
-export type PlayerStatModifier = {
-  target: "playerStat";
-  stat: keyof PlayerStats;
-  operation: NumericModifierOperation;
-  value: number;
-  min?: number;
-  max?: number;
-};
-
-export type RunUpgradeModifier = {
-  target: "runUpgrade";
-  stat: Exclude<keyof RunUpgradeState, "stacks">;
-  operation: NumericModifierOperation;
-  value: number | boolean;
-  min?: number;
-  max?: number;
-};
-
-export type Modifier = PlayerStatModifier | RunUpgradeModifier;
-
-export type Upgrade = {
-  id: string;
-  source: UpgradeSource;
-  category: UpgradeCategory;
+export type TomeDefinition = {
+  id: TomeId;
   title: string;
   description: string;
-  maxStacks?: number;
+  shortEffect: string;
+  accentColor: number;
+  baseIncrement: number;
+  maxLevel: number;
+  cost: number;
+  isDefault: boolean;
+  apply: (context: TomeApplyContext, scaledIncrement: number) => void;
+};
+
+export type TomeOffer = {
+  tome: TomeDefinition;
+  rarity: Rarity;
+  rarityMultiplier: number;
+  scaledIncrement: number;
+};
+
+export type ChestItemDefinition = {
+  id: ChestItemId;
+  title: string;
+  description: string;
+  shortEffect: string;
+  category: UpgradeCategory;
+  accentColor: number;
+  maxLevel: number;
+  cost: number;
+  isDefault: boolean;
   weight?: number;
-  modifiers?: Modifier[];
-  apply?: (context: UpgradeApplyContext) => void;
+  apply: (context: TomeApplyContext, rarity: Rarity) => void;
 };
 
-export type LootTable<T> = {
-  id: string;
-  source: UpgradeSource;
-  entries: T[];
-  fallback?: T;
+export type ChestItemReward = {
+  item: ChestItemDefinition;
+  rarity: Rarity;
+  rarityMultiplier: number;
 };
 
-export type LootBiasContext = {
-  runUpgrades: RunUpgradeState;
-  loadout?: ShopLoadout;
+export type ShopContentEntry = {
+  kind: ContentKind;
+  id: TomeId | ChestItemId;
+  title: string;
+  description: string;
+  shortEffect: string;
+  accentColor: number;
+  cost: number;
+  isDefault: boolean;
 };
 
 export type PlaceableKind = "turret" | "mine" | "barricade";
@@ -282,7 +376,7 @@ export type PlaceableCommon = {
 export type Turret = {
   id: string;
   kind: "turret";
-  body: Phaser.GameObjects.Rectangle;
+  body: Phaser.GameObjects.Image;
   rangeIndicator: Phaser.GameObjects.Arc;
   hpBar: Phaser.GameObjects.Graphics;
   levelText: Phaser.GameObjects.Text;
@@ -291,7 +385,6 @@ export type Turret = {
   level: number;
   label: string;
   baseCost: number;
-  sourceId: ShopItemId;
   range: number;
   fireRate: number;
   damage: number;
@@ -313,7 +406,6 @@ export type Mine = {
   level: number;
   label: string;
   baseCost: number;
-  sourceId: ShopItemId;
   triggerRadius: number;
   damageRadius: number;
   damage: number;
@@ -354,62 +446,13 @@ export type Drone = {
 export type ChestKind = "reward" | "shop";
 
 export type Chest = {
-  body: Phaser.GameObjects.Rectangle;
+  body: Phaser.GameObjects.Image;
   label: Phaser.GameObjects.Text;
   kind: ChestKind;
   cost: number;
   radius: number;
   opened: boolean;
 };
-
-export type HangarUpgradeId =
-  | "starterHull"
-  | "starterThrusters"
-  | "starterMagnet";
-
-export type HangarUpgrade = {
-  id: HangarUpgradeId;
-  title: string;
-  description: string;
-  baseCost: number;
-  maxLevel: number;
-  apply: (stats: PlayerStats, level: number) => void;
-};
-
-export type ShopCategory =
-  | "ships"
-  | "weapons"
-  | "boosters"
-  | "turrets"
-  | "mines";
-
-export type ShopItemId =
-  | "shipScout"
-  | "shipTank"
-  | "shipLightFighter"
-  | "shipSupport"
-  | "shipSniper"
-  | "weaponBase"
-  | "weaponRapid"
-  | "weaponHeavy"
-  | "weaponShotgun"
-  | "weaponScatter"
-  | "boosterNone"
-  | "boosterHull"
-  | "boosterSpeed"
-  | "boosterMagnet"
-  | "boosterOverdrive"
-  | "turretBasic"
-  | "turretTesla"
-  | "turretLongRange"
-  | "turretSiege"
-  | "mineBasic"
-  | "mineBlast"
-  | "mineCluster"
-  | "mineEMP";
-
-export type ShopLoadout = Record<ShopCategory, ShopItemId>;
-export type ShopItemLevels = Partial<Record<ShopItemId, number>>;
 
 export type TurretDefinition = {
   cost: number;
@@ -438,42 +481,6 @@ export type MineDefinition = {
   slowMultiplier?: number;
 };
 
-export type ShopItem = {
-  id: ShopItemId;
-  category: ShopCategory;
-  title: string;
-  description: string;
-  statLine: string;
-  accentColor: number;
-  iconKind:
-    | "shipStandard"
-    | "shipTank"
-    | "shipLight"
-    | "shipSniper"
-    | "weaponBase"
-    | "weaponRapid"
-    | "weaponHeavy"
-    | "weaponShotgun"
-    | "boosterNone"
-    | "boosterHull"
-    | "boosterSpeed"
-    | "boosterMagnet"
-    | "turretBasic"
-    | "turretLongRange"
-    | "turretTesla"
-    | "mineBasic"
-    | "mineBlast";
-  cost: number;
-  isDefault: boolean;
-  modifiers?: Modifier[];
-  upgrade?: {
-    label: string;
-    modifiersPerLevel: Modifier[];
-  };
-  turret?: TurretDefinition;
-  mine?: MineDefinition;
-};
-
 export type PostRunRewardPreview = {
   reachedLevel: number;
   reachedWave: number;
@@ -481,12 +488,11 @@ export type PostRunRewardPreview = {
 };
 
 export type MetaProgressionState = {
-  permanentCoins: number;
   postRunCredits: number;
-  upgrades: Record<HangarUpgradeId, number>;
-  unlockedItems: ShopItemId[];
-  itemLevels: ShopItemLevels;
-  loadout: ShopLoadout;
+  unlockedTomes: TomeId[];
+  unlockedChestItems: ChestItemId[];
+  activeTomes: TomeId[];
+  activeChestItems: ChestItemId[];
 };
 
 export type HudState = {
@@ -510,4 +516,18 @@ export type HudState = {
   maxBarricades: number;
   droneCount: number;
   chestCount: number;
+  acquiredTomes: {
+    id: string;
+    title: string;
+    level: number;
+    accentColor: number;
+  }[];
+  acquiredItems: {
+    id: string;
+    title: string;
+    category: UpgradeCategory;
+    level: number;
+    accentColor: number;
+  }[];
+  activeEffects: string[];
 };

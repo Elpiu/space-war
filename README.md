@@ -14,18 +14,28 @@ This template has been updated for:
 
 ![screenshot](screenshot.png)
 
+## Space War modes
+
+- `PLAY` avvia la run roguelite normale.
+- `TUTORIAL` apre un percorso guidato su movimento, combattimento, pickup,
+  tomi, piazzabili, settori e chest.
+- `STAGING` e' disponibile soltanto con il server Vite di sviluppo e apre una
+  console per spawn, build, wave, effetti, mappe e preset di test.
+- Il pannello staging si comprime dal pulsante in alto o con il tasto
+  backtick.
+
 ## Requirements
 
 [Node.js](https://nodejs.org) is required to install dependencies and run scripts via `npm`.
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm install` | Install project dependencies |
-| `npm run dev` | Launch a development web server |
-| `npm run build` | Create a production build in the `dist` folder |
-| `npm run dev-nolog` | Launch a development web server without sending anonymous data (see "About log.js" below) |
+| Command               | Description                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `npm install`         | Install project dependencies                                                                             |
+| `npm run dev`         | Launch a development web server                                                                          |
+| `npm run build`       | Create a production build in the `dist` folder                                                           |
+| `npm run dev-nolog`   | Launch a development web server without sending anonymous data (see "About log.js" below)                |
 | `npm run build-nolog` | Create a production build in the `dist` folder without sending anonymous data (see "About log.js" below) |
 
 ## Writing Code
@@ -44,16 +54,15 @@ We have provided a default project structure to get you started. This is as foll
 
 We have provided a default project structure to get you started:
 
-| Path                         | Description                                                |
-|------------------------------|------------------------------------------------------------|
-| `index.html`                 | A basic HTML page to contain the game.                     |
-| `public/assets`              | Game sprites, audio, etc. Served directly at runtime.      |
-| `public/style.css`           | Global layout styles.                                      |
-| `src/main.ts`                | Application bootstrap.                                     |
-| `src/game`                   | Folder containing the game code.                           |
-| `src/game/main.ts`           | Game entry point: configures and starts the game.          |
-| `src/game/scenes`            | Folder with all Phaser game scenes.                        | 
-
+| Path               | Description                                           |
+| ------------------ | ----------------------------------------------------- |
+| `index.html`       | A basic HTML page to contain the game.                |
+| `public/assets`    | Game sprites, audio, etc. Served directly at runtime. |
+| `public/style.css` | Global layout styles.                                 |
+| `src/main.ts`      | Application bootstrap.                                |
+| `src/game`         | Folder containing the game code.                      |
+| `src/game/main.ts` | Game entry point: configures and starts the game.     |
+| `src/game/scenes`  | Folder with all Phaser game scenes.                   |
 
 ## Handling Assets
 
@@ -62,21 +71,24 @@ Vite supports loading assets via JavaScript module `import` statements.
 This template provides support for both embedding assets and also loading them from a static folder. To embed an asset, you can import it at the top of the JavaScript file you are using it in:
 
 ```js
-import logoImg from './assets/logo.png'
+import logoImg from "./assets/logo.png";
 ```
 
 To load static files such as audio files, videos, etc place them into the `public/assets` folder. Then you can use this path in the Loader calls within Phaser:
 
 ```js
-preload ()
+preload();
 {
-    //  This is an example of an imported bundled image.
-    //  Remember to import it at the top of this file
-    this.load.image('logo', logoImg);
+  //  This is an example of an imported bundled image.
+  //  Remember to import it at the top of this file
+  this.load.image("logo", logoImg);
 
-    //  This is an example of loading a static image
-    //  from the public/assets folder:
-    this.load.image('background', 'assets/bg.png');
+  //  This is an example of loading a static image
+  //  from the public/assets folder:
+  this.load.image("background", "assets/bg.png");
+
+  this.load.image("icon-magnet", "assets/images/magnet.png");
+  this.load.image("icon-venom", "assets/images/venom.png");
 }
 ```
 
@@ -86,7 +98,7 @@ When you issue the `npm run build` command, all static assets are automatically 
 
 After you run the `npm run build` command, your code will be built into a single bundle and saved to the `dist` folder, along with any other assets your project imported, or stored in the public assets folder.
 
-In order to deploy your game, you will need to upload *all* of the contents of the `dist` folder to a public facing web server.
+In order to deploy your game, you will need to upload _all_ of the contents of the `dist` folder to a public facing web server.
 
 ## Customizing the Template
 

@@ -1,55 +1,50 @@
+import { MIN_ACTIVE_POOL_SIZE } from "../data/upgrades";
 import {
-  getShopItemLevel,
-  getShopItemUpgradeCost,
+  getShopContent,
+  isContentActive,
+  isContentUnlocked,
   SHOP_CATEGORIES,
-  SHOP_ITEMS,
 } from "./metaProgression";
 import type {
+  ContentKind,
   MetaProgressionState,
-  ShopCategory,
-  ShopItem,
-  ShopItemId,
+  ShopContentEntry,
 } from "../types/gameplay";
 
 export type ShopOverlayActions = {
-  selectCategory: (category: ShopCategory) => void;
-  selectItem: (itemId: ShopItemId) => void;
-  upgradeItem: (itemId: ShopItemId) => void;
+  selectCategory: (category: ContentKind) => void;
+  selectContent: (entry: ShopContentEntry) => void;
   menu: () => void;
   play: () => void;
 };
 
 export const createShopDomOverlay = (
   metaState: MetaProgressionState,
-  selectedCategory: ShopCategory,
+  selectedCategory: ContentKind,
   feedback: string,
   actions: ShopOverlayActions,
 ) => {
+  document.getElementById("shop-overlay")?.remove();
   const root = document.createElement("section");
-
   root.id = "shop-overlay";
-  root.className =
-    "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 px-4 py-5 text-slate-100";
-  root.innerHTML = renderShopOverlay(metaState, selectedCategory, feedback);
+  root.className = "hangar-overlay";
+  root.innerHTML = renderShop(metaState, selectedCategory, feedback);
 
   root.addEventListener("click", (event) => {
-    const target = event.target as HTMLElement | null;
-    const actionTarget = target?.closest<HTMLElement>("[data-shop-action]");
+    const target = (event.target as HTMLElement).closest<HTMLElement>(
+      "[data-shop-action]",
+    );
 
-    if (!actionTarget) {
-      return;
-    }
+    if (!target) return;
+    const action = target.dataset.shopAction;
 
-    const action = actionTarget.dataset.shopAction;
-    const itemId = actionTarget.dataset.itemId as ShopItemId | undefined;
-    const category = actionTarget.dataset.category as ShopCategory | undefined;
-
-    if (action === "category" && category) {
-      actions.selectCategory(category);
-    } else if (action === "item" && itemId) {
-      actions.selectItem(itemId);
-    } else if (action === "upgrade" && itemId) {
-      actions.upgradeItem(itemId);
+    if (action === "category") {
+      actions.selectCategory(target.dataset.category as ContentKind);
+    } else if (action === "content") {
+      const entry = getShopContent(selectedCategory).find(
+        (candidate) => candidate.id === target.dataset.contentId,
+      );
+      if (entry) actions.selectContent(entry);
     } else if (action === "menu") {
       actions.menu();
     } else if (action === "play") {
@@ -57,214 +52,96 @@ export const createShopDomOverlay = (
     }
   });
 
-  document.body.appendChild(root);
-
+  (document.getElementById("game-container") ?? document.body).appendChild(root);
   return () => root.remove();
 };
 
-const renderShopOverlay = (
-  metaState: MetaProgressionState,
-  selectedCategory: ShopCategory,
+const renderShop = (
+  state: MetaProgressionState,
+  selectedCategory: ContentKind,
   feedback: string,
 ) => {
-  const items = SHOP_ITEMS.filter((item) => item.category === selectedCategory);
+  const entries = getShopContent(selectedCategory);
+  const activeCount =
+    selectedCategory === "tome"
+      ? state.activeTomes.length
+      : state.activeChestItems.length;
+  const unlockedCount =
+    selectedCategory === "tome"
+      ? state.unlockedTomes.length
+      : state.unlockedChestItems.length;
 
   return `
-    <div class="flex h-full w-full max-w-6xl flex-col overflow-hidden">
-      <header class="flex shrink-0 items-center justify-between gap-4 border-b border-slate-700/70 pb-4">
+    <div class="hangar-shell codex-shop">
+      <header class="hangar-header">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Hangar</p>
-          <h1 class="mt-1 text-3xl font-black tracking-normal text-white">Shop / Hangar</h1>
+          <p>Archivio di bordo</p>
+          <h1>Tomi e Oggetti</h1>
         </div>
-        <div class="flex items-center gap-3">
-          <div class="rounded border border-amber-300/50 bg-amber-300/10 px-4 py-2 text-right">
-            <div class="text-xs uppercase tracking-[0.12em] text-amber-200">Crediti</div>
-            <div class="font-mono text-2xl font-bold text-amber-100">${metaState.postRunCredits}</div>
-          </div>
-          <button data-shop-action="menu" class="rounded border border-slate-600 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-100 hover:border-cyan-300 hover:text-cyan-100">MENU</button>
-          <button data-shop-action="play" class="rounded border border-cyan-300/70 bg-cyan-500 px-5 py-3 text-sm font-black text-slate-950 hover:bg-cyan-300">PLAY</button>
+        <div class="hangar-header__actions">
+          <div class="hangar-wallet"><span>Crediti</span><strong>${state.postRunCredits}</strong></div>
+          <button data-shop-action="menu" class="hangar-button">MENU</button>
+          <button data-shop-action="play" class="hangar-button hangar-button--primary">PLAY</button>
         </div>
       </header>
 
-      <nav class="mt-4 flex shrink-0 flex-wrap gap-2">
-        ${SHOP_CATEGORIES.map((category) =>
-          renderCategoryTab(category, selectedCategory),
+      <nav class="codex-shop__tabs">
+        ${SHOP_CATEGORIES.map(
+          (category) => `
+            <button
+              data-shop-action="category"
+              data-category="${category.id}"
+              class="${category.id === selectedCategory ? "is-selected" : ""}"
+            >${category.label}</button>
+          `,
         ).join("")}
       </nav>
 
-      <div class="mt-3 min-h-6 shrink-0 text-sm font-medium ${feedback.includes("insufficienti") ? "text-red-200" : "text-emerald-200"}">
-        ${escapeHtml(feedback)}
-      </div>
+      <section class="codex-shop__summary">
+        <div>
+          <span>Pool attivo</span>
+          <strong>${activeCount}/${unlockedCount}</strong>
+        </div>
+        <p>Puoi escludere contenuti sbloccati mantenendone almeno ${MIN_ACTIVE_POOL_SIZE} attivi.</p>
+        <small class="${feedback.includes("Servono") || feedback.includes("insufficienti") ? "is-warning" : ""}">${escapeHtml(feedback)}</small>
+      </section>
 
-      <main class="shop-scrollbar mt-2 grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto pr-2 sm:grid-cols-2 xl:grid-cols-3">
-        ${items.map((item) => renderShopCard(item, metaState)).join("")}
+      <main class="codex-shop__grid shop-scrollbar">
+        ${entries.map((entry) => renderEntry(entry, state)).join("")}
       </main>
     </div>
   `;
 };
 
-const renderCategoryTab = (
-  category: { id: ShopCategory; label: string },
-  selectedCategory: ShopCategory,
+const renderEntry = (
+  entry: ShopContentEntry,
+  state: MetaProgressionState,
 ) => {
-  const selected = category.id === selectedCategory;
+  const unlocked = isContentUnlocked(state, entry.kind, entry.id);
+  const active = isContentActive(state, entry.kind, entry.id);
+  const accent = toHex(entry.accentColor);
+  const action = !unlocked
+    ? `Sblocca ${entry.cost}`
+    : active
+      ? "Escludi dal pool"
+      : "Includi nel pool";
 
   return `
-    <button
-      data-shop-action="category"
-      data-category="${category.id}"
-      class="rounded border px-4 py-2 text-sm font-bold transition ${
-        selected
-          ? "border-cyan-300 bg-cyan-300/15 text-cyan-100"
-          : "border-slate-700 bg-slate-900/80 text-slate-300 hover:border-slate-500 hover:text-white"
-      }"
-    >
-      ${escapeHtml(category.label)}
-    </button>
-  `;
-};
-
-const renderShopCard = (item: ShopItem, metaState: MetaProgressionState) => {
-  const unlocked = item.isDefault || metaState.unlockedItems.includes(item.id);
-  const equipped = metaState.loadout[item.category] === item.id;
-  const affordable = metaState.postRunCredits >= item.cost;
-  const level = getShopItemLevel(metaState, item.id);
-  const upgradeCost = getShopItemUpgradeCost(item, level);
-  const upgradeAffordable = metaState.postRunCredits >= upgradeCost;
-  const status = equipped
-    ? "EQUIP"
-    : unlocked
-      ? "ACQUISTATO"
-      : affordable
-        ? "COMPRA"
-        : "BLOCCATO";
-  const statusClass = equipped
-    ? "border-cyan-200 bg-cyan-300 text-slate-950"
-    : unlocked
-      ? "border-emerald-300/60 bg-emerald-400/15 text-emerald-100"
-      : affordable
-        ? "border-blue-300/60 bg-blue-400/15 text-blue-100"
-        : "border-red-300/40 bg-red-500/10 text-red-100";
-  const cardClass =
-    unlocked || affordable
-      ? "border-slate-700 bg-slate-900/95 hover:border-cyan-300/70"
-      : "border-slate-800 bg-slate-950/80 opacity-75";
-  const accent = toHexColor(item.accentColor);
-
-  return `
-    <article class="group relative flex min-h-[320px] flex-col rounded-lg border p-4 transition ${cardClass}">
-      <button
-        data-shop-action="item"
-        data-item-id="${item.id}"
-        class="absolute inset-0 cursor-pointer rounded-lg"
-        aria-label="${escapeHtml(status)} ${escapeHtml(item.title)}"
-      ></button>
-
-      <div class="relative z-10 flex items-start justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-3">
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-slate-600 font-black" style="background:${accent}22;color:${accent};border-color:${accent}88">
-            ${getShopGlyph(item)}
-          </div>
-          <div class="min-w-0">
-            <h2 class="truncate text-base font-black text-white">${escapeHtml(item.title)}</h2>
-            <p class="text-xs font-medium text-slate-400">${escapeHtml(getCategoryLabel(item.category))}</p>
-          </div>
-        </div>
-        <span class="shrink-0 rounded border px-2 py-1 text-[10px] font-black ${statusClass}">${status}</span>
+    <article class="codex-card ${active ? "is-active" : ""} ${unlocked ? "" : "is-locked"}" style="--accent:${accent}">
+      <div class="codex-card__top">
+        <span>${entry.kind === "tome" ? "TOMO" : "OGGETTO"}</span>
+        <strong>${unlocked ? (active ? "ATTIVO" : "ESCLUSO") : "BLOCCATO"}</strong>
       </div>
-
-      <p class="relative z-10 mt-3 text-sm leading-5 text-slate-300">${escapeHtml(item.description)}</p>
-
-      <div class="relative z-10 mt-3 rounded border border-slate-700 bg-slate-950/75 px-3 py-2 font-mono text-xs font-semibold text-amber-100">
-        ${escapeHtml(item.statLine)}
-      </div>
-
-      <div class="relative z-10 mt-3 flex items-center justify-between gap-3 text-xs">
-        <div>
-          <div class="font-mono text-sm font-black text-cyan-100">Lv.${level}</div>
-          <div class="mt-1 max-w-[12rem] text-slate-400">${escapeHtml(item.upgrade?.label ?? "Upgrade non disponibile")}</div>
-        </div>
-        <div class="text-right">
-          <div class="${unlocked ? "text-emerald-200" : affordable ? "text-cyan-200" : "text-red-200"}">${escapeHtml(getPurchaseLabel(item, unlocked))}</div>
-        </div>
-      </div>
-
-      <div class="relative z-10 mt-auto flex items-end justify-between gap-3 pt-4">
-        <button
-          data-shop-action="item"
-          data-item-id="${item.id}"
-          class="rounded border px-3 py-2 text-xs font-black ${
-            equipped
-              ? "border-cyan-300 bg-cyan-300 text-slate-950"
-              : unlocked
-                ? "border-emerald-400/60 bg-emerald-400/15 text-emerald-100 hover:border-emerald-200"
-                : affordable
-                  ? "border-blue-300/70 bg-blue-400/20 text-blue-100 hover:border-blue-100"
-                  : "border-red-300/40 bg-red-500/10 text-red-100"
-          }"
-        >
-          ${equipped ? "EQUIP" : unlocked ? "EQUIPAGGIA" : "COMPRA"}
-        </button>
-        ${
-          unlocked
-            ? `
-              <button
-                data-shop-action="upgrade"
-                data-item-id="${item.id}"
-                class="rounded border px-3 py-2 text-right text-xs font-black ${
-                  upgradeAffordable
-                    ? "border-cyan-300/70 bg-cyan-300/15 text-cyan-100 hover:border-cyan-100"
-                    : "border-orange-300/50 bg-orange-500/10 text-orange-100"
-                }"
-              >
-                UPGRADE
-                <span class="block font-mono text-[10px] font-semibold">${upgradeCost} crediti</span>
-              </button>
-            `
-            : ""
-        }
-      </div>
+      <div class="codex-card__icon">${entry.title.charAt(0)}</div>
+      <h2>${escapeHtml(entry.title)}</h2>
+      <h3>${escapeHtml(entry.shortEffect)}</h3>
+      <p>${escapeHtml(entry.description)}</p>
+      <button data-shop-action="content" data-content-id="${entry.id}">${action}</button>
     </article>
   `;
 };
 
-const getPurchaseLabel = (item: ShopItem, unlocked: boolean) => {
-  if (item.isDefault) {
-    return "Default";
-  }
-
-  if (unlocked) {
-    return "Acquistato";
-  }
-
-  return `${item.cost} crediti`;
-};
-
-const getCategoryLabel = (category: ShopCategory) => {
-  return SHOP_CATEGORIES.find((entry) => entry.id === category)?.label ?? category;
-};
-
-const getShopGlyph = (item: ShopItem) => {
-  if (item.category === "ships") {
-    return "S";
-  }
-
-  if (item.category === "weapons") {
-    return "W";
-  }
-
-  if (item.category === "boosters") {
-    return "B";
-  }
-
-  if (item.category === "turrets") {
-    return "T";
-  }
-
-  return "M";
-};
-
-const toHexColor = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
+const toHex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
 
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (char) => {
@@ -275,6 +152,5 @@ const escapeHtml = (value: string) =>
       '"': "&quot;",
       "'": "&#39;",
     };
-
     return entities[char] ?? char;
   });

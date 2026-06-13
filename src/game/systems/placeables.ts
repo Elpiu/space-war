@@ -4,6 +4,7 @@ import {
   BARRICADE_HP,
   PLACEABLE_UNIT_SIZE,
 } from "../config/gameplay";
+import { IMAGE_KEYS } from "../data/imageAssets";
 import type {
   Barricade,
   Enemy,
@@ -11,13 +12,11 @@ import type {
   MineDefinition,
   PlaceableKind,
   RunUpgradeState,
-  ShopItemId,
   Turret,
   TurretDefinition,
 } from "../types/gameplay";
 import { circlesOverlap } from "../utils/geometry";
 import { createPulse } from "./effects";
-import { getShopItem } from "./metaProgression";
 import { getKindRadius, getPlaceableCellFromWorld } from "./placeableGrid";
 
 type PlaceableCreateOptions = {
@@ -28,21 +27,46 @@ type PlaceableCreateOptions = {
 
 let nextPlaceableId = 1;
 
+const BASE_TURRET_DEFINITION: TurretDefinition = {
+  cost: 6,
+  range: 100,
+  fireRate: 1000,
+  damage: 5,
+  hp: 20,
+  radius: 18,
+  bodySize: 22,
+  color: 0x38bdf8,
+  strokeColor: 0xe0f2fe,
+  beamColor: 0x67e8f9,
+  pulseColor: 0x38bdf8,
+};
+
+const BASE_MINE_DEFINITION: MineDefinition = {
+  cost: 3,
+  triggerRadius: 34,
+  damageRadius: 92,
+  damage: 4,
+  hp: 3,
+  radius: 12,
+  color: 0xfacc15,
+  strokeColor: 0xfef3c7,
+  pulseColor: 0xfacc15,
+};
+
 export const createTurret = (
   scene: Phaser.Scene,
   x: number,
   y: number,
-  turretId: ShopItemId,
   runUpgrades: RunUpgradeState,
   options: PlaceableCreateOptions = {},
 ): Turret => {
-  const config = getTurretDefinition(turretId);
-  const range = config.range + runUpgrades.turretRangeBonus;
+  const config = BASE_TURRET_DEFINITION;
+  const engineering = runUpgrades.engineeringMultiplier;
+  const range = (config.range + runUpgrades.turretRangeBonus) * engineering;
   const fireRate = config.fireRate * runUpgrades.turretFireRateMultiplier;
-  const damage = config.damage + runUpgrades.turretDamageBonus;
-  const hp = config.hp + runUpgrades.turretHpBonus;
+  const damage = (config.damage + runUpgrades.turretDamageBonus) * engineering;
+  const hp = (config.hp + runUpgrades.turretHpBonus) * engineering;
   const cell = getCreateCell(x, y, options, "turret");
-  const item = getShopItem(turretId);
 
   const rangeIndicator = scene.add
     .circle(x, y, range, config.color, 0.035)
@@ -50,8 +74,8 @@ export const createTurret = (
     .setDepth(8);
 
   const body = scene.add
-    .rectangle(x, y, config.bodySize, config.bodySize, config.color, 0.95)
-    .setStrokeStyle(2, config.strokeColor, 0.9)
+    .image(x, y, IMAGE_KEYS.dogeTurret)
+    .setDisplaySize(52, 46)
     .setDepth(18);
   const hpBar = scene.add.graphics().setDepth(31);
   const levelText = scene.add
@@ -74,9 +98,8 @@ export const createTurret = (
     gridX: cell.gridX,
     gridY: cell.gridY,
     level: options.level ?? getAvailablePlaceableLevel("turret", runUpgrades),
-    label: item?.title ?? "Torretta",
+    label: "Torretta base",
     baseCost: config.cost,
-    sourceId: turretId,
     range,
     fireRate,
     damage,
@@ -98,14 +121,14 @@ export const createMine = (
   scene: Phaser.Scene,
   x: number,
   y: number,
-  mineId: ShopItemId,
   runUpgrades: RunUpgradeState,
   options: PlaceableCreateOptions = {},
 ): Mine => {
-  const config = getMineDefinition(mineId);
-  const damageRadius = config.damageRadius + runUpgrades.mineRadiusBonus;
+  const config = BASE_MINE_DEFINITION;
+  const engineering = runUpgrades.engineeringMultiplier;
+  const damageRadius =
+    (config.damageRadius + runUpgrades.mineRadiusBonus) * engineering;
   const cell = getCreateCell(x, y, options, "mine");
-  const item = getShopItem(mineId);
   const body = scene.add
     .circle(x, y, config.radius, config.color, 0.95)
     .setStrokeStyle(2, config.strokeColor, 0.9)
@@ -126,16 +149,15 @@ export const createMine = (
     gridX: cell.gridX,
     gridY: cell.gridY,
     level: options.level ?? getAvailablePlaceableLevel("mine", runUpgrades),
-    label: item?.title ?? "Mina",
+    label: "Mina base",
     baseCost: config.cost,
-    sourceId: mineId,
     triggerRadius: config.triggerRadius,
     damageRadius,
-    damage: config.damage + runUpgrades.mineDamageBonus,
+    damage: (config.damage + runUpgrades.mineDamageBonus) * engineering,
     pulseColor: config.pulseColor,
     isExploding: false,
-    hp: config.hp,
-    maxHp: config.hp,
+    hp: config.hp * engineering,
+    maxHp: config.hp * engineering,
     radius: config.radius,
     damageCooldownUntil: 0,
   };
@@ -154,7 +176,9 @@ export const createBarricade = (
     .rectangle(x, y, bodySize, bodySize, 0x64748b, 0.96)
     .setStrokeStyle(2, 0xcbd5e1, 0.9)
     .setDepth(18);
-  const hp = BARRICADE_HP + runUpgrades.barricadeHpBonus;
+  const hp =
+    (BARRICADE_HP + runUpgrades.barricadeHpBonus) *
+    runUpgrades.engineeringMultiplier;
   const hpBar = scene.add.graphics().setDepth(31);
   const levelText = scene.add
     .text(x, y - 34, "", {
@@ -378,13 +402,17 @@ export const upgradePlaceable = (
   placeable.level = nextLevel;
 
   if (placeable.kind === "turret") {
-    const config = getTurretDefinition(placeable.sourceId);
+    const config = BASE_TURRET_DEFINITION;
+    const engineering = runUpgrades.engineeringMultiplier;
     const oldMaxHp = placeable.maxHp;
 
-    placeable.range = config.range + runUpgrades.turretRangeBonus;
+    placeable.range =
+      (config.range + runUpgrades.turretRangeBonus) * engineering;
     placeable.fireRate = config.fireRate * runUpgrades.turretFireRateMultiplier;
-    placeable.damage = config.damage + runUpgrades.turretDamageBonus;
-    placeable.maxHp = config.hp + runUpgrades.turretHpBonus;
+    placeable.damage =
+      (config.damage + runUpgrades.turretDamageBonus) * engineering;
+    placeable.maxHp =
+      (config.hp + runUpgrades.turretHpBonus) * engineering;
     placeable.hp = Math.min(
       placeable.maxHp,
       placeable.hp + Math.max(0, placeable.maxHp - oldMaxHp),
@@ -395,10 +423,13 @@ export const upgradePlaceable = (
   }
 
   if (placeable.kind === "mine") {
-    const config = getMineDefinition(placeable.sourceId);
+    const config = BASE_MINE_DEFINITION;
+    const engineering = runUpgrades.engineeringMultiplier;
 
-    placeable.damage = config.damage + runUpgrades.mineDamageBonus;
-    placeable.damageRadius = config.damageRadius + runUpgrades.mineRadiusBonus;
+    placeable.damage =
+      (config.damage + runUpgrades.mineDamageBonus) * engineering;
+    placeable.damageRadius =
+      (config.damageRadius + runUpgrades.mineRadiusBonus) * engineering;
     return true;
   }
 
@@ -518,34 +549,32 @@ export const removePlaceableById = (
 };
 
 export const destroyTurret = (turret: Turret) => {
-  turret.body.destroy();
-  turret.rangeIndicator.destroy();
-  turret.hpBar.destroy();
-  turret.levelText.destroy();
+  turret.body.active && turret.body.destroy();
+  turret.rangeIndicator.active && turret.rangeIndicator.destroy();
+  turret.hpBar.active && turret.hpBar.destroy();
+  turret.levelText.active && turret.levelText.destroy();
 };
 
 export const destroyMine = (mine: Mine) => {
-  mine.body.scene.tweens.killTweensOf(mine.body);
-  mine.body.destroy();
+  mine.body.scene?.tweens?.killTweensOf(mine.body);
+
+  if (mine.body.active) {
+    mine.body.destroy();
+  }
 };
 
 export const destroyBarricade = (barricade: Barricade) => {
-  barricade.body.destroy();
-  barricade.hpBar.destroy();
-  barricade.levelText.destroy();
+  barricade.body.active && barricade.body.destroy();
+  barricade.hpBar.active && barricade.hpBar.destroy();
+  barricade.levelText.active && barricade.levelText.destroy();
 };
 
-export const getTurretCost = (turretId: ShopItemId) => {
-  return getTurretDefinition(turretId).cost;
-};
+export const getTurretCost = () => BASE_TURRET_DEFINITION.cost;
 
-export const getMineCost = (
-  mineId: ShopItemId,
-  runUpgrades: RunUpgradeState,
-) => {
+export const getMineCost = (runUpgrades: RunUpgradeState) => {
   return Math.max(
     1,
-    getMineDefinition(mineId).cost - runUpgrades.mineCostReduction,
+    BASE_MINE_DEFINITION.cost - runUpgrades.mineCostReduction,
   );
 };
 
@@ -558,26 +587,14 @@ export const getAvailablePlaceableLevel = (
   runUpgrades: RunUpgradeState,
 ) => {
   if (kind === "turret") {
-    return (
-      1 +
-      (runUpgrades.stacks["turret-calibration"] ?? 0) +
-      (runUpgrades.stacks["turret-range-cache"] ?? 0)
-    );
+    return 1 + Math.max(0, Math.round(runUpgrades.maxTurretBonus / 2));
   }
 
   if (kind === "mine") {
-    return (
-      1 +
-      (runUpgrades.stacks["mine-engineering"] ?? 0) +
-      (runUpgrades.stacks["mine-supply-cache"] ?? 0)
-    );
+    return 1 + Math.max(0, Math.round(runUpgrades.maxMineBonus / 2));
   }
 
-  return (
-    1 +
-    (runUpgrades.stacks["barricade-kit"] ?? 0) +
-    (runUpgrades.stacks["barricade-plating"] ?? 0)
-  );
+  return 1 + Math.max(0, Math.round(runUpgrades.maxBarricades / 4));
 };
 
 const damageTurretsNearEnemy = (
@@ -682,22 +699,6 @@ const repelEnemyFromBarricade = (enemy: Enemy, barricade: Barricade) => {
   enemy.body.y += direction.y;
 };
 
-const getTurretDefinition = (turretId: ShopItemId): TurretDefinition => {
-  return (
-    getShopItem(turretId)?.turret ??
-    getShopItem("turretBasic")?.turret ??
-    FALLBACK_TURRET_DEFINITION
-  );
-};
-
-const getMineDefinition = (mineId: ShopItemId): MineDefinition => {
-  return (
-    getShopItem(mineId)?.mine ??
-    getShopItem("mineBasic")?.mine ??
-    FALLBACK_MINE_DEFINITION
-  );
-};
-
 const getCreateCell = (
   x: number,
   y: number,
@@ -755,32 +756,6 @@ const updateBarricadeVisuals = (barricade: Barricade) => {
   barricade.hpBar.strokeRect(x - 36, y + 45, 72, 7);
   barricade.levelText.setPosition(x, y - 47);
   barricade.levelText.setText(`Lv.${barricade.level}`);
-};
-
-const FALLBACK_TURRET_DEFINITION: TurretDefinition = {
-  cost: 6,
-  range: 100,
-  fireRate: 1000,
-  damage: 5,
-  hp: 20,
-  radius: 18,
-  bodySize: 22,
-  color: 0x38bdf8,
-  strokeColor: 0xe0f2fe,
-  beamColor: 0x67e8f9,
-  pulseColor: 0x38bdf8,
-};
-
-const FALLBACK_MINE_DEFINITION: MineDefinition = {
-  cost: 3,
-  triggerRadius: 34,
-  damageRadius: 92,
-  damage: 4,
-  hp: 3,
-  radius: 12,
-  color: 0xfacc15,
-  strokeColor: 0xfef3c7,
-  pulseColor: 0xfacc15,
 };
 
 const findNearestEnemyInRange = (

@@ -1,6 +1,10 @@
 import { Math as PhaserMath } from "phaser";
 import { PLAYER_RADIUS } from "../config/gameplay";
 import { getEnemyDefinition, getEnemyWaveScale } from "../data/enemies";
+import {
+  getEnemyVisualMaxSize,
+  pickEnemyVisual,
+} from "../data/enemyVisuals";
 import type {
   Barricade,
   Enemy,
@@ -26,15 +30,21 @@ export const createEnemy = (
   typeId: EnemyTypeId,
   wave: number,
   mapState: MapSectorState,
+  difficulty: { enemyHpMultiplier: number; enemyDamageMultiplier: number },
 ): Enemy => {
   const definition = getEnemyDefinition(typeId);
   const scale = getEnemyWaveScale(typeId, wave);
   const radius = definition.radius;
-  const body = scene.add
-    .circle(x, y, radius, definition.color, 1)
-    .setStrokeStyle(2, definition.strokeColor, 0.88)
-    .setDepth(15);
-  const marker = createEnemyMarker(scene, x, y, typeId, definition);
+  const visual = pickEnemyVisual(scene, typeId);
+  const body = visual.imageKey
+    ? createEnemyImage(scene, x, y, visual.imageKey, typeId)
+    : scene.add
+        .circle(x, y, radius, definition.color, 1)
+        .setStrokeStyle(2, definition.strokeColor, 0.88)
+        .setDepth(15);
+  const marker = visual.imageKey
+    ? undefined
+    : createEnemyMarker(scene, x, y, typeId, definition);
 
   resolveCircleHazardCollisions(body, radius, getBlockingHazards(mapState));
   clampInsideMap(body, radius, mapState.sectors);
@@ -43,11 +53,14 @@ export const createEnemy = (
   return {
     body,
     marker,
+    projectileImageKey: visual.projectileImageKey,
+    baseScaleX: body.scaleX,
+    baseScaleY: body.scaleY,
     typeId,
     definition,
-    hp: definition.hp + scale.hpBonus,
+    hp: (definition.hp + scale.hpBonus) * difficulty.enemyHpMultiplier,
     speed: definition.speed + scale.speedBonus,
-    damage: definition.damage,
+    damage: definition.damage * difficulty.enemyDamageMultiplier,
     xpValue: definition.xpValue,
     coinValue: definition.coinValue,
     radius,
@@ -57,17 +70,38 @@ export const createEnemy = (
   };
 };
 
+const createEnemyImage = (
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  imageKey: string,
+  typeId: EnemyTypeId,
+) => {
+  const image = scene.add.image(x, y, imageKey).setDepth(15);
+  const sourceMaxSize = Math.max(image.width, image.height);
+  const scale =
+    sourceMaxSize > 0 ? getEnemyVisualMaxSize(typeId) / sourceMaxSize : 1;
+
+  return image.setScale(scale);
+};
+
 export const destroyEnemy = (enemy: Enemy) => {
-  enemy.body.scene.tweens.killTweensOf(enemy.body);
-  enemy.marker?.destroy();
-  enemy.body.destroy();
+  enemy.body.scene?.tweens?.killTweensOf(enemy.body);
+
+  if (enemy.marker?.active) {
+    enemy.marker.destroy();
+  }
+
+  if (enemy.body.active) {
+    enemy.body.destroy();
+  }
 };
 
 export const updateEnemies = (
   scene: Phaser.Scene,
   enemies: Enemy[],
   enemyProjectiles: EnemyProjectile[],
-  player: Phaser.GameObjects.Triangle,
+  player: Phaser.GameObjects.Image,
   mapState: MapSectorState,
   barricades: Barricade[],
   dt: number,
@@ -92,7 +126,7 @@ export const updateEnemies = (
 export const updateEnemyProjectiles = (
   scene: Phaser.Scene,
   enemyProjectiles: EnemyProjectile[],
-  player: Phaser.GameObjects.Triangle,
+  player: Phaser.GameObjects.Image,
   mapState: MapSectorState,
   barricades: Barricade[],
   dt: number,
@@ -180,7 +214,7 @@ export const destroyEnemyProjectile = (projectile: EnemyProjectile) => {
 
 const updateEnemyMovement = (
   enemy: Enemy,
-  player: Phaser.GameObjects.Triangle,
+  player: Phaser.GameObjects.Image,
   mapState: MapSectorState,
   barricades: Barricade[],
   dt: number,
@@ -255,7 +289,7 @@ const updateEnemyAttack = (
   scene: Phaser.Scene,
   enemy: Enemy,
   enemyProjectiles: EnemyProjectile[],
-  player: Phaser.GameObjects.Triangle,
+  player: Phaser.GameObjects.Image,
   time: number,
 ) => {
   if (enemy.definition.behavior !== "shooter" || !enemy.definition.projectile) {
@@ -279,21 +313,30 @@ const updateEnemyAttack = (
     player.x - enemy.body.x,
     player.y - enemy.body.y,
   ).normalize();
-  const projectile = scene.add
-    .circle(
-      enemy.body.x,
-      enemy.body.y,
-      projectileDefinition.radius,
-      projectileDefinition.color,
-      1,
-    )
-    .setStrokeStyle(1, 0xede9fe, 0.82)
-    .setDepth(21);
+  const projectile = enemy.projectileImageKey
+    ? scene.add
+        .image(enemy.body.x, enemy.body.y, enemy.projectileImageKey)
+        .setDisplaySize(
+          projectileDefinition.radius * 2.5,
+          projectileDefinition.radius * 2.5,
+        )
+        .setRotation(direction.angle() + Math.PI / 2)
+        .setDepth(21)
+    : scene.add
+        .circle(
+          enemy.body.x,
+          enemy.body.y,
+          projectileDefinition.radius,
+          projectileDefinition.color,
+          1,
+        )
+        .setStrokeStyle(1, 0xede9fe, 0.82)
+        .setDepth(21);
 
   enemyProjectiles.push({
     body: projectile,
     velocity: direction.scale(projectileDefinition.speed),
-    damage: projectileDefinition.damage,
+    damage: projectileDefinition.damage * enemy.damage / enemy.definition.damage,
     distanceLeft: projectileDefinition.range,
     radius: projectileDefinition.radius,
   });

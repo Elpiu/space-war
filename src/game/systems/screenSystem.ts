@@ -5,24 +5,27 @@ import {
   SCREEN_CENTER_Y,
 } from "../config/gameplay";
 import {
-  getShopItemLevel,
-  getShopItemUpgradeCost,
-  SHOP_CATEGORIES,
-  SHOP_ITEMS,
-} from "./metaProgression";
+  RARITY_LABELS,
+  getItemLevel,
+  getTomeLevel,
+} from "../data/upgrades";
+import { IMAGE_KEYS } from "../data/imageAssets";
 import type {
-  MetaProgressionState,
+  ChestItemReward,
   PostRunRewardPreview,
-  ShopCategory,
-  ShopItem,
-  ShopItemId,
-  Upgrade,
+  Rarity,
+  RunItemState,
+  RunTomeState,
+  TomeOffer,
 } from "../types/gameplay";
 
 export const createUpgradeOverlay = (
   scene: Phaser.Scene,
-  choices: Upgrade[],
-  applyUpgrade: (upgrade: Upgrade) => void,
+  choices: TomeOffer[],
+  tomes: RunTomeState,
+  applyTome: (offer: TomeOffer) => void,
+  reroll: () => void,
+  rerollLabel: string,
 ) => {
   const backdrop = scene.add
     .rectangle(
@@ -31,55 +34,276 @@ export const createUpgradeOverlay = (
       GAME_WIDTH,
       GAME_HEIGHT,
       0x020617,
-      0.72,
+      0.76,
     )
     .setDepth(300);
   const title = scene.add
-    .text(SCREEN_CENTER_X, 174, "LEVEL UP", {
+    .text(SCREEN_CENTER_X, 148, "SCEGLI UN TOMO", {
       fontFamily: "Arial Black",
-      fontSize: 44,
+      fontSize: 40,
       color: "#ffffff",
       stroke: "#0f172a",
       strokeThickness: 8,
     })
     .setOrigin(0.5)
     .setDepth(301);
-  const cardObjects: Phaser.GameObjects.GameObject[] = [backdrop, title];
+  const subtitle = scene.add
+    .text(SCREEN_CENTER_X, 188, "Massimo 4 discipline per run", {
+      fontFamily: "Arial",
+      fontSize: 15,
+      color: "#94a3b8",
+    })
+    .setOrigin(0.5)
+    .setDepth(301);
+  const objects: Phaser.GameObjects.GameObject[] = [backdrop, title, subtitle];
+  const interactiveCards: Phaser.GameObjects.Rectangle[] = [];
 
-  choices.forEach((upgrade, index) => {
-    const x = 246 + index * 266;
-    const background = scene.add
-      .rectangle(x, 400, 230, 170, 0x172554, 0.94)
-      .setStrokeStyle(2, 0x38bdf8, 0.9)
-      .setInteractive({ useHandCursor: true })
+  choices.forEach((offer, index) => {
+    const x = 230 + index * 282;
+    const level = getTomeLevel(tomes, offer.tome.id);
+    const total = tomes.totalBonuses[offer.tome.id] ?? 0;
+    const border = getRarityColor(offer.rarity, offer.tome.accentColor);
+    const glow = scene.add
+      .rectangle(x, 420, 264, 310, border, 0.1)
       .setDepth(301);
-    const cardTitle = scene.add
-      .text(x, 350, upgrade.title, {
+    const card = scene.add
+      .rectangle(x, 420, 250, 296, 0x07111f, 0.98)
+      .setStrokeStyle(3, border, 0.96)
+      .setDepth(302);
+    const family = scene.add
+      .text(x - 105, 292, "TOMO", {
         fontFamily: "Arial Black",
-        fontSize: 20,
+        fontSize: 10,
+        color: toHex(offer.tome.accentColor),
+      })
+      .setDepth(303);
+    const levelText = scene.add
+      .text(x + 105, 292, `Lv.${level} > ${level + 1}`, {
+        fontFamily: "Arial Black",
+        fontSize: 12,
+        color: "#f8fafc",
+      })
+      .setOrigin(1, 0)
+      .setDepth(303);
+    const icon = scene.add
+      .circle(x, 352, 36, offer.tome.accentColor, 0.18)
+      .setStrokeStyle(3, offer.tome.accentColor, 0.9)
+      .setDepth(303);
+    const glyph = scene.add
+      .text(x, 352, offer.tome.title.charAt(10) || "T", {
+        fontFamily: "Arial Black",
+        fontSize: 25,
+        color: toHex(offer.tome.accentColor),
+      })
+      .setOrigin(0.5)
+      .setDepth(304);
+    const cardTitle = scene.add
+      .text(x, 408, offer.tome.title, {
+        fontFamily: "Arial Black",
+        fontSize: 18,
         color: "#f8fafc",
         align: "center",
-        wordWrap: { width: 194 },
+        wordWrap: { width: 214 },
       })
       .setOrigin(0.5)
-      .setDepth(302);
+      .setDepth(303);
+    const immediate = scene.add
+      .text(
+        x,
+        454,
+        `+${formatNumber(offer.scaledIncrement)}% ${offer.tome.shortEffect}`,
+        {
+          fontFamily: "Arial Black",
+          fontSize: 14,
+          color: toHex(offer.tome.accentColor),
+          align: "center",
+          wordWrap: { width: 214 },
+        },
+      )
+      .setOrigin(0.5)
+      .setDepth(303);
     const description = scene.add
-      .text(x, 420, upgrade.description, {
+      .text(x, 496, offer.tome.description, {
         fontFamily: "Arial",
-        fontSize: 17,
-        color: "#bae6fd",
+        fontSize: 14,
+        color: "#cbd5e1",
         align: "center",
-        wordWrap: { width: 190 },
+        wordWrap: { width: 210 },
       })
       .setOrigin(0.5)
-      .setDepth(302);
+      .setDepth(303);
+    const rarity = scene.add
+      .text(
+        x,
+        548,
+        `${RARITY_LABELS[offer.rarity]}  /  Totale +${formatNumber(total)}%`,
+        {
+          fontFamily: "Arial Black",
+          fontSize: 10,
+          color: toHex(border),
+        },
+      )
+      .setOrigin(0.5)
+      .setDepth(303);
 
-    background.on("pointerdown", () => applyUpgrade(upgrade));
-    cardObjects.push(background, cardTitle, description);
+    card.on("pointerdown", () => applyTome(offer));
+    interactiveCards.push(card);
+    objects.push(
+      glow,
+      card,
+      family,
+      levelText,
+      icon,
+      glyph,
+      cardTitle,
+      immediate,
+      description,
+      rarity,
+    );
   });
 
-  pinToScreen(cardObjects);
-  return scene.add.container(0, 0, cardObjects).setDepth(300);
+  const rerollButton = scene.add
+    .rectangle(SCREEN_CENTER_X, 616, 300, 44, 0x0f172a, 0.98)
+    .setStrokeStyle(2, 0xfbbf24, 0.82)
+    .setDepth(302);
+  const rerollText = scene.add
+    .text(SCREEN_CENTER_X, 616, rerollLabel, {
+      fontFamily: "Arial Black",
+      fontSize: 14,
+      color: "#fef3c7",
+    })
+    .setOrigin(0.5)
+    .setDepth(303);
+  rerollButton.on("pointerdown", reroll);
+  objects.push(rerollButton, rerollText);
+
+  armLevelUpInteractions(scene, [...interactiveCards, rerollButton]);
+
+  pinToScreen(objects);
+  return scene.add.container(0, 0, objects).setDepth(300);
+};
+
+export const showPauseOverlay = (
+  scene: Phaser.Scene,
+  resume: () => void,
+) => {
+  const backdrop = scene.add
+    .rectangle(
+      SCREEN_CENTER_X,
+      SCREEN_CENTER_Y,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x020617,
+      0.78,
+    )
+    .setInteractive()
+    .setDepth(320);
+  const panel = scene.add
+    .rectangle(SCREEN_CENTER_X, SCREEN_CENTER_Y, 460, 220, 0x07111f, 0.98)
+    .setStrokeStyle(2, 0x38bdf8, 0.78)
+    .setDepth(321);
+  const title = scene.add
+    .text(SCREEN_CENTER_X, SCREEN_CENTER_Y - 52, "PAUSA", {
+      fontFamily: "Arial Black",
+      fontSize: 42,
+      color: "#f8fafc",
+    })
+    .setOrigin(0.5)
+    .setDepth(322);
+  const hint = scene.add
+    .text(SCREEN_CENTER_X, SCREEN_CENTER_Y - 6, "Premi P per riprendere", {
+      fontFamily: "Arial",
+      fontSize: 16,
+      color: "#94a3b8",
+    })
+    .setOrigin(0.5)
+    .setDepth(322);
+  const [button, text] = createMenuButton(
+    scene,
+    SCREEN_CENTER_X,
+    SCREEN_CENTER_Y + 58,
+    "RIPRENDI",
+    resume,
+    210,
+  );
+  const objects = [backdrop, panel, title, hint, button, text];
+  pinToScreen(objects);
+  return scene.add.container(0, 0, objects).setDepth(320);
+};
+
+export const createChestRewardToast = (
+  scene: Phaser.Scene,
+  reward: ChestItemReward,
+  items: RunItemState,
+  detail: string,
+) => {
+  const x = GAME_WIDTH - 194;
+  const y = GAME_HEIGHT - 148;
+  const border = getRarityColor(reward.rarity, reward.item.accentColor);
+  const panel = scene.add
+    .rectangle(x, y, 332, 108, 0x07111f, 0.96)
+    .setStrokeStyle(2, border, 0.92)
+    .setDepth(282)
+    .setScrollFactor(0);
+  const icon = scene.add
+    .image(x - 132, y, IMAGE_KEYS.chest)
+    .setDisplaySize(62, 62)
+    .setDepth(284)
+    .setScrollFactor(0);
+  const title = scene.add
+    .text(x - 90, y - 38, reward.item.title, {
+      fontFamily: "Arial Black",
+      fontSize: 16,
+      color: "#f8fafc",
+    })
+    .setDepth(284)
+    .setScrollFactor(0);
+  const meta = scene.add
+    .text(
+      x - 90,
+      y - 12,
+      `${RARITY_LABELS[reward.rarity]}  Lv.${getItemLevel(items, reward.item.id)}`,
+      {
+        fontFamily: "Arial Black",
+        fontSize: 11,
+        color: toHex(border),
+      },
+    )
+    .setDepth(284)
+    .setScrollFactor(0);
+  const effect = scene.add
+    .text(x - 90, y + 12, reward.item.shortEffect, {
+      fontFamily: "Arial",
+      fontSize: 13,
+      color: toHex(reward.item.accentColor),
+    })
+    .setDepth(284)
+    .setScrollFactor(0);
+  const detailText = scene.add
+    .text(x - 90, y + 34, detail, {
+      fontFamily: "Arial",
+      fontSize: 11,
+      color: "#94a3b8",
+    })
+    .setDepth(284)
+    .setScrollFactor(0);
+  const container = scene.add
+    .container(0, 0, [panel, icon, title, meta, effect, detailText])
+    .setDepth(282);
+
+  scene.tweens.add({
+    targets: container,
+    alpha: { from: 0, to: 1 },
+    y: { from: 18, to: 0 },
+    duration: 130,
+  });
+  scene.tweens.add({
+    targets: container,
+    alpha: 0,
+    delay: 2200,
+    duration: 260,
+    onComplete: () => container.destroy(),
+  });
 };
 
 export const showMainMenuOverlay = (
@@ -87,7 +311,9 @@ export const showMainMenuOverlay = (
   feedback: string,
   actions: {
     play: () => void;
+    tutorial: () => void;
     shop: () => void;
+    staging?: () => void;
     exit: () => void;
   },
 ) => {
@@ -111,26 +337,38 @@ export const showMainMenuOverlay = (
     })
     .setOrigin(0.5)
     .setDepth(311);
-  const feedbackText = scene.add
-    .text(SCREEN_CENTER_X, 588, feedback, {
+  const info = scene.add
+    .text(SCREEN_CENTER_X, actions.staging ? 630 : 590, feedback, {
       fontFamily: "Arial",
-      fontSize: 16,
+      fontSize: 15,
       color: "#94a3b8",
     })
     .setOrigin(0.5)
     .setDepth(311);
-  const objects: Phaser.GameObjects.GameObject[] = [
-    backdrop,
-    title,
-    feedbackText,
+  const objects: Phaser.GameObjects.GameObject[] = [backdrop, title, info];
+  const entries = [
+    { label: "PLAY", action: actions.play },
+    { label: "TUTORIAL", action: actions.tutorial },
+    { label: "SHOP", action: actions.shop },
+    ...(actions.staging
+      ? [{ label: "STAGING", action: actions.staging }]
+      : []),
+    { label: "EXIT", action: actions.exit },
   ];
+  const startY = actions.staging ? 300 : 320;
+  const gap = actions.staging ? 62 : 68;
 
-  objects.push(
-    ...createMenuButton(scene, 512, 330, "PLAY", actions.play),
-    ...createMenuButton(scene, 512, 404, "SHOP", actions.shop),
-    ...createMenuButton(scene, 512, 478, "EXIT", actions.exit),
-  );
-
+  entries.forEach((entry, index) => {
+    objects.push(
+      ...createMenuButton(
+        scene,
+        SCREEN_CENTER_X,
+        startY + index * gap,
+        entry.label,
+        entry.action,
+      ),
+    );
+  });
   pinToScreen(objects);
   return scene.add.container(0, 0, objects).setDepth(310);
 };
@@ -140,472 +378,59 @@ export const showGameOverOverlay = (
   coins: number,
   reward: PostRunRewardPreview,
   totalCredits: number,
-  actions: {
-    restart: () => void;
-    shop: () => void;
-    menu: () => void;
-  },
+  actions: { restart: () => void; shop: () => void; menu: () => void },
 ) => {
   const panel = scene.add
-    .rectangle(SCREEN_CENTER_X, 430, 620, 270, 0x020617, 0.9)
+    .rectangle(SCREEN_CENTER_X, 420, 620, 300, 0x020617, 0.94)
     .setStrokeStyle(2, 0x38bdf8, 0.55)
     .setDepth(310);
   const title = scene.add
-    .text(SCREEN_CENTER_X, 320, "RUN TERMINATA", {
+    .text(SCREEN_CENTER_X, 306, "RUN TERMINATA", {
       fontFamily: "Arial Black",
       fontSize: 34,
       color: "#f8fafc",
-      stroke: "#0f172a",
-      strokeThickness: 6,
     })
     .setOrigin(0.5)
     .setDepth(311);
   const summary = scene.add
     .text(
       SCREEN_CENTER_X,
-      382,
-      [
-        `Livello ${reward.reachedLevel}  |  Wave ${reward.reachedWave}`,
-        `Crediti ottenuti: +${reward.earnedCredits}`,
-        `Totale crediti: ${totalCredits}`,
-        `Risorse run rimaste: ${coins}`,
-      ],
+      360,
+      `Livello ${reward.reachedLevel}  /  Wave ${reward.reachedWave}  /  Risorse run ${coins}`,
       {
         fontFamily: "Arial",
-        fontSize: 18,
-        color: "#fde68a",
-        align: "center",
-        lineSpacing: 7,
+        fontSize: 16,
+        color: "#cbd5e1",
       },
     )
     .setOrigin(0.5)
     .setDepth(311);
-  const objects: Phaser.GameObjects.GameObject[] = [panel, title, summary];
-
-  objects.push(
-    ...createMenuButton(scene, 316, 514, "RESTART", actions.restart, 160),
-    ...createMenuButton(scene, 512, 514, "SHOP", actions.shop, 160),
-    ...createMenuButton(scene, 708, 514, "MENU", actions.menu, 160),
-  );
-
-  pinToScreen(objects);
-  return scene.add.container(0, 0, objects).setDepth(310);
-};
-
-export const showShopOverlay = (
-  scene: Phaser.Scene,
-  metaState: MetaProgressionState,
-  selectedShopCategory: ShopCategory,
-  feedback: string,
-  actions: {
-    selectCategory: (category: ShopCategory) => void;
-    selectItem: (itemId: ShopItemId) => void;
-    upgradeItem: (itemId: ShopItemId) => void;
-    menu: () => void;
-    play: () => void;
-  },
-) => {
-  const backdrop = scene.add
-    .rectangle(
-      SCREEN_CENTER_X,
-      SCREEN_CENTER_Y,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0x020617,
-      0.94,
-    )
-    .setDepth(310);
-  const title = scene.add
-    .text(SCREEN_CENTER_X, 50, "SHOP / HANGAR", {
-      fontFamily: "Arial Black",
-      fontSize: 32,
-      color: "#f8fafc",
-      stroke: "#0f172a",
-      strokeThickness: 6,
-    })
-    .setOrigin(0.5)
-    .setDepth(311);
-  const wallet = scene.add
+  const credits = scene.add
     .text(
       SCREEN_CENTER_X,
-      90,
-      `Crediti hangar: ${metaState.postRunCredits}`,
+      398,
+      `+${reward.earnedCredits} crediti  /  Totale ${totalCredits}`,
       {
-        fontFamily: "Arial",
+        fontFamily: "Arial Black",
         fontSize: 18,
         color: "#fde68a",
       },
     )
-    .setOrigin(0.5)
-    .setDepth(311);
-  const feedbackText = scene.add
-    .text(SCREEN_CENTER_X, 116, feedback, {
-      fontFamily: "Arial",
-      fontSize: 14,
-      color: feedback.includes("insufficienti") ? "#fecaca" : "#bbf7d0",
-    })
     .setOrigin(0.5)
     .setDepth(311);
   const objects: Phaser.GameObjects.GameObject[] = [
-    backdrop,
+    panel,
     title,
-    wallet,
-    feedbackText,
+    summary,
+    credits,
   ];
-
-  SHOP_CATEGORIES.forEach((category, index) => {
-    const x = 132 + index * 172;
-    const selected = category.id === selectedShopCategory;
-
-    objects.push(
-      ...createMenuButton(
-        scene,
-        x,
-        154,
-        category.label.toUpperCase(),
-        () => actions.selectCategory(category.id),
-        150,
-        selected ? 0x0f766e : 0x172554,
-      ),
-      ...createShopCategoryIcon(
-        scene,
-        category.id,
-        x - 56,
-        154,
-        selected ? 0xccfbf1 : 0x7dd3fc,
-      ),
-    );
-  });
-
-  SHOP_ITEMS.filter((item) => item.category === selectedShopCategory).forEach(
-    (item, index) => {
-      const col = index % 2;
-      const rowIndex = Math.floor(index / 2);
-      const x = 330 + col * 368;
-      const y = 268 + rowIndex * 172;
-      const equipped = metaState.loadout[item.category] === item.id;
-      const unlocked =
-        item.isDefault || metaState.unlockedItems.includes(item.id);
-      const affordable = metaState.postRunCredits >= item.cost;
-      const level = getShopItemLevel(metaState, item.id);
-      const upgradeCost = getShopItemUpgradeCost(item, level);
-      const upgradeAffordable = metaState.postRunCredits >= upgradeCost;
-      const status = equipped
-        ? "EQUIP"
-        : unlocked
-          ? "ACQUISTATO"
-          : affordable
-            ? "COMPRA"
-            : "BLOCCATO";
-      const statusColor = equipped
-        ? item.accentColor
-        : unlocked
-          ? 0x14532d
-          : affordable
-            ? 0x1d4ed8
-            : 0x7f1d1d;
-      const card = scene.add
-        .rectangle(
-          x,
-          y,
-          326,
-          160,
-          0x0f172a,
-          unlocked || affordable ? 0.92 : 0.68,
-        )
-        .setStrokeStyle(
-          2,
-          equipped ? item.accentColor : unlocked ? 0x475569 : 0x334155,
-          unlocked || affordable ? 0.86 : 0.48,
-        )
-        .setInteractive({ useHandCursor: true })
-        .setDepth(311);
-      const title = scene.add
-        .text(x - 88, y - 52, item.title, {
-          fontFamily: "Arial Black",
-          fontSize: 16,
-          color: unlocked || affordable ? "#f8fafc" : "#94a3b8",
-          wordWrap: { width: 190 },
-        })
-        .setDepth(312);
-      const statusBadge = scene.add
-        .rectangle(
-          x + 96,
-          y - 52,
-          104,
-          28,
-          statusColor,
-          0.96,
-        )
-        .setStrokeStyle(1, equipped ? item.accentColor : 0x94a3b8, 0.55)
-        .setDepth(312);
-      const statusText = scene.add
-        .text(x + 96, y - 52, status, {
-          fontFamily: "Arial Black",
-          fontSize: status.length > 8 ? 10 : 12,
-          color: "#f8fafc",
-        })
-        .setOrigin(0.5)
-        .setDepth(313);
-      const description = scene.add
-        .text(x - 88, y - 22, item.description, {
-          fontFamily: "Arial",
-          fontSize: 12,
-          color: unlocked || affordable ? "#bae6fd" : "#64748b",
-          wordWrap: { width: 216 },
-        })
-        .setDepth(312);
-      const statLine = scene.add
-        .text(x - 88, y + 26, item.statLine, {
-          fontFamily: "Arial Black",
-          fontSize: 11,
-          color: "#fde68a",
-          wordWrap: { width: 216 },
-        })
-        .setDepth(312);
-      const levelText = scene.add
-        .text(x - 88, y + 48, `Lv.${level}  ${item.upgrade?.label ?? ""}`, {
-          fontFamily: "Arial",
-          fontSize: 11,
-          color: unlocked ? "#ccfbf1" : "#64748b",
-          wordWrap: { width: 174 },
-        })
-        .setDepth(312);
-      const costText = scene.add
-        .text(x - 88, y + 66, getShopCostLabel(item, unlocked), {
-          fontFamily: "Arial",
-          fontSize: 11,
-          color: unlocked ? "#bbf7d0" : affordable ? "#ccfbf1" : "#fecaca",
-          wordWrap: { width: 164 },
-        })
-        .setDepth(312);
-      const preview = createShopItemPreview(scene, item, x - 126, y + 8);
-      const upgradeButton = unlocked
-        ? createShopUpgradeButton(
-            scene,
-            x + 100,
-            y + 56,
-            upgradeCost,
-            upgradeAffordable,
-            () => actions.upgradeItem(item.id),
-          )
-        : [];
-
-      card.on("pointerdown", () => actions.selectItem(item.id));
-
-      objects.push(
-        card,
-        ...preview,
-        title,
-        statusBadge,
-        statusText,
-        description,
-        statLine,
-        levelText,
-        costText,
-        ...upgradeButton,
-      );
-    },
-  );
-
   objects.push(
-    ...createMenuButton(scene, 408, 724, "MENU", actions.menu, 180),
-    ...createMenuButton(scene, 616, 724, "PLAY", actions.play, 180),
+    ...createMenuButton(scene, 512, 466, "RESTART", actions.restart, 190),
+    ...createMenuButton(scene, 402, 532, "SHOP", actions.shop, 190),
+    ...createMenuButton(scene, 622, 532, "MENU", actions.menu, 190),
   );
-
   pinToScreen(objects);
   return scene.add.container(0, 0, objects).setDepth(310);
-};
-
-const getShopCostLabel = (item: ShopItem, unlocked: boolean) => {
-  if (item.isDefault) {
-    return "Gratis (default) · click equip";
-  }
-
-  if (unlocked) {
-    return `Acquistato · click equip`;
-  }
-
-  return `Costo: ${item.cost} crediti`;
-};
-
-const createShopUpgradeButton = (
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  cost: number,
-  affordable: boolean,
-  onClick: () => void,
-) => {
-  const color = affordable ? 0x164e63 : 0x431407;
-  const borderColor = affordable ? 0x67e8f9 : 0xf97316;
-  const textColor = affordable ? "#ecfeff" : "#fed7aa";
-  const button = scene.add
-    .rectangle(x, y, 106, 30, color, 0.96)
-    .setStrokeStyle(1, borderColor, 0.78)
-    .setInteractive({ useHandCursor: true })
-    .setDepth(314);
-  const label = scene.add
-    .text(x, y - 4, "UPGRADE", {
-      fontFamily: "Arial Black",
-      fontSize: 10,
-      color: textColor,
-    })
-    .setOrigin(0.5)
-    .setDepth(315);
-  const costText = scene.add
-    .text(x, y + 8, `${cost} crediti`, {
-      fontFamily: "Arial",
-      fontSize: 9,
-      color: textColor,
-    })
-    .setOrigin(0.5)
-    .setDepth(315);
-
-  button.on(
-    "pointerdown",
-    (
-      _pointer: Phaser.Input.Pointer,
-      _localX: number,
-      _localY: number,
-      event: Phaser.Types.Input.EventData,
-    ) => {
-      event.stopPropagation();
-      onClick();
-    },
-  );
-
-  return [button, label, costText];
-};
-
-const createShopCategoryIcon = (
-  scene: Phaser.Scene,
-  category: ShopCategory,
-  x: number,
-  y: number,
-  color: number,
-) => {
-  const graphics = scene.add.graphics().setDepth(313);
-
-  graphics.lineStyle(2, color, 0.95);
-  graphics.fillStyle(color, 0.9);
-
-  if (category === "ships") {
-    graphics.fillTriangle(x, y - 10, x + 8, y + 9, x - 8, y + 9);
-    graphics.strokeTriangle(x, y - 10, x + 8, y + 9, x - 8, y + 9);
-  } else if (category === "weapons") {
-    graphics.beginPath();
-    graphics.moveTo(x - 9, y + 7);
-    graphics.lineTo(x + 10, y - 6);
-    graphics.strokePath();
-    graphics.fillCircle(x + 11, y - 7, 3);
-  } else if (category === "boosters") {
-    graphics.fillRect(x - 7, y - 8, 14, 13);
-    graphics.fillTriangle(x - 6, y + 5, x, y + 14, x + 6, y + 5);
-  } else if (category === "turrets") {
-    graphics.strokeCircle(x, y, 11);
-    graphics.fillRect(x - 7, y - 7, 14, 14);
-    graphics.fillRect(x - 3, y - 16, 6, 10);
-  } else {
-    graphics.fillCircle(x, y, 8);
-    graphics.strokeCircle(x, y, 14);
-  }
-
-  return [graphics];
-};
-
-const createShopItemPreview = (
-  scene: Phaser.Scene,
-  item: ShopItem,
-  x: number,
-  y: number,
-) => {
-  const graphics = scene.add.graphics().setDepth(312);
-  const accent = item.accentColor;
-
-  graphics.fillStyle(0x020617, 0.64);
-  graphics.fillCircle(x, y, 42);
-  graphics.lineStyle(2, accent, 0.78);
-  graphics.strokeCircle(x, y, 42);
-  graphics.lineStyle(2, 0xe0f2fe, 0.88);
-  graphics.fillStyle(accent, 0.96);
-
-  if (item.iconKind === "shipStandard") {
-    graphics.fillTriangle(x, y - 28, x + 19, y + 22, x - 19, y + 22);
-    graphics.strokeTriangle(x, y - 28, x + 19, y + 22, x - 19, y + 22);
-  } else if (item.iconKind === "shipTank") {
-    graphics.fillTriangle(x, y - 24, x + 28, y + 20, x - 28, y + 20);
-    graphics.fillStyle(0x0f766e, 0.95);
-    graphics.fillRect(x - 18, y + 2, 36, 20);
-    graphics.strokeTriangle(x, y - 24, x + 28, y + 20, x - 28, y + 20);
-  } else if (item.iconKind === "shipLight") {
-    graphics.fillTriangle(x, y - 31, x + 13, y + 24, x - 13, y + 24);
-    graphics.strokeTriangle(x, y - 31, x + 13, y + 24, x - 13, y + 24);
-  } else if (item.iconKind.startsWith("weapon")) {
-    const isRapid = item.iconKind === "weaponRapid";
-    const isHeavy = item.iconKind === "weaponHeavy";
-    graphics.lineStyle(isHeavy ? 8 : 5, accent, 0.95);
-    graphics.beginPath();
-    graphics.moveTo(x - 26, y + 16);
-    graphics.lineTo(x + 24, y - 12);
-    graphics.strokePath();
-    graphics.fillStyle(accent, 0.98);
-    graphics.fillCircle(x + 27, y - 14, isHeavy ? 8 : 5);
-
-    if (isRapid) {
-      graphics.fillCircle(x + 12, y - 6, 4);
-      graphics.fillCircle(x + 39, y - 21, 4);
-    }
-  } else if (item.iconKind.startsWith("booster")) {
-    graphics.fillStyle(accent, 0.95);
-
-    if (item.iconKind === "boosterNone") {
-      graphics.lineStyle(3, 0x94a3b8, 0.95);
-      graphics.strokeCircle(x, y, 18);
-      graphics.beginPath();
-      graphics.moveTo(x - 14, y + 14);
-      graphics.lineTo(x + 14, y - 14);
-      graphics.strokePath();
-    } else {
-      graphics.fillRoundedRect(x - 22, y - 18, 44, 36, 6);
-      graphics.fillStyle(
-        0xfef08a,
-        item.iconKind === "boosterSpeed" ? 0.95 : 0.55,
-      );
-      graphics.fillTriangle(x - 12, y + 18, x, y + 36, x + 12, y + 18);
-
-      if (item.iconKind === "boosterMagnet") {
-        graphics.lineStyle(3, accent, 0.92);
-        graphics.strokeCircle(x, y, 28);
-      }
-    }
-  } else if (item.iconKind.startsWith("turret")) {
-    const isLongRange = item.iconKind === "turretLongRange";
-    graphics.lineStyle(2, accent, isLongRange ? 0.48 : 0.26);
-    graphics.strokeCircle(x, y, isLongRange ? 34 : 25);
-    graphics.fillStyle(accent, 0.95);
-    graphics.fillRect(x - 13, y - 13, 26, 26);
-    graphics.fillStyle(0xe0f2fe, 0.95);
-    graphics.fillRect(x - 4, y - 29, 8, 22);
-  } else {
-    const isBlast = item.iconKind === "mineBlast";
-    graphics.fillStyle(accent, 0.96);
-    graphics.fillCircle(x, y, isBlast ? 17 : 14);
-    graphics.lineStyle(2, 0xfef3c7, 0.92);
-    graphics.strokeCircle(x, y, isBlast ? 29 : 22);
-    graphics.beginPath();
-    graphics.moveTo(x, y - 32);
-    graphics.lineTo(x, y - 22);
-    graphics.moveTo(x + 28, y);
-    graphics.lineTo(x + 18, y);
-    graphics.moveTo(x, y + 32);
-    graphics.lineTo(x, y + 22);
-    graphics.moveTo(x - 28, y);
-    graphics.lineTo(x - 18, y);
-    graphics.strokePath();
-  }
-
-  return [graphics];
 };
 
 const createMenuButton = (
@@ -613,40 +438,69 @@ const createMenuButton = (
   x: number,
   y: number,
   label: string,
-  onClick: () => void,
-  width = 240,
-  color = 0x172554,
+  action: () => void,
+  width = 280,
 ) => {
-  const button = scene.add
-    .rectangle(x, y, width, 48, color, 0.94)
+  const background = scene.add
+    .rectangle(x, y, width, 52, 0x0f172a, 0.96)
     .setStrokeStyle(2, 0x38bdf8, 0.72)
     .setInteractive({ useHandCursor: true })
-    .setDepth(311);
+    .setDepth(312);
   const text = scene.add
     .text(x, y, label, {
       fontFamily: "Arial Black",
       fontSize: 18,
-      color: "#f8fafc",
+      color: "#e0f2fe",
     })
     .setOrigin(0.5)
-    .setDepth(312);
-
-  button.on("pointerdown", onClick);
-
-  return [button, text];
+    .setDepth(313);
+  background.on("pointerdown", action);
+  return [background, text];
 };
 
-export const pinToScreen = (objects: Phaser.GameObjects.GameObject[]) => {
+const getRarityColor = (rarity: Rarity, accent: number) => {
+  if (rarity === "legendary") return 0xf59e0b;
+  if (rarity === "rare") return 0xc084fc;
+  if (rarity === "uncommon") return accent;
+  return 0x64748b;
+};
+
+const pinToScreen = (objects: Phaser.GameObjects.GameObject[]) => {
   objects.forEach((object) => {
     if ("setScrollFactor" in object) {
       (
         object as Phaser.GameObjects.GameObject & {
-          setScrollFactor: (
-            x: number,
-            y?: number,
-          ) => Phaser.GameObjects.GameObject;
+          setScrollFactor: (value: number) => unknown;
         }
       ).setScrollFactor(0);
     }
   });
 };
+
+const armLevelUpInteractions = (
+  scene: Phaser.Scene,
+  targets: Phaser.GameObjects.Rectangle[],
+) => {
+  const enable = () => {
+    targets.forEach((target) => {
+      if (target.active) {
+        target.setInteractive({ useHandCursor: true });
+      }
+    });
+  };
+  const waitForRelease = () => {
+    if (scene.input.activePointer.isDown) {
+      scene.input.once("pointerup", enable);
+      return;
+    }
+
+    enable();
+  };
+
+  scene.time.delayedCall(320, waitForRelease);
+};
+
+const formatNumber = (value: number) =>
+  Number.isInteger(value) ? `${value}` : value.toFixed(1);
+
+const toHex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;

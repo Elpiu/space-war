@@ -1,4 +1,31 @@
-import type { LootTable, RunUpgradeState, Upgrade } from "../types/gameplay";
+import type {
+  ChestItemDefinition,
+  ChestItemId,
+  Rarity,
+  RunDifficultyState,
+  RunItemState,
+  RunTomeState,
+  RunUpgradeState,
+  TomeDefinition,
+  TomeId,
+} from "../types/gameplay";
+
+export const MAX_RUN_TOMES = 4;
+export const MIN_ACTIVE_POOL_SIZE = 8;
+
+export const RARITY_MULTIPLIERS: Record<Rarity, number> = {
+  common: 1,
+  uncommon: 1.5,
+  rare: 2.25,
+  legendary: 3.5,
+};
+
+export const RARITY_LABELS: Record<Rarity, string> = {
+  common: "COMUNE",
+  uncommon: "NON COMUNE",
+  rare: "RARO",
+  legendary: "LEGGENDARIO",
+};
 
 export const createInitialRunUpgradeState = (): RunUpgradeState => ({
   stacks: {},
@@ -11,252 +38,527 @@ export const createInitialRunUpgradeState = (): RunUpgradeState => ({
   mineRadiusBonus: 0,
   mineCostReduction: 0,
   maxMineBonus: 0,
-  barricadeUnlocked: false,
+  barricadeUnlocked: true,
   barricadeHpBonus: 0,
   barricadeCostReduction: 0,
-  maxBarricades: 0,
+  maxBarricades: 1,
   droneLimit: 0,
   droneDamageBonus: 0,
   droneFireRateMultiplier: 1,
   xpMultiplierBonus: 0,
-  lifeStealBonus: 0,
   shipSlotBonus: 0,
+  engineeringMultiplier: 1,
+  swarmMultiplier: 1,
+  maxHpPer100Kills: 0,
 });
 
-export const XP_UPGRADES: Upgrade[] = [
+export const createInitialRunTomeState = (): RunTomeState => ({
+  levels: {},
+  totalBonuses: {},
+});
+
+export const createInitialRunItemState = (): RunItemState => ({
+  levels: {},
+});
+
+export const createInitialDifficultyState = (): RunDifficultyState => ({
+  enemyHpMultiplier: 1,
+  enemyDamageMultiplier: 1,
+  spawnDensityMultiplier: 1,
+  rewardMultiplier: 1,
+  chestFrequencyMultiplier: 1,
+});
+
+const increasePercent = (value: number, percent: number) =>
+  value * (1 + percent / 100);
+
+export const TOMES: TomeDefinition[] = [
   {
-    id: "rapid-fire",
-    source: "xp",
-    category: "weapon",
-    title: "Cadenza rapida",
-    description: "Spari piu spesso.",
-    maxStacks: 5,
-    weight: 1.15,
-    modifiers: [
-      { target: "playerStat", stat: "fireRate", operation: "multiply", value: 0.82 },
-    ],
-  },
-  {
-    id: "heavy-shots",
-    source: "xp",
-    category: "weapon",
-    title: "Colpi pesanti",
-    description: "Aumenta il danno dei proiettili.",
-    maxStacks: 5,
-    weight: 1.1,
-    modifiers: [
-      { target: "playerStat", stat: "damage", operation: "add", value: 1.4 },
-    ],
-  },
-  {
-    id: "thrusters",
-    source: "xp",
-    category: "ship",
-    title: "Propulsori",
-    description: "La navicella si muove piu veloce.",
-    maxStacks: 4,
-    modifiers: [
-      { target: "playerStat", stat: "speed", operation: "add", value: 35 },
-    ],
-  },
-  {
-    id: "cargo-magnet",
-    source: "xp",
-    category: "pickup",
-    title: "Magnete cargo",
-    description: "Raccogli pickup da piu lontano.",
-    maxStacks: 4,
-    weight: 0.9,
-    modifiers: [
-      { target: "playerStat", stat: "pickupRadius", operation: "add", value: 36 },
-    ],
-  },
-  {
-    id: "multishot",
-    source: "xp",
-    category: "weapon",
-    title: "Doppio arco",
-    description: "Aggiunge un proiettile laterale.",
-    maxStacks: 3,
-    modifiers: [
-      { target: "playerStat", stat: "multiShot", operation: "add", value: 1, max: 4 },
-    ],
-  },
-  {
-    id: "reinforced-hull",
-    source: "xp",
-    category: "ship",
-    title: "Scafo rinforzato",
-    description: "Aumenta HP massimi e cura il gli HP mancanti.",
-    maxStacks: 5,
-    apply: ({ stats }) => {
-      stats.maxHp += 2;
-      stats.hp = Math.floor(stats.maxHp);
+    id: "power",
+    title: "Tomo della Potenza",
+    description: "Aumenta percentualmente il danno della nave.",
+    shortEffect: "Danno",
+    accentColor: 0xfb923c,
+    baseIncrement: 10,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, value) => {
+      stats.damage = increasePercent(stats.damage, value);
     },
   },
   {
-    id: "turret-calibration",
-    source: "xp",
-    category: "turret",
-    title: "Calibrazione torrette",
-    description: "Torrette con piu danno e piu vita.",
-    maxStacks: 4,
-    weight: 0.85,
-    modifiers: [
-      { target: "runUpgrade", stat: "turretDamageBonus", operation: "add", value: 1.5 },
-      { target: "runUpgrade", stat: "turretHpBonus", operation: "add", value: 3.5 },
-    ],
+    id: "cadence",
+    title: "Tomo della Cadenza",
+    description: "Riduce l'intervallo tra i colpi automatici.",
+    shortEffect: "Velocita attacco",
+    accentColor: 0xfacc15,
+    baseIncrement: 8,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, value) => {
+      stats.fireRate = Math.max(70, stats.fireRate / (1 + value / 100));
+    },
   },
   {
-    id: "mine-engineering",
-    source: "xp",
-    category: "mine",
-    title: "Ingegneria mine",
-    description: "Mine piu potenti e con area maggiore.",
-    maxStacks: 4,
-    weight: 0.85,
-    modifiers: [
-      { target: "runUpgrade", stat: "mineDamageBonus", operation: "add", value: 1 },
-      { target: "runUpgrade", stat: "mineRadiusBonus", operation: "add", value: 14 },
-    ],
+    id: "vitality",
+    title: "Tomo della Vitalita",
+    description: "Aumenta gli HP massimi e cura dello stesso valore.",
+    shortEffect: "HP massimi",
+    accentColor: 0xfb7185,
+    baseIncrement: 12,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, value) => {
+      const oldMax = stats.maxHp;
+      stats.maxHp = increasePercent(stats.maxHp, value);
+      stats.hp = Math.min(stats.maxHp, stats.hp + stats.maxHp - oldMax);
+    },
   },
   {
-    id: "sentinel-drone",
-    source: "xp",
-    category: "drone",
-    title: "Mini navicella",
-    description: "Aggiunge una piccola scorta automatica.",
-    maxStacks: 3,
-    weight: 0.8,
-    modifiers: [
-      { target: "runUpgrade", stat: "droneLimit", operation: "add", value: 1 },
-    ],
+    id: "mobility",
+    title: "Tomo della Mobilita",
+    description: "Aumenta la velocita di movimento.",
+    shortEffect: "Movimento",
+    accentColor: 0x34d399,
+    baseIncrement: 8,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, value) => {
+      stats.speed = increasePercent(stats.speed, value);
+    },
+  },
+  {
+    id: "wisdom",
+    title: "Tomo della Sapienza",
+    description: "Aumenta l'esperienza ottenuta dai pickup.",
+    shortEffect: "Esperienza",
+    accentColor: 0x22d3ee,
+    baseIncrement: 10,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, value) => {
+      stats.xpMultiplier = increasePercent(stats.xpMultiplier, value);
+    },
+  },
+  {
+    id: "magnetism",
+    title: "Tomo del Magnetismo",
+    description: "Estende il raggio di raccolta dei pickup.",
+    shortEffect: "Raggio raccolta",
+    accentColor: 0x38bdf8,
+    baseIncrement: 15,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, value) => {
+      stats.pickupRadius = increasePercent(stats.pickupRadius, value);
+    },
+  },
+  {
+    id: "fortune",
+    title: "Tomo della Fortuna",
+    description: "Migliora rarita e frequenza dei drop speciali.",
+    shortEffect: "Fortuna",
+    accentColor: 0xfbbf24,
+    baseIncrement: 10,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, value) => {
+      stats.luck += value;
+    },
+  },
+  {
+    id: "difficulty",
+    title: "Tomo della Difficolta",
+    description: "Rende le wave piu dure, ma accelera tutte le ricompense.",
+    shortEffect: "Rischio e ricompensa",
+    accentColor: 0xef4444,
+    baseIncrement: 10,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ difficulty }, value) => {
+      difficulty.enemyHpMultiplier = increasePercent(
+        difficulty.enemyHpMultiplier,
+        value,
+      );
+      difficulty.enemyDamageMultiplier = increasePercent(
+        difficulty.enemyDamageMultiplier,
+        value * 0.7,
+      );
+      difficulty.spawnDensityMultiplier = increasePercent(
+        difficulty.spawnDensityMultiplier,
+        value * 0.65,
+      );
+      difficulty.rewardMultiplier = increasePercent(
+        difficulty.rewardMultiplier,
+        value,
+      );
+      difficulty.chestFrequencyMultiplier = increasePercent(
+        difficulty.chestFrequencyMultiplier,
+        value * 0.8,
+      );
+    },
+  },
+  {
+    id: "vampirism",
+    title: "Tomo del Vampirismo",
+    description: "Cura una parte del danno effettivamente inflitto.",
+    shortEffect: "Vampirismo",
+    accentColor: 0xbe123c,
+    baseIncrement: 1.5,
+    maxLevel: 10,
+    cost: 45,
+    isDefault: false,
+    apply: ({ stats }, value) => {
+      stats.lifeStealPercent = Math.min(18, stats.lifeStealPercent + value);
+    },
+  },
+  {
+    id: "ballistics",
+    title: "Tomo della Balistica",
+    description: "Aumenta velocita e gittata dei proiettili.",
+    shortEffect: "Proiettili",
+    accentColor: 0xa78bfa,
+    baseIncrement: 10,
+    maxLevel: 10,
+    cost: 35,
+    isDefault: false,
+    apply: ({ stats }, value) => {
+      stats.bulletSpeed = increasePercent(stats.bulletSpeed, value);
+      stats.bulletRange = increasePercent(stats.bulletRange, value);
+    },
+  },
+  {
+    id: "engineering",
+    title: "Tomo dell'Ingegneria",
+    description: "Migliora danno, resistenza e portata dei piazzabili.",
+    shortEffect: "Piazzabili",
+    accentColor: 0x2dd4bf,
+    baseIncrement: 10,
+    maxLevel: 10,
+    cost: 55,
+    isDefault: false,
+    apply: ({ runUpgrades }, value) => {
+      runUpgrades.engineeringMultiplier = increasePercent(
+        runUpgrades.engineeringMultiplier,
+        value,
+      );
+    },
+  },
+  {
+    id: "swarm",
+    title: "Tomo dello Sciame",
+    description: "Migliora danno e cadenza dei droni presenti e futuri.",
+    shortEffect: "Droni",
+    accentColor: 0xc084fc,
+    baseIncrement: 10,
+    maxLevel: 10,
+    cost: 60,
+    isDefault: false,
+    apply: ({ runUpgrades }, value) => {
+      runUpgrades.swarmMultiplier = increasePercent(
+        runUpgrades.swarmMultiplier,
+        value,
+      );
+    },
   },
 ];
 
-export const CHEST_UPGRADES: Upgrade[] = [
+const discreteByRarity = (
+  rarity: Rarity,
+  values: Record<Rarity, number>,
+) => values[rarity];
+
+export const CHEST_ITEMS: ChestItemDefinition[] = [
   {
-    id: "turret-range-cache",
-    source: "chest",
-    category: "turret",
-    title: "Ottiche torretta",
-    description: "Le torrette coprono piu spazio.",
-    weight: 1,
-    modifiers: [
-      { target: "runUpgrade", stat: "turretRangeBonus", operation: "add", value: 38 },
-    ],
+    id: "splitter-camera",
+    title: "Camera Splitter",
+    description: "Aggiunge proiettili laterali al fuoco automatico.",
+    shortEffect: "Proiettili +",
+    category: "weapon",
+    accentColor: 0xfef08a,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ stats }, rarity) => {
+      stats.multiShot = Math.min(
+        12,
+        stats.multiShot +
+          discreteByRarity(rarity, {
+            common: 1,
+            uncommon: 1,
+            rare: 2,
+            legendary: 3,
+          }),
+      );
+    },
   },
   {
-    id: "extra-turret-slot",
-    source: "chest",
-    category: "turret",
-    title: "Slot torretta",
-    description: "Puoi mantenere due torrette in piu.",
-    weight: 0.75,
-    modifiers: [
-      { target: "runUpgrade", stat: "maxTurretBonus", operation: "add", value: 2 },
-    ],
+    id: "sentinel-beacon",
+    title: "Faro Sentinella",
+    description: "Richiama mini navicelle automatiche.",
+    shortEffect: "Droni +",
+    category: "drone",
+    accentColor: 0xa78bfa,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ runUpgrades }, rarity) => {
+      runUpgrades.droneLimit += discreteByRarity(rarity, {
+        common: 1,
+        uncommon: 1,
+        rare: 2,
+        legendary: 3,
+      });
+    },
   },
   {
-    id: "mine-supply-cache",
-    source: "chest",
+    id: "turret-optics",
+    title: "Ottiche Torretta",
+    description: "Aumenta portata e precisione delle torrette.",
+    shortEffect: "Range torretta +",
+    category: "turret",
+    accentColor: 0x38bdf8,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ runUpgrades }, rarity) => {
+      runUpgrades.turretRangeBonus += 24 * RARITY_MULTIPLIERS[rarity];
+    },
+  },
+  {
+    id: "turret-slot",
+    title: "Slot Torretta",
+    description: "Aumenta il numero massimo di torrette.",
+    shortEffect: "Slot torretta +",
+    category: "turret",
+    accentColor: 0x60a5fa,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ runUpgrades }, rarity) => {
+      runUpgrades.maxTurretBonus += discreteByRarity(rarity, {
+        common: 1,
+        uncommon: 1,
+        rare: 2,
+        legendary: 3,
+      });
+    },
+  },
+  {
+    id: "mine-supply",
+    title: "Scorta Mine",
+    description: "Riduce il costo e aumenta il limite delle mine.",
+    shortEffect: "Mine costo -",
     category: "mine",
-    title: "Scorta mine",
-    description: "Mine meno costose e limite aumentato.",
-    weight: 1,
-    modifiers: [
-      { target: "runUpgrade", stat: "mineCostReduction", operation: "add", value: 1 },
-      { target: "runUpgrade", stat: "maxMineBonus", operation: "add", value: 1 },
-    ],
+    accentColor: 0xfacc15,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ runUpgrades }, rarity) => {
+      const amount = discreteByRarity(rarity, {
+        common: 1,
+        uncommon: 1,
+        rare: 2,
+        legendary: 3,
+      });
+      runUpgrades.mineCostReduction += amount;
+      runUpgrades.maxMineBonus += amount;
+    },
+  },
+  {
+    id: "blast-charge",
+    title: "Carica Esplosiva",
+    description: "Aumenta danno e raggio delle mine.",
+    shortEffect: "Mine potenza +",
+    category: "mine",
+    accentColor: 0xfb923c,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ runUpgrades }, rarity) => {
+      const multiplier = RARITY_MULTIPLIERS[rarity];
+      runUpgrades.mineDamageBonus += 1.2 * multiplier;
+      runUpgrades.mineRadiusBonus += 12 * multiplier;
+    },
   },
   {
     id: "barricade-kit",
-    source: "chest",
+    title: "Kit Barricata",
+    description: "Sblocca e aumenta le barricate piazzabili.",
+    shortEffect: "Barricate +",
     category: "barricade",
-    title: "Kit barricata",
-    description: "Aumenta di 2 le barricate piazzabili.",
-    weight: 0.85,
-    // Se vuoi permettere di prendere questo upgrade più volte,
-    // rimuovi maxStacks o impostalo a un numero alto
-    modifiers: [
-      { target: "runUpgrade", stat: "barricadeUnlocked", operation: "set", value: true },
-      { target: "runUpgrade", stat: "maxBarricades", operation: "add", value: 2 },
-    ],
-  },
-  {
-    id: "barricade-plating",
-    source: "chest",
-    category: "barricade",
-    title: "Piastre barricata",
-    description: "Barricate piu resistenti.",
-    weight: 0.75,
-    apply: ({ runUpgrades }) => {
+    accentColor: 0xe2e8f0,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ runUpgrades }, rarity) => {
       runUpgrades.barricadeUnlocked = true;
-      runUpgrades.maxBarricades = Math.max(runUpgrades.maxBarricades, 2);
-      runUpgrades.barricadeHpBonus += 5;
+      runUpgrades.maxBarricades += discreteByRarity(rarity, {
+        common: 2,
+        uncommon: 2,
+        rare: 3,
+        legendary: 5,
+      });
     },
   },
   {
-    id: "drone-link",
-    source: "chest",
-    category: "drone",
-    title: "Link drone",
-    description: "Aggiunge una mini navicella sentinella.",
-    weight: 0.95,
-    modifiers: [
-      { target: "runUpgrade", stat: "droneLimit", operation: "add", value: 1 },
-    ],
+    id: "reactive-plating",
+    title: "Piastre Reattive",
+    description: "Rinforza torrette e barricate.",
+    shortEffect: "HP difese +",
+    category: "barricade",
+    accentColor: 0x94a3b8,
+    maxLevel: 10,
+    cost: 0,
+    isDefault: true,
+    apply: ({ runUpgrades }, rarity) => {
+      const multiplier = RARITY_MULTIPLIERS[rarity];
+      runUpgrades.barricadeUnlocked = true;
+      runUpgrades.maxBarricades = Math.max(2, runUpgrades.maxBarricades);
+      runUpgrades.barricadeHpBonus += 5 * multiplier;
+      runUpgrades.turretHpBonus += 4 * multiplier;
+    },
   },
   {
-    id: "drone-weapons",
-    source: "chest",
-    category: "drone",
-    title: "Armi drone",
-    description: "Le mini navicelle sparano piu forte.",
-    weight: 0.85,
-    modifiers: [
-      { target: "runUpgrade", stat: "droneDamageBonus", operation: "add", value: 1 },
-      { target: "runUpgrade", stat: "droneFireRateMultiplier", operation: "multiply", value: 0.92 },
-    ],
+    id: "heavy-core",
+    title: "Nucleo Pesante",
+    description: "Aumenta molto il danno, ma rallenta la cadenza.",
+    shortEffect: "Danno alto",
+    category: "weapon",
+    accentColor: 0xf97316,
+    maxLevel: 10,
+    cost: 35,
+    isDefault: false,
+    apply: ({ stats }, rarity) => {
+      const multiplier = RARITY_MULTIPLIERS[rarity];
+      stats.damage = increasePercent(stats.damage, 12 * multiplier);
+      stats.fireRate = increasePercent(stats.fireRate, 4);
+    },
   },
-  //{
-  //  id: "field-coins",
-  //  source: "chest",
-  //  category: "economy",
-  //  title: "Crediti di campo",
-  //  description: "Ricevi risorsa run extra.",
-  //  maxStacks: 8,
-  //  apply: ({ runUpgrades }) => {
-  //    runUpgrades.mineCostReduction += 0;
-  //  },
-  //},
+  {
+    id: "rapid-loader",
+    title: "Caricatore Rapido",
+    description: "Accelera il fuoco, riducendo leggermente il danno.",
+    shortEffect: "Cadenza alta",
+    category: "weapon",
+    accentColor: 0x67e8f9,
+    maxLevel: 10,
+    cost: 35,
+    isDefault: false,
+    apply: ({ stats }, rarity) => {
+      stats.fireRate = Math.max(
+        70,
+        stats.fireRate / (1 + (10 * RARITY_MULTIPLIERS[rarity]) / 100),
+      );
+      stats.damage = Math.max(0.5, stats.damage * 0.98);
+    },
+  },
+  {
+    id: "drone-arsenal",
+    title: "Arsenale Drone",
+    description: "Potenziamento offensivo per tutte le sentinelle.",
+    shortEffect: "Armi drone +",
+    category: "drone",
+    accentColor: 0xc084fc,
+    maxLevel: 10,
+    cost: 45,
+    isDefault: false,
+    apply: ({ runUpgrades }, rarity) => {
+      const multiplier = RARITY_MULTIPLIERS[rarity];
+      runUpgrades.droneDamageBonus += multiplier;
+      runUpgrades.droneFireRateMultiplier = Math.max(
+        0.35,
+        runUpgrades.droneFireRateMultiplier / (1 + 0.08 * multiplier),
+      );
+    },
+  },
+  {
+    id: "overdrive-reactor",
+    title: "Reattore Overdrive",
+    description: "Potenzia danno e cadenza sacrificando scafo massimo.",
+    shortEffect: "Potenza instabile",
+    category: "ship",
+    accentColor: 0xef4444,
+    maxLevel: 10,
+    cost: 60,
+    isDefault: false,
+    apply: ({ stats }, rarity) => {
+      const multiplier = RARITY_MULTIPLIERS[rarity];
+      stats.damage = increasePercent(stats.damage, 7 * multiplier);
+      stats.fireRate = Math.max(
+        70,
+        stats.fireRate / (1 + (6 * multiplier) / 100),
+      );
+      const hpLoss = Math.min(stats.maxHp - 1, 0.4 * multiplier);
+      stats.maxHp -= hpLoss;
+      stats.hp = Math.min(stats.hp, stats.maxHp);
+    },
+  },
+  {
+    id: "reinforced-bulkhead",
+    title: "Paratia Rinforzata",
+    description: "Aumenta immediatamente gli HP massimi e cura dello stesso valore.",
+    shortEffect: "HP flat +",
+    category: "ship",
+    accentColor: 0x4ade80,
+    maxLevel: 10,
+    cost: 40,
+    isDefault: false,
+    apply: ({ stats }, rarity) => {
+      const hp = discreteByRarity(rarity, {
+        common: 1,
+        uncommon: 2,
+        rare: 3,
+        legendary: 5,
+      });
+      stats.maxHp += hp;
+      stats.hp += hp;
+    },
+  },
+  {
+    id: "adaptive-hull",
+    title: "Scafo Adattivo",
+    description: "Ogni 100 kill aumenta permanentemente gli HP massimi per la run.",
+    shortEffect: "HP ogni 100 kill",
+    category: "ship",
+    accentColor: 0x2dd4bf,
+    maxLevel: 10,
+    cost: 55,
+    isDefault: false,
+    apply: ({ runUpgrades }, rarity) => {
+      runUpgrades.maxHpPer100Kills += discreteByRarity(rarity, {
+        common: 1,
+        uncommon: 1,
+        rare: 2,
+        legendary: 3,
+      });
+    },
+  },
 ];
 
-export const XP_UPGRADE_LOOT_TABLE: LootTable<Upgrade> = {
-  id: "xp-level-up",
-  source: "xp",
-  entries: XP_UPGRADES,
-};
+export const DEFAULT_TOME_IDS = TOMES.filter((entry) => entry.isDefault).map(
+  (entry) => entry.id,
+);
+export const DEFAULT_CHEST_ITEM_IDS = CHEST_ITEMS.filter(
+  (entry) => entry.isDefault,
+).map((entry) => entry.id);
 
-export const CHEST_UPGRADE_LOOT_TABLE: LootTable<Upgrade> = {
-  id: "field-chest",
-  source: "chest",
-  entries: CHEST_UPGRADES,
-};
+export const getTomeById = (id: TomeId) =>
+  TOMES.find((entry) => entry.id === id);
 
-export const getAvailableUpgrades = (
-  upgrades: Upgrade[],
-  state: RunUpgradeState,
-) => {
-  return upgrades.filter((upgrade) => {
-    if (!upgrade.maxStacks) {
-      return true;
-    }
+export const getChestItemById = (id: ChestItemId) =>
+  CHEST_ITEMS.find((entry) => entry.id === id);
 
-    return (state.stacks[upgrade.id] ?? 0) < upgrade.maxStacks;
-  });
-};
+export const getTomeLevel = (state: RunTomeState, id: TomeId) =>
+  state.levels[id] ?? 0;
 
-export const getUpgradeStacks = (state: RunUpgradeState, upgrade: Upgrade) => {
-  return state.stacks[upgrade.id] ?? 0;
-};
+export const getItemLevel = (state: RunItemState, id: ChestItemId) =>
+  state.levels[id] ?? 0;

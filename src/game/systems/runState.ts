@@ -1,5 +1,10 @@
 import { CHEST_KILL_THRESHOLD, INITIAL_PLAYER_STATS } from "../config/gameplay";
-import { createInitialRunUpgradeState } from "../data/upgrades";
+import {
+  createInitialDifficultyState,
+  createInitialRunItemState,
+  createInitialRunTomeState,
+  createInitialRunUpgradeState,
+} from "../data/upgrades";
 import type {
   Barricade,
   Bullet,
@@ -11,6 +16,10 @@ import type {
   Pickup,
   PlayerStats,
   RunUpgradeState,
+  RunDifficultyState,
+  RunItemState,
+  RunTomeState,
+  TemporaryEffectState,
   Turret,
 } from "../types/gameplay";
 import { destroyChest } from "./chests";
@@ -21,6 +30,10 @@ import { destroyBarricade, destroyMine, destroyTurret } from "./placeables";
 export type RunState = {
   stats: PlayerStats;
   runUpgrades: RunUpgradeState;
+  tomes: RunTomeState;
+  items: RunItemState;
+  difficulty: RunDifficultyState;
+  temporaryEffects: TemporaryEffectState;
   enemies: Enemy[];
   bullets: Bullet[];
   enemyProjectiles: EnemyProjectile[];
@@ -41,16 +54,28 @@ export type RunState = {
   wavePhase: string;
   nextShotAt: number;
   killsSinceLastChest: number;
+  totalKills: number;
+  freeTomeRerolls: number;
+  paidTomeRerolls: number;
   nextChestKillThreshold: number;
   nextBuyableChestAt: number;
   invulnerableUntil: number;
   isLevelingUp: boolean;
+  isPaused: boolean;
+  pausedAt: number;
   isGameOver: boolean;
 };
 
 export const createInitialRunState = (): RunState => ({
   stats: { ...INITIAL_PLAYER_STATS },
   runUpgrades: createInitialRunUpgradeState(),
+  tomes: createInitialRunTomeState(),
+  items: createInitialRunItemState(),
+  difficulty: createInitialDifficultyState(),
+  temporaryEffects: {
+    magnetOverloadUntil: 0,
+    venomRoundsUntil: 0,
+  },
   enemies: [],
   bullets: [],
   enemyProjectiles: [],
@@ -71,10 +96,15 @@ export const createInitialRunState = (): RunState => ({
   wavePhase: "attesa",
   nextShotAt: 0,
   killsSinceLastChest: 0,
+  totalKills: 0,
+  freeTomeRerolls: 2,
+  paidTomeRerolls: 0,
   nextChestKillThreshold: CHEST_KILL_THRESHOLD,
   nextBuyableChestAt: 12000,
   invulnerableUntil: 0,
   isLevelingUp: false,
+  isPaused: false,
+  pausedAt: 0,
   isGameOver: false,
 });
 

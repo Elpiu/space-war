@@ -37,8 +37,8 @@ export const CHEST_COST = 12;
 export const CHEST_KILL_THRESHOLD = 80;
 export const BUYABLE_CHEST_INTERVAL = 26000;
 export const MAX_BUYABLE_CHESTS = 2;
-export const MAX_TURRETS = 3;
-export const MAX_MINES = 6;
+export const MAX_TURRETS = 1;
+export const MAX_MINES = 2;
 export const BARRICADE_HP = 18;
 export const PLACEABLE_UNIT_SIZE = 84;
 export const PLACEABLE_CELL_SIZE = PLACEABLE_UNIT_SIZE / 2;
@@ -59,7 +59,8 @@ export const INITIAL_PLAYER_STATS: PlayerStats = {
   pickupRadius: 70,
   multiShot: 1,
   xpMultiplier: 1,
-  lifeSteal: 0,
+  luck: 0,
+  lifeStealPercent: 0,
 };
 
 export const SECTOR_SIZE_CONFIG: Record<

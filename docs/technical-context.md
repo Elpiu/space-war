@@ -1,122 +1,97 @@
 # Technical Context
 
-Questo documento descrive lo stato tecnico del repository al 2026-06-10. Serve a evitare che nuovi agenti assumano l'esistenza di sistemi non ancora implementati.
+Stato tecnico del repository al 2026-06-13.
 
-## Stack
+## Stack e script
 
 - Phaser 4.0.0
 - Vite 6.3.1
 - TypeScript 5.7.2
-- Template di partenza: Phaser Vite TypeScript Template
+- `npm run dev-nolog` per sviluppo locale
+- `npm run build-nolog` per build produzione
 
-## Script disponibili
+## Struttura
 
-Da `package.json`:
+- `src/game/scenes/GameplayScene.ts` contiene il runtime condiviso di run,
+  input, combattimento, HUD, mappa, upgrade, chest e piazzabili.
+- `src/game/scenes/Game.ts` gestisce l'ingresso a menu, shop e run normale.
+- `src/game/scenes/TutorialScene.ts` orchestra il percorso guidato
+  deterministico senza progressione persistente.
+- `src/game/scenes/StagingScene.ts` espone la console di test disponibile
+  soltanto in sviluppo.
+- `src/game/data/upgrades.ts` contiene 12 tomi, 14 oggetti chest, rarita' e
+  valori iniziali di bilanciamento.
+- `src/game/data/specialDrops.ts` contiene gli effetti temporanei rari.
+- `src/game/data/enemyVisuals.ts` associa immagini opzionali ad archetipi,
+  boss numerati e proiettili nemici, con fallback alle forme geometriche.
+- `src/game/systems/upgradeSystem.ts` genera offerte tomo, tira le rarita',
+  applica tomi e oggetti e gestisce il limite di quattro tomi.
+- `src/game/systems/metaProgression.ts` gestisce crediti, sblocchi, pool attivi
+  e migrazione del salvataggio.
+- `src/game/systems/chestController.ts` assegna oggetti automaticamente.
+- `src/game/systems/placeables.ts` usa definizioni base autonome per torretta e
+  mina; lo shop non fornisce piu' configurazioni operative.
+- `src/game/systems/shopOverlay.ts` mostra i cataloghi Tomi e Oggetti.
+- `src/game/systems/hud.ts` mostra separatamente tomi e oggetti della run.
+- `src/game/systems/musicSystem.ts` gestisce musica, pausa/ripresa e sound
+  effect per level-up e chest.
+- `src/game/data/imageAssets.ts` centralizza le icone precaricate per chest,
+  cure, drop speciali e feedback delle ricompense.
 
-- `npm run dev` - avvia Vite con logging template.
-- `npm run build` - build produzione con logging template.
-- `npm run dev-nolog` - avvia Vite senza chiamata `log.js`.
-- `npm run build-nolog` - build produzione senza chiamata `log.js`.
+## Stato giocabile
 
-Per sviluppo locale del gioco, preferire `npm run dev-nolog`.
+- ogni run parte con nave e arma base, capacita' di 1 torretta, 2 mine e 1
+  barricata;
+- movimento, shooting automatico, wave e mappa continua generativa;
+- settori S/M/L, hazard, mini-mappa ed espansione progressiva;
+- level-up con tre tomi differenti e massimo quattro discipline per run;
+- due reroll gratuiti per run, poi costi `50, 150, 300, 500, 750...`;
+- protezione anti-missclick con ritardo e attesa del rilascio del puntatore;
+- rarita' comune, non comune, rara e leggendaria;
+- Fortuna applicata a rarita', monete, cure e frequenza chest;
+- Difficolta' applicata soltanto ai nuovi spawn e alle relative ricompense;
+- chest gratuite e acquistabili con oggetti automatici e duplicati a livelli;
+- drop temporanei rari con durata cumulabile: magnete globale e danno nave;
+- Vampirismo applicato soltanto ai proiettili della nave;
+- oggetti scafo per HP flat e crescita ogni 100 kill;
+- torrette, mine e barricate piazzabili, riparabili e migliorabili;
+- crediti post-run usati solo per sbloccare nuovi contenuti;
+- pool attivi configurabili con minimo otto elementi per categoria;
+- salvataggio `space-war-meta-v3`, con migrazione dei crediti dal formato v2.
+- pausa con `P`, overlay dedicato e traslazione dei timer alla ripresa;
+- effetti audio da `public/sounds/effects/level-up.mp3` e `reward.mp3`.
+- icone di gameplay da `public/assets/images`: salute, magnete, veleno, chest,
+  navicella giocabile e torretta Doge.
+- immagini nemici da `public/assets/images/enemy`, selezionate soltanto quando
+  la relativa texture e' stata caricata correttamente.
+- dimensioni nemici definite per archetipo e applicate preservando il rapporto
+  d'aspetto originale; collisioni e ingombro grafico restano indipendenti.
+- tutorial guidato accessibile dal menu, invulnerabile e privo di ricompense
+  persistenti;
+- staging dev-only con god mode, spawn, wave, upgrade, chest, effetti, seed,
+  teletrasporto e preset;
+- policy condivise per wave automatiche, persistenza e invulnerabilita';
+- cleanup di entita', HUD DOM, pannelli, input e musica al cambio scena.
 
-## Struttura attuale
+## Convenzioni
 
-- `index.html` contiene il container dell'app.
-- `public/style.css` centra il canvas e imposta lo sfondo pagina.
-- `public/assets/bg.png` e `public/assets/logo.png` sono asset demo del template.
-- `src/main.ts` aspetta `DOMContentLoaded` e chiama `StartGame('game-container')`.
-- `src/game/main.ts` crea la config Phaser:
-  - canvas configurato da `src/game/config/gameplay.ts`;
-  - `Scale.FIT`;
-  - `Scale.CENTER_BOTH`;
-  - background `#028af8`;
-  - scena `Game`.
-- `src/game/scenes/Game.ts` orchestra una vertical slice giocabile:
-  - menu principale con `Play`, `Shop` ed `Exit`;
-  - shop/hangar esterno con categorie navicelle, cannoni, booster, torrette e mine;
-  - shop a schede tutto sbloccato con preview vettoriali Phaser, colori per item, stati selezione/equip e descrizioni leggibili;
-  - item shop data-driven: navicelle, cannoni e booster usano `modifiers`, torrette e mine portano definizioni operative `turret`/`mine`;
-  - tre archetipi nave: Standard neutra, Tank resistente/lento e Light Fighter fragile/rapido;
-  - loadout persistente che influenza la run successiva;
-  - mappa continua con settori S/M/L, mini-mappa e camera follow;
-  - settori generati in world-space senza gate, portali o bridge;
-  - generazione mappa per run con seed random interno, blueprint nascosta e reveal progressivo;
-  - profilo mappa default: massimo 12 settori totali, profondita' massima 4 e pattern misto controllato;
-  - ostacoli/pericoli iniziali: asteroidi solidi, nebule rallentanti e plasma dannoso;
-  - espansione della mappa dopo wave 2 e poi ogni 2 wave, fino al limite del profilo della run;
-  - movimento continuo tra settori adiacenti;
-  - torrette piazzabili con `T`, costo in monete run, limite massimo e fuoco automatico;
-  - mine piazzabili con `F`, costo in monete run, limite massimo ed esplosione ad area;
-  - barricate piazzabili con `B` dopo sblocco in-run;
-  - griglia piazzabili allineata alla griglia ambientale: barricata su unita' 84px, torrette/mine/chest su sottocelle 42px;
-  - aperture tra settori quantizzate in quarti dell'unita' tattica: minimo 1 unita', massimo 4 unita';
-  - rimozione del piazzabile vicino con `E`;
-  - piazzabili con HP, distruttibili dai nemici;
-  - mini navicelle follower sbloccabili tramite upgrade;
-  - chest gratuite dopo circa 80 kill e chest acquistabili con risorsa run;
-  - risorsa run non permanente usata per piazzabili e chest;
-  - meta-state `localStorage` usato per loadout equipaggiato e compatibilita' con vecchi salvataggi;
-  - navicella controllabile con `WASD` o frecce;
-  - shooting automatico verso il nemico piu' vicino;
-  - nemici data-driven con archetipi inseguitore, sciame, corazzato e tiratore;
-  - proiettili nemici separati dai proiettili del giocatore;
-  - wave persistenti da circa 30 secondi;
-  - fasi wave `inizio`, `medio`, `finale` con ritmo di spawn crescente;
-  - settori di spawn scelti tra quelli piu' lontani dal giocatore e marcati nel mondo/mini-mappa;
-  - pickup XP e monete;
-  - level-up con 3 scelte cliccabili da un pool XP separato dagli upgrade chest;
-  - loot table XP/chest pesate da rarita', loadout equipaggiato e direzione build della run;
-  - HP, invulnerabilita' breve dopo colpo, morte, pannello game over e restart con `R`;
-  - UI base per HP, XP, livello, monete run, wave e numero nemici.
-- La scena `Game` e' stata ridotta a circa 580 righe e delega lo stato e le responsabilita' volatili a sistemi dedicati:
-  - `runState.ts` contiene stato run, collezioni entita' e cleanup;
-  - `playerSystem.ts`, `weaponSystem.ts`, `pickupSystem.ts`, `waveSystem.ts`, `chestController.ts` e `combatRewards.ts` gestiscono loop gameplay specifici;
-  - `placeableController.ts` centralizza input, costi, limiti e contratti futuri per preview/spostamento/riparazione/upgrade;
-  - `screenSystem.ts` contiene menu, game over, shop e overlay level-up;
-  - `upgradeSystem.ts` filtra gli upgrade disponibili, applica modificatori e sceglie upgrade XP/chest tramite pesi dinamici;
-  - `modifiers.ts` applica modificatori data-driven per stats e run-upgrades, con clamp opzionali `min`/`max`;
-  - `data/mapGeneration.ts` contiene dati/regole leggere per dimensioni, nomi, hazard, aperture, RNG seedato e pesi di generazione dei settori.
+- Le scene specializzate devono estendere `GameplayScene` e restare
+  orchestratori.
+- Aggiungere nuovi tomi e oggetti come dati, mantenendo distinti
+  `TomeDefinition` e `ChestItemDefinition`.
+- Non reintrodurre loadout, livelli permanenti o bonus alle statistiche
+  iniziali.
+- Tenere separate risorsa run e crediti post-run.
+- Registrare le nuove immagini tramite `imageAssets.ts`, evitando chiavi e
+  percorsi duplicati nei singoli sistemi.
+- Per nuovi effetti comportamentali creare sistemi dedicati invece di
+  allungare le scene.
+- Tutorial e staging devono usare hook e funzioni gameplay reali, senza copie
+  parallele delle regole della run.
 
-## Struttura Phaser consigliata
+## Lavoro futuro
 
-- `src/game/scenes/` contiene scene Phaser. Le scene coordinano il ciclo di vita e collegano i sistemi.
-- `src/game/config/` contiene costanti condivise, dimensioni canvas e valori iniziali di bilanciamento.
-- `src/game/types/` contiene tipi TypeScript condivisi tra scene e sistemi.
-- `src/game/data/` contiene dati di design, per esempio pool upgrade separati, loot table, definizioni nemici e regole di generazione mappa.
-- `src/game/systems/` contiene sottosistemi riusabili per settori mappa, rendering arena/mini-mappa, HUD, effetti, chest, droni, piazzabili, meta-progressione, nemici e futuri sistemi di gameplay.
-- `src/game/utils/` contiene funzioni pure o leggere, per esempio geometria e collisioni.
-
-La scena `Game` deve restare un orchestratore. Quando una responsabilita' cresce, spostarla in un sistema o in dati dedicati invece di allungare ulteriormente la scena.
-
-Per nuovi upgrade in-run, preferire:
-
-- definire categoria, `maxStacks`, `weight` e modificatori in `src/game/data/upgrades.ts`;
-- aggiungere nuove regole di bias in `src/game/systems/upgradeSystem.ts` solo quando servono archetipi di build nuovi;
-- passare sempre un contesto con `runUpgrades` e, quando disponibile, `loadout`, evitando pescate uniformi dirette dai pool.
-
-Per nuovi contenuti shop, preferire:
-
-- aggiungere navicelle, cannoni e booster come record in `SHOP_ITEMS` con `modifiers`;
-- aggiungere torrette e mine come record in `SHOP_ITEMS` con definizione `turret` o `mine`;
-- cambiare `placeables.ts` solo per nuovi comportamenti non descrivibili con stat, costo, colori, raggi e cooldown.
-
-## Implicazioni
-
-Il progetto contiene un primo nucleo giocabile e un refactor modulare iniziale, ma non contiene ancora:
-
-- elite, boss, supporti nemici o kamikaze;
-- shop/hangar definitivo con economia permanente;
-- persistenza avanzata oltre il loadout prototipo in localStorage.
-
-Il prossimo agente di implementazione dovrebbe partire da varieta' nemici, upgrade sinergici o ulteriori contenuti shop, mantenendo giocabile la vertical slice esistente.
-
-## Convenzioni iniziali consigliate
-
-- Tenere Phaser come runtime principale.
-- Separare dati di design e logica quando possibile.
-- Evitare mega-scene monolitiche appena il prototipo cresce.
-- Usare nomi coerenti con i docs: run, wave, sector, hazard, upgrade, coin, turret, trap.
-- Costruire prima sistemi semplici e visibili, poi rifinire bilanciamento.
-- Se il proprietario del progetto chiede di non eseguire verifiche, non lanciare test, build, dev server, browser check, e2e o controlli statici.
-- Aggiornare questi documenti quando una decisione tecnica diventa reale.
+- bilanciamento di rarita', Fortuna, Difficolta' e costi;
+- nuovi oggetti comportamentali come laser, missili ed elettricita';
+- varieta' nemici ed evoluzioni delle build;
+- rifinitura visuale e audio dei nuovi tomi/oggetti.

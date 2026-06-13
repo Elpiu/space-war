@@ -8,7 +8,6 @@ import type {
   Barricade,
   MapSectorState,
   Mine,
-  MetaProgressionState,
   PlaceableKind,
   RunUpgradeState,
   Turret,
@@ -112,8 +111,7 @@ type PlaceableInputOptions = {
   scene: Phaser.Scene;
   state: PlaceableControllerState;
   keys: PlaceableInputKeys;
-  player: Phaser.GameObjects.Triangle;
-  metaState: MetaProgressionState;
+  player: Phaser.GameObjects.Image;
   runUpgrades: RunUpgradeState;
   mapState: MapSectorState;
   turrets: Turret[];
@@ -356,7 +354,7 @@ const tryPlaceTurret = (
   cell: PlaceableGridCell,
 ): PlaceableActionResult => {
   const maxTurrets = getMaxTurrets(options.runUpgrades);
-  const turretCost = getTurretCost(options.metaState.loadout.turrets);
+  const turretCost = getTurretCost();
 
   if (options.turrets.length >= maxTurrets) {
     return {
@@ -379,7 +377,6 @@ const tryPlaceTurret = (
       options.scene,
       cell.x,
       cell.y,
-      options.metaState.loadout.turrets,
       options.runUpgrades,
       { gridX: cell.gridX, gridY: cell.gridY },
     ),
@@ -400,10 +397,7 @@ const tryPlaceMine = (
   cell: PlaceableGridCell,
 ): PlaceableActionResult => {
   const maxMines = getMaxMines(options.runUpgrades);
-  const mineCost = getMineCost(
-    options.metaState.loadout.mines,
-    options.runUpgrades,
-  );
+  const mineCost = getMineCost(options.runUpgrades);
 
   if (options.mines.length >= maxMines) {
     return {
@@ -426,7 +420,6 @@ const tryPlaceMine = (
       options.scene,
       cell.x,
       cell.y,
-      options.metaState.loadout.mines,
       options.runUpgrades,
       { gridX: cell.gridX, gridY: cell.gridY },
     ),

@@ -1,8 +1,6 @@
 import {
   GAME_WIDTH,
   PLACEABLE_UNIT_SIZE,
-  SCREEN_CENTER_X,
-  SECTOR_SIZE_CONFIG,
 } from "../config/gameplay";
 import { getMapBounds } from "./mapSectors";
 import { getSharedSectorPassage } from "../utils/passages";
@@ -16,7 +14,6 @@ import type {
 export type MapArenaRenderer = {
   arena: Phaser.GameObjects.Graphics;
   minimap: Phaser.GameObjects.Graphics;
-  sectorLabel: Phaser.GameObjects.Text;
 };
 
 export const createMapArenaRenderer = (
@@ -25,19 +22,10 @@ export const createMapArenaRenderer = (
   scene.cameras.main.setBackgroundColor("#070b1f");
 
   const arena = scene.add.graphics().setDepth(1);
-  const minimap = scene.add.graphics().setDepth(180).setScrollFactor(0);
-  const sectorLabel = scene.add
-    .text(SCREEN_CENTER_X, 44, "", {
-      fontFamily: "Arial",
-      fontSize: 18,
-      color: "#7dd3fc",
-    })
-    .setOrigin(0.5)
-    .setDepth(180)
-    .setScrollFactor(0);
+  const minimap = scene.add.graphics().setDepth(120).setScrollFactor(0);
 
   scene.add
-    .text(GAME_WIDTH - 146, 28, "Mappa", {
+    .text(GAME_WIDTH - 136, 116, "Mappa", {
       fontFamily: "Arial Black",
       fontSize: 14,
       color: "#cbd5e1",
@@ -49,7 +37,6 @@ export const createMapArenaRenderer = (
   return {
     arena,
     minimap,
-    sectorLabel,
   };
 };
 
@@ -61,10 +48,6 @@ export const renderMapArena = (
 ) => {
   renderWorldSectors(renderer.arena, state);
   renderMinimap(renderer.minimap, state, currentSector, chests);
-
-  const sizeLabel = SECTOR_SIZE_CONFIG[currentSector.size].label;
-
-  renderer.sectorLabel.setText(`${currentSector.name} - Settore ${sizeLabel}`);
 };
 
 const renderWorldSectors = (
@@ -285,8 +268,8 @@ const renderMinimap = (
   currentSector: MapSector,
   chests: { body: { x: number; y: number } }[],
 ) => {
-  const originX = GAME_WIDTH - 146;
-  const originY = 92;
+  const originX = GAME_WIDTH - 136;
+  const originY = 178;
   const bounds = getMapBounds(state, 0);
   const scale = Math.min(136 / bounds.width, 92 / bounds.height);
 

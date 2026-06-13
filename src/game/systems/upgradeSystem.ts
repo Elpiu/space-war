@@ -1,72 +1,137 @@
-import { Utils } from "phaser";
 import {
-  CHEST_UPGRADE_LOOT_TABLE,
-  XP_UPGRADE_LOOT_TABLE,
-  getAvailableUpgrades,
-  getUpgradeStacks,
+  CHEST_ITEMS,
+  MAX_RUN_TOMES,
+  RARITY_MULTIPLIERS,
+  TOMES,
+  getItemLevel,
+  getTomeLevel,
 } from "../data/upgrades";
 import type {
-  Drone,
-  LootBiasContext,
-  RunUpgradeState,
-  ShopLoadout,
-  Upgrade,
-  UpgradeCategory,
+  ChestItemId,
+  ChestItemReward,
+  MetaProgressionState,
+  Rarity,
+  TomeId,
+  TomeOffer,
 } from "../types/gameplay";
 import { syncDroneCount } from "./drones";
-import { applyModifiers } from "./modifiers";
 import type { RunState } from "./runState";
 
+const RARITY_WEIGHTS: Record<Rarity, number> = {
+  common: 70,
+  uncommon: 22,
+  rare: 7,
+  legendary: 1,
+};
+
 export const getLevelUpChoices = (
-  context: LootBiasContext,
+  run: RunState,
+  metaState: MetaProgressionState,
   choiceCount = 3,
-) => {
-  return pickWeightedUpgrades(
-    getAvailableUpgrades(XP_UPGRADE_LOOT_TABLE.entries, context.runUpgrades),
-    context,
-    choiceCount,
+): TomeOffer[] => {
+  const ownedIds = Object.entries(run.tomes.levels)
+    .filter(([, level]) => (level ?? 0) > 0)
+    .map(([id]) => id as TomeId);
+  const allowedIds =
+    ownedIds.length >= MAX_RUN_TOMES
+      ? ownedIds
+      : metaState.activeTomes.filter((id) => metaState.unlockedTomes.includes(id));
+  const available = TOMES.filter(
+    (tome) =>
+      allowedIds.includes(tome.id) &&
+      getTomeLevel(run.tomes, tome.id) < tome.maxLevel,
   );
+
+  return pickUnique(available, choiceCount).map((tome) => {
+    const rarity = rollRarity(run.stats.luck);
+    const rarityMultiplier = RARITY_MULTIPLIERS[rarity];
+
+    return {
+      tome,
+      rarity,
+      rarityMultiplier,
+      scaledIncrement: tome.baseIncrement * rarityMultiplier,
+    };
+  });
 };
 
-export const pickChestUpgrade = (context: LootBiasContext) => {
-  const available = getAvailableUpgrades(
-    CHEST_UPGRADE_LOOT_TABLE.entries,
-    context.runUpgrades,
+export const applyTomeOfferToRun = (options: {
+  run: RunState;
+  offer: TomeOffer;
+}) => {
+  const { run, offer } = options;
+  offer.tome.apply(
+    {
+      stats: run.stats,
+      runUpgrades: run.runUpgrades,
+      difficulty: run.difficulty,
+    },
+    offer.scaledIncrement,
   );
-
-  return pickWeightedUpgrade(available, context);
+  run.tomes.levels[offer.tome.id] =
+    getTomeLevel(run.tomes, offer.tome.id) + 1;
+  run.tomes.totalBonuses[offer.tome.id] =
+    (run.tomes.totalBonuses[offer.tome.id] ?? 0) + offer.scaledIncrement;
 };
 
-export const applyUpgradeToRun = (options: {
+export const pickChestItemReward = (
+  run: RunState,
+  metaState: MetaProgressionState,
+): ChestItemReward | undefined => {
+  const available = CHEST_ITEMS.filter(
+    (item) =>
+      metaState.activeChestItems.includes(item.id) &&
+      metaState.unlockedChestItems.includes(item.id) &&
+      getItemLevel(run.items, item.id) < item.maxLevel,
+  );
+  const item = pickWeightedItem(available);
+
+  if (!item) {
+    return undefined;
+  }
+
+  const rarity = rollRarity(run.stats.luck);
+
+  return {
+    item,
+    rarity,
+    rarityMultiplier: RARITY_MULTIPLIERS[rarity],
+  };
+};
+
+export const applyChestItemToRun = (options: {
   scene: Phaser.Scene;
   run: RunState;
-  upgrade: Upgrade;
-  player: Phaser.GameObjects.Triangle | null;
-  drones: Drone[];
+  reward: ChestItemReward;
+  player: Phaser.GameObjects.Image | null;
 }) => {
-  const context = {
-    stats: options.run.stats,
-    runUpgrades: options.run.runUpgrades,
-  };
-
-  applyModifiers(context, options.upgrade.modifiers);
-  options.upgrade.apply?.(context);
-
-  options.run.runUpgrades.stacks[options.upgrade.id] =
-    getUpgradeStacks(options.run.runUpgrades, options.upgrade) + 1;
+  const { run, reward } = options;
+  reward.item.apply(
+    {
+      stats: run.stats,
+      runUpgrades: run.runUpgrades,
+      difficulty: run.difficulty,
+    },
+    reward.rarity,
+  );
+  run.items.levels[reward.item.id] =
+    getItemLevel(run.items, reward.item.id) + 1;
 
   if (options.player) {
     syncDroneCount(
       options.scene,
-      options.drones,
+      run.drones,
       options.player,
-      options.run.runUpgrades,
+      run.runUpgrades,
     );
   }
 };
 
 export const addXpAndCheckLevelUp = (run: RunState, value: number) => {
-  run.xp += Math.max(1, Math.round(value * run.stats.xpMultiplier));
+  run.xp += Math.max(
+    1,
+    Math.round(value * run.stats.xpMultiplier),
+  );
 
   if (run.xp < run.xpToNext) {
     return false;
@@ -79,204 +144,63 @@ export const addXpAndCheckLevelUp = (run: RunState, value: number) => {
   return true;
 };
 
-const pickWeightedUpgrades = (
-  upgrades: Upgrade[],
-  context: LootBiasContext,
-  count: number,
-) => {
-  const pool = [...upgrades];
-  const choices: Upgrade[] = [];
+export const rollRarity = (luck: number): Rarity => {
+  const luckFactor = Math.max(0, luck) / 100;
+  const weights: Record<Rarity, number> = {
+    common: Math.max(18, RARITY_WEIGHTS.common * (1 - luckFactor * 0.5)),
+    uncommon: RARITY_WEIGHTS.uncommon * (1 + luckFactor * 0.45),
+    rare: RARITY_WEIGHTS.rare * (1 + luckFactor * 0.9),
+    legendary: RARITY_WEIGHTS.legendary * (1 + luckFactor * 1.6),
+  };
+  const entries = Object.entries(weights) as [Rarity, number][];
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  let roll = Math.random() * total;
 
-  while (pool.length > 0 && choices.length < count) {
-    const picked = pickWeightedUpgrade(pool, context);
+  for (const [rarity, weight] of entries) {
+    roll -= weight;
 
-    if (!picked) {
-      break;
+    if (roll <= 0) {
+      return rarity;
     }
-
-    choices.push(picked);
-    pool.splice(pool.indexOf(picked), 1);
   }
 
-  return choices;
+  return "common";
 };
 
-const pickWeightedUpgrade = (
-  upgrades: Upgrade[],
-  context: LootBiasContext,
-) => {
-  if (upgrades.length === 0) {
+const pickUnique = <T>(entries: T[], count: number) => {
+  const pool = [...entries];
+  const picked: T[] = [];
+
+  while (pool.length > 0 && picked.length < count) {
+    const index = Math.floor(Math.random() * pool.length);
+    picked.push(pool[index]);
+    pool.splice(index, 1);
+  }
+
+  return picked;
+};
+
+const pickWeightedItem = (items: typeof CHEST_ITEMS) => {
+  if (items.length === 0) {
     return undefined;
   }
 
-  const weighted = upgrades.map((upgrade) => ({
-    upgrade,
-    weight: getUpgradeWeight(upgrade, context),
-  }));
-  const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+  const total = items.reduce((sum, item) => sum + (item.weight ?? 1), 0);
+  let roll = Math.random() * total;
 
-  if (totalWeight <= 0) {
-    return Utils.Array.GetRandom(upgrades);
-  }
-
-  let roll = Math.random() * totalWeight;
-
-  for (const entry of weighted) {
-    roll -= entry.weight;
+  for (const item of items) {
+    roll -= item.weight ?? 1;
 
     if (roll <= 0) {
-      return entry.upgrade;
+      return item;
     }
   }
 
-  return weighted[weighted.length - 1]?.upgrade;
+  return items[items.length - 1];
 };
 
-const getUpgradeWeight = (upgrade: Upgrade, context: LootBiasContext) => {
-  const baseWeight = upgrade.weight ?? 1;
-  const loadoutMultiplier = getLoadoutCategoryMultiplier(
-    upgrade.category,
-    context.loadout,
-  );
-  const buildMultiplier = getBuildCategoryMultiplier(upgrade.category, context);
-  const stackMultiplier = getStackMomentumMultiplier(upgrade, context.runUpgrades);
-  const gateMultiplier = getCategoryGateMultiplier(upgrade, context.runUpgrades);
+export const isTomeId = (value: string): value is TomeId =>
+  TOMES.some((entry) => entry.id === value);
 
-  return Math.max(
-    0.05,
-    baseWeight *
-      loadoutMultiplier *
-      buildMultiplier *
-      stackMultiplier *
-      gateMultiplier,
-  );
-};
-
-const getLoadoutCategoryMultiplier = (
-  category: UpgradeCategory,
-  loadout: ShopLoadout | undefined,
-) => {
-  if (!loadout) {
-    return 1;
-  }
-
-  if (category === "mine") {
-    return loadout.mines === "mineBlast" ? 2.2 : 1.65;
-  }
-
-  if (category === "turret") {
-    return loadout.turrets === "turretBasic" ? 1.35 : 1.85;
-  }
-
-  if (category === "pickup" && loadout.boosters === "boosterMagnet") {
-    return 1.6;
-  }
-
-  if (
-    category === "ship" &&
-    (loadout.ships === "shipTank" ||
-      loadout.ships === "shipLightFighter" ||
-      loadout.boosters === "boosterHull" ||
-      loadout.boosters === "boosterSpeed")
-  ) {
-    return 1.25;
-  }
-
-  if (category === "weapon" && loadout.weapons !== "weaponBase") {
-    return 1.25;
-  }
-
-  return 1;
-};
-
-const getBuildCategoryMultiplier = (
-  category: UpgradeCategory,
-  context: LootBiasContext,
-) => {
-  const { runUpgrades } = context;
-
-  if (category === "drone" && hasDroneBuild(runUpgrades)) {
-    return 2.1;
-  }
-
-  if (category === "mine" && hasMineBuild(runUpgrades)) {
-    return 1.75;
-  }
-
-  if (category === "turret" && hasTurretBuild(runUpgrades)) {
-    return 1.6;
-  }
-
-  if (category === "barricade" && runUpgrades.barricadeUnlocked) {
-    return 1.45;
-  }
-
-  return 1;
-};
-
-const getStackMomentumMultiplier = (
-  upgrade: Upgrade,
-  runUpgrades: RunUpgradeState,
-) => {
-  const categoryStacks = Object.entries(runUpgrades.stacks).reduce(
-    (total, [upgradeId, stacks]) => {
-      const stackedUpgrade = [
-        ...XP_UPGRADE_LOOT_TABLE.entries,
-        ...CHEST_UPGRADE_LOOT_TABLE.entries,
-      ].find((entry) => entry.id === upgradeId);
-
-      return stackedUpgrade?.category === upgrade.category
-        ? total + stacks
-        : total;
-    },
-    0,
-  );
-
-  return Math.min(2.35, 1 + categoryStacks * 0.22);
-};
-
-const getCategoryGateMultiplier = (
-  upgrade: Upgrade,
-  runUpgrades: RunUpgradeState,
-) => {
-  if (
-    upgrade.category === "barricade" &&
-    upgrade.id !== "barricade-kit" &&
-    !runUpgrades.barricadeUnlocked
-  ) {
-    return 0.55;
-  }
-
-  if (upgrade.category === "drone" && !hasDroneBuild(runUpgrades)) {
-    return 0.85;
-  }
-
-  return 1;
-};
-
-const hasDroneBuild = (runUpgrades: RunUpgradeState) => {
-  return (
-    runUpgrades.droneLimit > 0 ||
-    runUpgrades.droneDamageBonus > 0 ||
-    runUpgrades.droneFireRateMultiplier < 1
-  );
-};
-
-const hasMineBuild = (runUpgrades: RunUpgradeState) => {
-  return (
-    runUpgrades.mineDamageBonus > 0 ||
-    runUpgrades.mineRadiusBonus > 0 ||
-    runUpgrades.mineCostReduction > 0 ||
-    runUpgrades.maxMineBonus > 0
-  );
-};
-
-const hasTurretBuild = (runUpgrades: RunUpgradeState) => {
-  return (
-    runUpgrades.turretDamageBonus > 0 ||
-    runUpgrades.turretRangeBonus > 0 ||
-    runUpgrades.turretFireRateMultiplier < 1 ||
-    runUpgrades.turretHpBonus > 0 ||
-    runUpgrades.maxTurretBonus > 0
-  );
-};
+export const isChestItemId = (value: string): value is ChestItemId =>
+  CHEST_ITEMS.some((entry) => entry.id === value);

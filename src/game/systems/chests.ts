@@ -1,5 +1,6 @@
 import { Math as PhaserMath } from "phaser";
 import { PLAYER_RADIUS } from "../config/gameplay";
+import { IMAGE_KEYS } from "../data/imageAssets";
 import type { Chest, ChestKind, MapSector } from "../types/gameplay";
 import { circlesOverlap } from "../utils/geometry";
 import { createPulse } from "./effects";
@@ -12,13 +13,13 @@ export const createChest = (
   kind: ChestKind,
   cost: number,
 ): Chest => {
-  const color = kind === "reward" ? 0x22c55e : 0xfacc15;
   const body = scene.add
-    .rectangle(x, y, 32, 24, color, 0.96)
-    .setStrokeStyle(2, 0xf8fafc, 0.88)
+    .image(x, y, IMAGE_KEYS.chest)
+    .setDisplaySize(44, 44)
+    .setTint(kind === "reward" ? 0xa7f3d0 : 0xffffff)
     .setDepth(16);
   const label = scene.add
-    .text(x, y - 28, cost > 0 ? `${cost}` : "FREE", {
+    .text(x, y - 34, cost > 0 ? `${cost}` : "FREE", {
       fontFamily: "Arial Black",
       fontSize: 13,
       color: cost > 0 ? "#fde68a" : "#bbf7d0",
@@ -41,7 +42,7 @@ export const createChest = (
 export const updateChests = (
   scene: Phaser.Scene,
   chests: Chest[],
-  player: Phaser.GameObjects.Triangle,
+  player: Phaser.GameObjects.Image,
   coins: number,
   openChest: (chest: Chest, index: number) => void,
   cannotAfford: (cost: number) => void,
@@ -49,7 +50,7 @@ export const updateChests = (
   for (let index = chests.length - 1; index >= 0; index -= 1) {
     const chest = chests[index];
 
-    chest.label.setPosition(chest.body.x, chest.body.y - 28);
+    chest.label.setPosition(chest.body.x, chest.body.y - 34);
 
     if (!circlesOverlap(player, PLAYER_RADIUS, chest.body, chest.radius)) {
       continue;

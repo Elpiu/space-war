@@ -29,7 +29,8 @@ Il giocatore usa strumenti piazzabili per:
 - Devono avere costo, cooldown o limite di piazzamento.
 - Devono essere leggibili a colpo d'occhio.
 - Devono interagire con forma dei settori, ostacoli e pericoli.
-- Devono poter essere migliorate tramite upgrade in-run o meta-progressione.
+- Devono poter essere migliorate tramite Tomo dell'Ingegneria e oggetti chest.
+- La capacita' minima di ogni run e' 1 torretta, 2 mine e 1 barricata.
 - Nel prototipo attuale possono essere distrutte dai nemici e rimosse dal giocatore vicino con `E`, senza rimborso.
 
 ## Decisioni interessanti
@@ -47,7 +48,7 @@ Implementare una difesa e una trappola:
 
 - torretta automatica piazzabile nel settore corrente;
 - mina o campo rallentante piazzabile in un punto della mappa;
-- barricata semplice sbloccabile tramite upgrade/chest;
+- una barricata disponibile da subito, espandibile con Kit Barricata;
 - mini navicelle follower come supporto mobile;
 - costo semplice in risorsa in-run;
 - limite massimo per evitare spam;

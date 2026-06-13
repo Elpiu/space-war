@@ -23,8 +23,12 @@ export const createDrone = (
         body,
         orbitAngle,
         range: DRONE_RANGE,
-        fireRate: DRONE_FIRE_RATE * runUpgrades.droneFireRateMultiplier,
-        damage: DRONE_DAMAGE + runUpgrades.droneDamageBonus,
+        fireRate:
+            (DRONE_FIRE_RATE * runUpgrades.droneFireRateMultiplier) /
+            runUpgrades.swarmMultiplier,
+        damage:
+            (DRONE_DAMAGE + runUpgrades.droneDamageBonus) *
+            runUpgrades.swarmMultiplier,
         nextShotAt: 0
     };
 };
@@ -32,7 +36,7 @@ export const createDrone = (
 export const syncDroneCount = (
     scene: Phaser.Scene,
     drones: Drone[],
-    player: Phaser.GameObjects.Triangle,
+    player: Phaser.GameObjects.Image,
     runUpgrades: RunUpgradeState
 ) => {
     while (drones.length < runUpgrades.droneLimit) {
@@ -51,7 +55,7 @@ export const syncDroneCount = (
 export const updateDrones = (
     scene: Phaser.Scene,
     drones: Drone[],
-    player: Phaser.GameObjects.Triangle,
+    player: Phaser.GameObjects.Image,
     enemies: Enemy[],
     time: number,
     dt: number,
