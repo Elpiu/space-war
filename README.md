@@ -10,7 +10,7 @@ Sei un pilota indipendente, un "Orbital Survivor". La tua navicella è un mosaic
 
 ---
 
-<video src="clip_video.mp4" width="100%" controls autoplay loop muted></video>
+<video src="https://github.com/Elpiu/space-war/blob/main/clip_video.mp4?raw=true" width="100%" controls autoplay loop muted></video>
 
 ---
 
