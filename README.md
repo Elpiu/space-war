@@ -1,3 +1,15 @@
+# Background Story
+
+La "Corsa allo Spazio" è finita male. L'orbita terrestre è una discarica sovraffollata e letale, piena di rottami di vecchie stazioni spaziali, satelliti spia impazziti e i resti di flotte corporative che si sono annientate a vicenda. È il "Far West" del vuoto.
+
+Nessuno sa chi abbia sparato il primo colpo, ma ora è una guerra di tutti contro tutti per le risorse rimaste. I "Raccoglitori" (Scavengers), i "Rimasugli Militari" (Remnants) e le AI di sorveglianza impazzite pattugliano settori generati casualmente dai campi di detriti.
+
+# Missione del Giocatore
+
+Sei un pilota indipendente, un "Orbital Survivor". La tua navicella è un mosaico di pezzi recuperati. La tua unica missione è sopravvivere un'altra ondata, raccogliere abbastanza risorse per potenziare la tua nave e, forse, un giorno, trovare un passaggio per uscire da questa orbita maledetta.
+
+---
+
 # Phaser Vite TypeScript Template
 
 This is a Phaser project template that uses Vite for bundling. It supports hot-reloading for quick development workflow, includes TypeScript support and scripts to generate production-ready builds.
