@@ -10,6 +10,40 @@ Sei un pilota indipendente, un "Orbital Survivor". La tua navicella è un mosaic
 
 ---
 
+Ecco una struttura pronta per i tuoi Crediti e Ringraziamenti (Credits / Attributions), pensata per essere inserita in una schermata dedicata del gioco o in un file README.md su GitHub.
+
+Ho organizzato il tutto in modo chiaro, pulito e professionale, mantenendo quel tocco arcade e tech in linea con il gioco.
+
+🛸 Space War – Credits & Attributions
+Un ringraziamento speciale a tutte le piattaforme, gli strumenti e le intelligenze artificiali che hanno reso possibile lo sviluppo, la sonorizzazione e la quotazione al NASDAQ di questo progetto.
+
+🎮 Game Engine & Hosting
+Engine: Sviluppato con orgoglio utilizzando Phaser 4, il framework per eccellenza dell'arcade web.
+
+Hosting: Infrastruttura e distribuzione gestite da GitHub Pages.
+
+💻 Code & Co-Pilots
+Logica e Algoritmi: Sviluppato in collaborazione con Codex e ChatGPT 5.5.
+
+🎨 Visual & Graphics
+Icone e UI: Grafiche e icone dei tomi/oggetti fornite da Flaticon.
+
+Concept Art & Asset Visivi: Generati con il supporto di Gemini Banano 2 e Qwen Image.
+
+Editing delle Img: https://www.remove.bg/upload
+
+🎵 Audio & Sound Design
+Colonna Sonora: Le tracce musicali della run sono state composte via AI tramite Suno AI.
+
+Effetti Sonori (SFX): Laser, esplosioni e allarmi di mercato provenienti dalla community di Pixabay Sound Effects.
+
+🚀 Ringraziamenti Speciali
+A tutti i beta tester, ai coraggiosi investitori della nostra IPO spaziale e a te, pilota, che continui a difendere la valutazione di mercato della navicella a costo della tua stessa vita (virtuale).
+
+Grazie per aver giocato! Riprova una nuova run, il mercato non dorme mai.
+
+---
+
 # Phaser Vite TypeScript Template
 
 This is a Phaser project template that uses Vite for bundling. It supports hot-reloading for quick development workflow, includes TypeScript support and scripts to generate production-ready builds.

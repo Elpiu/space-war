@@ -18,7 +18,7 @@ const phasermsg = () => {
 }   
 
 export default defineConfig({
-    base: './',
+    base: '/space-war/',
     logLevel: 'warning',
     build: {
         rollupOptions: {
