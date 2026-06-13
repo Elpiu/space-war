@@ -1,4 +1,4 @@
-# Background Story
+# Background Story [Play](https://elpiu.github.io/space-war/)
 
 La "Corsa allo Spazio" è finita male. L'orbita terrestre è una discarica sovraffollata e letale, piena di rottami di vecchie stazioni spaziali, satelliti spia impazziti e i resti di flotte corporative che si sono annientate a vicenda. È il "Far West" del vuoto.
 
