@@ -11,6 +11,7 @@ import { esc } from "../../ui/dom";
 import { banner } from "../../ui/hud";
 import { clamp, hex, pick, rand } from "../../utils";
 import { defaultLoadout } from "../../data/upgrades";
+import { Backdrop } from "../../systems/backdrop";
 import { WeaponRack } from "../../systems/rack";
 import type { GameMode, HudInfo, ModeSetup, RunOutcome, SkillInfo } from "../mode";
 import { mustGearDef, rollGear, type GearItem } from "./gear";
@@ -52,6 +53,7 @@ export class CampaignMode implements GameMode {
   private capsuleFound = false;
   private miniBossSpawned = false;
   private miniBoss: Enemy | null = null;
+  private backdrop: Backdrop | null = null;
   private scroll = 0;
   private speed = BASE_SCROLL;
   private nextSpawnX = VIEW_W + 200;
@@ -130,6 +132,8 @@ export class CampaignMode implements GameMode {
     }
 
     this.shield = this.loadout.ship.shield;
+    this.backdrop = new Backdrop(g);
+    this.backdrop.objects.forEach((o) => g.trackRunObject(o));
     // La capsula segreta compare solo finché non è stata trovata.
     if (this.capsule && !this.profile.secrets.includes(this.mission.id)) dropPickup(g, "capsule", this.capsule.x, this.capsule.y);
     banner(`MISSIONE ${this.mission.code}`, this.mission.title);
@@ -155,6 +159,14 @@ export class CampaignMode implements GameMode {
     this.speed += (target - this.speed) * Math.min(1, dt * 2);
     this.scroll = Math.min(maxScroll, this.scroll + this.speed * dt);
     cam.setScroll(this.scroll, 0);
+
+    this.backdrop?.update(segmentAt(this.segments, this.scroll + VIEW_W / 2).kind, this.scroll, dt);
+
+    // Le armi sparano in avanti: il boss resta sempre nella metà destra dello schermo.
+    for (const e of g.enemies) {
+      if (e.dead || e.def.id !== "boss") continue;
+      e.x = clamp(e.x, this.scroll + VIEW_W * 0.55, this.scroll + VIEW_W - 90);
+    }
 
     // Annuncio del segmento in cui sta entrando lo schermo.
     const ahead = segmentAt(this.segments, this.scroll + VIEW_W * 0.6);
@@ -192,6 +204,9 @@ export class CampaignMode implements GameMode {
           const terrain = g.arena.terrain;
           const by = terrain ? (Math.max(0, ceilAt(terrain, bx)) + Math.min(VIEW_H, floorAt(terrain, bx))) / 2 : VIEW_H / 2;
           const boss = spawnEnemy(g, "boss", bx, by);
+          // In campagna la nave è potenziata dall'hangar: il boss deve reggere di più.
+          boss.maxHp *= 3;
+          boss.hp = boss.maxHp;
           g.onBossSpawned(boss);
         } else if (!g.enemies.some((e) => e.def.id === "boss" && !e.dead)) {
           g.endRun("victory");
@@ -331,6 +346,8 @@ export class CampaignMode implements GameMode {
         bonus,
         items: added,
         firstClear,
+        stars: victory ? stars : 0,
+        difficulty: DIFFICULTIES[this.difficulty].label,
         kills: g.run.kills,
         time: g.run.time,
       },
@@ -362,6 +379,23 @@ export class CampaignMode implements GameMode {
     };
   }
 
+  pauseContent(g: GameScene) {
+    const keys = [
+      ["SPAZIO", "fuoco (scalda)"],
+      ["B", "bomba"],
+      ["1 2 3", "profilo di fuoco"],
+      ["WASD", "movimento"],
+    ];
+    return {
+      subtitle: `Missione ${this.mission.code} · ${this.mission.title} · ${DIFFICULTIES[this.difficulty].label}`,
+      body: `<div class="pause-build">${this.build()}</div>
+        <p class="muted">${g.run.kills} abbattuti · ${g.run.coins} monete · ${this.loot.length} casse di bottino</p>
+        <div class="menu__keys">${keys.map(([k, v]) => `<span><kbd>${k}</kbd> ${v}</span>`).join("")}</div>
+        <p class="muted">Abbandonando tieni monete e bottino raccolti.</p>`,
+      quitLabel: "Abbandona missione",
+    };
+  }
+
   skills(): SkillInfo[] {
     const rack = this.rack;
     if (!rack) return [];
@@ -377,6 +411,7 @@ export class CampaignMode implements GameMode {
         info: rack.overheated ? "SURRISCALDATO" : `calore ${Math.round(heatRatio * 100)}%`,
       },
     ];
+    list.push({ id: "profile", icon: "gear-blaster", key: "1 2 3", ratio: rack.profile / 3, ready: true, info: `profilo ${rack.profile}` });
     if (rack.hasBomb) {
       list.push({ id: "bomb", icon: "gear-bomb", key: "B", ratio: rack.bombCharge, ready: rack.bombCharge >= 1, info: rack.bombCharge >= 1 ? "pronta" : "" });
     }

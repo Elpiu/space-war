@@ -204,17 +204,29 @@ const buildList = (run: Run) => {
   return all.length ? `<ul class="build-list">${all.join("")}</ul>` : `<p class="muted">Nessun tomo o oggetto, per ora.</p>`;
 };
 
-export const showPause = (run: Run, muted: boolean, actions: { resume: () => void; quit: () => void; toggleSound: () => boolean }) => {
+/** Contenuto della pausa fornito dalla modalità (la campagna mostra l'equipaggiamento). */
+export interface PauseContent {
+  subtitle: string;
+  body: string;
+  quitLabel: string;
+}
+
+export const showPause = (
+  run: Run,
+  muted: boolean,
+  actions: { resume: () => void; quit: () => void; toggleSound: () => boolean },
+  content?: PauseContent,
+) => {
   const root = mount(
     `<div class="screen pause">
       <div class="panel pause__panel">
         <h2 class="title title--sm">PAUSA</h2>
-        <p class="muted">Wave ${run.wave} · ${formatTime(run.time)} · ${run.kills} abbattuti</p>
-        ${buildList(run)}
+        <p class="muted">${content ? esc(content.subtitle) : `Wave ${run.wave} · ${formatTime(run.time)} · ${run.kills} abbattuti`}</p>
+        ${content ? content.body : buildList(run)}
         <div class="pause__actions">
           <button class="btn btn--primary" data-act="resume">${icon("play")} Riprendi <kbd>P</kbd></button>
           <button class="btn" data-act="sound">${icon(muted ? "soundOff" : "soundOn")} Audio</button>
-          <button class="btn btn--danger" data-act="quit">${icon("skull")} Abbandona run</button>
+          <button class="btn btn--danger" data-act="quit">${icon("skull")} ${content ? esc(content.quitLabel) : "Abbandona run"}</button>
         </div>
       </div>
     </div>`,

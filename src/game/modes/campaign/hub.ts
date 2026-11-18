@@ -39,6 +39,7 @@ import {
   shopCatalog,
   slotKeys,
   slotType,
+  toggleFireSlot,
   unequip,
   upgrade,
   type CampaignProfile,
@@ -127,6 +128,10 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
       difficulty = "normal";
     });
     click("[data-mdiff]", (node) => (difficulty = node.dataset.mdiff as DifficultyId));
+    click("[data-fp]", (node) => {
+      const [which, key] = node.dataset.fp!.split(":");
+      toggleFireSlot(profile, Number(which) as 2 | 3, key);
+    });
     click("[data-tab]", (node) => {
       tab = node.dataset.tab as typeof tab;
       preview = null;
@@ -366,7 +371,26 @@ const renderLoadout = (profile: CampaignProfile, selected: number | null) => {
       <span>${icon("tome-power")} ${dps.toFixed(1)} danno/s</span>
       <span>${icon("heat")} ${Math.round(rack.heatCap)} · ${Math.round(rack.heatSink)}/s</span>
       <span>${icon("tome-mobility")} ${Math.round(ship.speed)} velocità</span>
-    </div>`;
+    </div>
+    ${renderFireProfiles(profile)}`;
+};
+
+/** Quali armi sparano nei profili 2 e 3 (il profilo 1 usa sempre tutto). */
+const renderFireProfiles = (profile: CampaignProfile) => {
+  const rows = slotKeys(profile)
+    .filter((key) => ["front", "rear", "missile"].includes(slotType(key)))
+    .map((key) => {
+      const item = itemByUid(profile, profile.equipped[key]);
+      if (!item) return "";
+      const def = mustGearDef(item.defId);
+      const toggle = (which: 2 | 3) => {
+        const on = profile.fireProfiles[which].includes(key);
+        return `<button class="fp-toggle ${on ? "is-on" : ""}" data-fp="${which}:${key}" title="Profilo ${which}">${which}</button>`;
+      };
+      return `<div class="fp-row" style="--c:${hex(def.color)}">${icon(def.icon)}<span>${esc(def.title)}</span><b class="fp-toggle is-on is-fixed">1</b>${toggle(2)}${toggle(3)}</div>`;
+    })
+    .join("");
+  return rows ? `<div class="fire-profiles"><small>Profili di fuoco · tasti 1 2 3 in volo</small>${rows}</div>` : "";
 };
 
 const renderDetail = (profile: CampaignProfile, uid: number | null, feedback: string) => {
@@ -409,7 +433,18 @@ const renderDetail = (profile: CampaignProfile, uid: number | null, feedback: st
 // ---------- Esito missione ----------
 
 export const showMissionResult = (
-  result: { mission: MissionDef; victory: boolean; coins: number; bonus: number; items: GearItem[]; firstClear: boolean; kills: number; time: number },
+  result: {
+    mission: MissionDef;
+    victory: boolean;
+    coins: number;
+    bonus: number;
+    items: GearItem[];
+    firstClear: boolean;
+    stars: number;
+    difficulty: string;
+    kills: number;
+    time: number;
+  },
   actions: { map: () => void; retry: () => void },
 ) => {
   closeScreen();
@@ -426,7 +461,8 @@ export const showMissionResult = (
       <div class="panel over__panel">
         <img class="result__ship" src="${asset("assets/images/starship.png")}" alt="" />
         <h2 class="title ${result.victory ? "title--good" : "title--danger"}">${result.victory ? "MISSIONE COMPIUTA" : "MISSIONE FALLITA"}</h2>
-        <p class="muted">${result.mission.code} · ${esc(result.mission.title)}${result.firstClear ? " · prima vittoria!" : ""}</p>
+        <p class="muted">${result.mission.code} · ${esc(result.mission.title)} · ${esc(result.difficulty)}${result.firstClear ? " · prima vittoria!" : ""}</p>
+        ${result.victory ? `<p class="result__stars mission-stars">${starsHtml(result.stars)}</p>` : ""}
         <div class="stats">
           <div><small>Abbattuti</small><b>${result.kills}</b></div>
           <div><small>Tempo</small><b>${formatTime(result.time)}</b></div>

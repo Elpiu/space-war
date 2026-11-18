@@ -38,6 +38,11 @@ export interface CampaignProfile {
   stars: Record<string, number>;
   /** Missioni di cui è stata trovata la capsula segreta. */
   secrets: string[];
+  /**
+   * Profili di fuoco 2 e 3: slot d'arma attivi. Il profilo 1 usa sempre tutto.
+   * Servono a gestire il calore spegnendo le armi più calde.
+   */
+  fireProfiles: { 2: SlotKey[]; 3: SlotKey[] };
 }
 
 export const DIFFICULTY_STARS: Record<DifficultyId, number> = { normal: 1, hard: 2, nightmare: 3 };
@@ -61,7 +66,14 @@ const starter = (): CampaignProfile => ({
   seenShop: ["blaster", "tail-gun", "cluster", "frigate"],
   stars: {},
   secrets: [],
+  fireProfiles: { 2: ["front0"], 3: ["rear0", "missile0"] },
 });
+
+export const toggleFireSlot = (profile: CampaignProfile, which: 2 | 3, key: SlotKey) => {
+  const list = profile.fireProfiles[which];
+  profile.fireProfiles[which] = list.includes(key) ? list.filter((k) => k !== key) : [...list, key];
+  saveProfile(profile);
+};
 
 // ---------- Salvataggio e migrazione ----------
 
@@ -274,6 +286,7 @@ export interface CampaignLoadout {
   ship: ShipStats;
   rack: RackStats;
   mounts: Mount[];
+  fireProfiles: { 2: SlotKey[]; 3: SlotKey[] };
 }
 
 export const buildLoadout = (profile: CampaignProfile): CampaignLoadout => {
@@ -293,5 +306,5 @@ export const buildLoadout = (profile: CampaignProfile): CampaignLoadout => {
       if (spec) mounts.push({ slot: type as WeaponSlot, index: Number(key.replace(/\D/g, "")), spec });
     }
   }
-  return { ship, rack, mounts };
+  return { ship, rack, mounts, fireProfiles: profile.fireProfiles };
 };

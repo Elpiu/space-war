@@ -63,7 +63,7 @@ export class GameScene extends Scene {
   hud!: Hud;
   pendingLevels = 0;
   /** Input di combattimento letto a ogni frame (usato dal sistema d'arma della campagna). */
-  controls = { firing: false, bomb: false };
+  controls = { firing: false, bomb: false, profile: 0 };
   armament: Armament | null = null;
 
   private starfield!: Starfield;
@@ -98,6 +98,7 @@ export class GameScene extends Scene {
       w: K.W, a: K.A, s: K.S, d: K.D,
       up: K.UP, left: K.LEFT, down: K.DOWN, right: K.RIGHT,
       dash: K.SPACE, shift: K.SHIFT, turret: K.Q, mine: K.E, bomb: K.B, pause: K.P, esc: K.ESC, mute: K.M,
+      p1: K.ONE, p2: K.TWO, p3: K.THREE,
     }) as Record<string, Input.Keyboard.Key>;
     this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (pointer: Input.Pointer) => {
@@ -142,6 +143,7 @@ export class GameScene extends Scene {
     const pointer = this.input.activePointer;
     this.controls.firing = this.keys.dash.isDown || (pointer.isDown && pointer.leftButtonDown());
     this.controls.bomb = Input.Keyboard.JustDown(this.keys.bomb) || this.rightClick;
+    this.controls.profile = Input.Keyboard.JustDown(this.keys.p1) ? 1 : Input.Keyboard.JustDown(this.keys.p2) ? 2 : Input.Keyboard.JustDown(this.keys.p3) ? 3 : 0;
     this.rightClick = false;
 
     this.mode.update(this, dt);
@@ -558,7 +560,7 @@ export class GameScene extends Scene {
         this.endRun("abandon");
       },
       toggleSound: () => this.toggleSound(),
-    });
+    }, this.mode.pauseContent?.(this));
   }
 
   private togglePause() {

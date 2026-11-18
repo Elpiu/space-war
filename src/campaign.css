@@ -192,3 +192,17 @@ button.shop-row:hover, .shop-row.is-selected { border-color: var(--c); box-shado
 .seg .ico { width: 11px; height: 11px; margin-right: 3px; }
 .map-stars b, .mission-stars b { color: rgba(148, 163, 184, 0.35); font-weight: 400; text-shadow: none; }
 .map-stars b.on, .mission-stars b.on { color: var(--gold); text-shadow: 0 0 6px rgba(251, 191, 36, 0.6); }
+
+/* ---------- Fase F: profili di fuoco ---------- */
+
+.fire-profiles { display: grid; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.fire-profiles small { color: var(--muted); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
+.fp-row { display: grid; grid-template-columns: 18px 1fr repeat(3, 24px); align-items: center; gap: 6px; font-size: 12px; }
+.fp-row > .ico { width: 16px; height: 16px; color: var(--c); }
+.fp-row span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fp-toggle { display: grid; place-items: center; height: 22px; border: 1px solid var(--line); border-radius: 6px; background: rgba(2, 6, 23, 0.6); color: var(--muted); font: 700 11px/1 var(--font-title); cursor: pointer; }
+.fp-toggle.is-on { border-color: var(--accent); background: rgba(56, 189, 248, 0.2); color: #e0f2fe; }
+.fp-toggle.is-fixed { cursor: default; opacity: 0.6; }
+.pause-build { display: flex; justify-content: center; }
+.pause-build .build-row { flex-wrap: wrap; justify-content: center; }
+.result__stars { margin: -6px 0 0; font-size: 28px; }

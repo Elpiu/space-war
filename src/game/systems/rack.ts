@@ -22,6 +22,8 @@ export class WeaponRack implements Armament {
   heat = 0;
   overheated = false;
   bombCharge = 1;
+  /** Profilo di fuoco attivo (1 = tutte le armi). */
+  profile: 1 | 2 | 3 = 1;
   private guns: { mount: Mount; nextShot: number }[];
   private beams: { mount: Mount; nextTick: number }[];
   private missiles: { mount: Mount; nextShot: number }[];
@@ -69,6 +71,10 @@ export class WeaponRack implements Armament {
   update(dt: number) {
     const { g } = this;
     const rack = this.loadout.rack;
+    if (g.controls.profile && g.controls.profile !== this.profile) {
+      this.profile = g.controls.profile as 1 | 2 | 3;
+      g.toast(`Profilo di fuoco ${this.profile}${this.profile === 1 ? ": tutte le armi" : ""}`, "gear-blaster");
+    }
     const firing = g.controls.firing && !this.overheated;
     this.beamGfx.clear();
 
@@ -81,12 +87,13 @@ export class WeaponRack implements Armament {
 
     if (firing) {
       for (const gun of this.guns) {
-        if (g.now < gun.nextShot) continue;
+        if (g.now < gun.nextShot || !this.active(gun.mount)) continue;
         this.fireGun(gun.mount);
         gun.nextShot = g.now + gun.mount.spec.interval / rack.rateMul;
         this.heat += gun.mount.spec.heat;
       }
       for (const beam of this.beams) {
+        if (!this.active(beam.mount)) continue;
         this.fireBeam(beam);
         this.heat += beam.mount.spec.heat * dt;
       }
@@ -102,7 +109,7 @@ export class WeaponRack implements Armament {
     // Missili: niente calore, partono quando c'è un bersaglio davanti.
     const targetAhead = g.enemies.some((e) => !e.dead && e.x > g.player.x && e.x < g.cameras.main.scrollX + VIEW_W + 40);
     for (const launcher of this.missiles) {
-      if (!targetAhead || g.now < launcher.nextShot) continue;
+      if (!targetAhead || g.now < launcher.nextShot || !this.active(launcher.mount)) continue;
       this.fireMissiles(launcher.mount);
       launcher.nextShot = g.now + launcher.mount.spec.interval / rack.rateMul;
     }
@@ -116,6 +123,12 @@ export class WeaponRack implements Armament {
     }
 
     this.support.update(dt);
+  }
+
+  /** L'arma è accesa nel profilo di fuoco corrente? */
+  private active(mount: Mount) {
+    if (this.profile === 1) return true;
+    return this.loadout.fireProfiles[this.profile].includes(`${mount.slot}${mount.index}`);
   }
 
   /** Le armi frontali sono distribuite in verticale sul muso. */

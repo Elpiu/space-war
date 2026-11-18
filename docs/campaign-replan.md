@@ -224,7 +224,7 @@ potenziare un pezzo importante.
 | **C. Nemici da shmup** ✅ | Formazioni a traiettoria, unità di terra, strutture distruttibili, trasporti | Ogni segmento ha ondate riconoscibili e bersagli a terra |
 | **D. Hangar negozio** ✅ | Catalogo d'acquisto, sblocco progressivo, soglie di upgrade, dispositivi | Comprare e potenziare cambia davvero come si gioca la missione successiva |
 | **E. Contenuti settore 1** ✅ | 8 missioni, mini-boss, boss finale, capsule segrete, rigiocabilità a difficoltà più alte | Il settore si finisce in 30–40 minuti con una curva sensata |
-| **F. Rifinitura** | Profili d'arma, cartelloni satirici, musica e sfondi per segmento, bilanciamento | Sessione di test completa senza blocchi |
+| **F. Rifinitura** ✅ | Profili d'arma, cartelloni satirici, musica e sfondi per segmento, bilanciamento | Sessione di test completa senza blocchi |
 
 Ogni fase si chiude con un gioco funzionante, un commit e un giro di prova.
 

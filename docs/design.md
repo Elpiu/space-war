@@ -278,5 +278,17 @@ calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
   ognuna. La boss mission resta giocabile anche con le nuove missioni 1-5
   ancora da fare.
 
-**Prossima fase:** rifinitura (F): profili d'arma, musica e sfondi per
-segmento, bilanciamento con partite vere.
+**Fatto (fase F):**
+- **Profili di fuoco** con i tasti 1, 2 e 3. Il profilo 1 usa tutte le armi;
+  il 2 e il 3 si configurano in hangar, per spegnere le armi più calde.
+- **Sfondi per segmento** con dissolvenza:
+  - superficie: montagne in parallasse;
+  - caverna: vignetta viola;
+  - stazione: griglia;
+  - rottami: foschia ruggine.
+- **Pausa e riepilogo:** in campagna la pausa mostra equipaggiamento e
+  comandi; l'esito della missione mostra le stelle ottenute.
+- **Boss:** in campagna ha tre volte gli HP e resta sempre nella metà destra
+  dello schermo, dove le armi frontali lo raggiungono.
+- **Collaudo automatico:** tutte le 8 missioni a Normale, più la 1-4 e il
+  boss a Incubo, completate senza errori. Missioni da 1,5 a 3,5 minuti.

@@ -1,6 +1,7 @@
 import type { IconId } from "../art/svg";
 import type { DifficultyId } from "../config";
 import type { Armament } from "../systems/rack";
+import type { PauseContent } from "../ui/screens";
 import type { GameScene } from "../scenes/GameScene";
 import type { Arena, Enemy, Stats } from "../types";
 
@@ -70,6 +71,8 @@ export interface GameMode {
   end(g: GameScene, outcome: RunOutcome): void;
   hud(g: GameScene): HudInfo;
   skills(g: GameScene): SkillInfo[];
+  /** Contenuto personalizzato della schermata di pausa. */
+  pauseContent?(g: GameScene): PauseContent;
   /** Markup della striscia in basso a destra (build o equipaggiamento). */
   build(g: GameScene): string;
 }
