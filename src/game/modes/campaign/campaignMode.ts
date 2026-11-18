@@ -1,8 +1,9 @@
 import { BlendModes } from "phaser";
 import { icon } from "../../art/svg";
-import { DEPTH, DIFFICULTIES, VIEW_H, VIEW_W, type DifficultyId } from "../../config";
+import { DEPTH, DIFFICULTIES, LIMITS, VIEW_H, VIEW_W, type DifficultyId } from "../../config";
 import { AFFIXES, AFFIX_IDS } from "../../data/enemies";
 import type { GameScene } from "../../scenes/GameScene";
+import { inNebula } from "../../systems/arena";
 import { ceilAt, floorAt } from "../../systems/terrain";
 import { spawnEnemy } from "../../systems/enemies";
 import { dropPickup } from "../../systems/pickups";
@@ -14,11 +15,12 @@ import { defaultLoadout } from "../../data/upgrades";
 import { Backdrop } from "../../systems/backdrop";
 import { WeaponRack } from "../../systems/rack";
 import type { GameMode, HudInfo, ModeSetup, RunOutcome, SkillInfo } from "../mode";
-import { mustGearDef, rollGear, type GearItem } from "./gear";
+import { ilvlMul, mustGearDef, rollGear, type GearItem } from "./gear";
 import { showMissionResult } from "./hub";
 import { pickFormation } from "./formations";
 import { SEGMENT_LABELS, generateLevel, segmentAt, type Prop, type Segment, type SegmentKind } from "./level";
-import { missionById, type MissionDef } from "./missions";
+import type { MissionDef } from "./missions";
+import { BIOMES, MUTATORS, mutatorReward, resolveMission } from "./sectors";
 import {
   DIFFICULTY_STARS,
   addLoot,
@@ -65,14 +67,35 @@ export class CampaignMode implements GameMode {
   private lastHitAt = -99999;
   private combo = 0;
   private lastKillAt = -99999;
+  private nextToxicAt = 0;
+  private toxicWarned = false;
 
   constructor(
     private readonly missionId: string,
     private readonly difficulty: DifficultyId = "normal",
   ) {
-    this.mission = missionById(missionId);
     this.profile = loadProfile();
+    this.mission = resolveMission(this.profile.seed, missionId);
     this.loadout = buildLoadout(this.profile);
+    // Mutatore "Calore +20%": le armi dissipano meno.
+    if (this.has("heat")) this.loadout.rack.heatSink *= 0.83;
+  }
+
+  private has(id: keyof typeof MUTATORS) {
+    return this.mission.mutators?.includes(id) ?? false;
+  }
+
+  private get biome() {
+    return BIOMES.find((b) => b.id === this.mission.biome);
+  }
+
+  /** Monete scalate con l'item level e i mutatori: l'economia tiene il passo dei costi. */
+  private get coinScale() {
+    return ilvlMul(this.mission.ilvl) * mutatorReward(this.mission.mutators) * (this.mission.elite ? 1.3 : 1);
+  }
+
+  private get density() {
+    return this.mission.density ?? 1;
   }
 
   setup(): ModeSetup {
@@ -93,6 +116,11 @@ export class CampaignMode implements GameMode {
       },
       wave: this.mission.tier * 2 - 1,
       difficulty: this.difficulty,
+      threat: {
+        hp: (this.mission.threat?.hp ?? 1) * (this.has("armored") ? 1.3 : 1),
+        damage: (this.mission.threat?.damage ?? 1) * (this.has("loot") ? 1.15 : 1),
+        speed: this.has("swift") ? 1.2 : 1,
+      },
     };
   }
 
@@ -135,7 +163,8 @@ export class CampaignMode implements GameMode {
     this.backdrop.objects.forEach((o) => g.trackRunObject(o));
     // La capsula segreta compare solo finché non è stata trovata.
     if (this.capsule && !this.profile.secrets.includes(this.mission.id)) dropPickup(g, "capsule", this.capsule.x, this.capsule.y);
-    banner(`MISSIONE ${this.mission.code}`, this.mission.title);
+    const mutators = (this.mission.mutators ?? []).map((m) => MUTATORS[m].label).join(" · ");
+    banner(`MISSIONE ${this.mission.code}`, mutators ? `${this.mission.title} · ${mutators}` : this.mission.title);
     g.hints.trigger("fire");
   }
 
@@ -161,6 +190,25 @@ export class CampaignMode implements GameMode {
 
     this.backdrop?.update(segmentAt(this.segments, this.scroll + VIEW_W / 2).kind, this.scroll, dt);
 
+    // Nebulosa tossica: le nebulose corrodono lo scafo.
+    if (this.mission.biome === "toxic" && inNebula(g.arena, g.player.x, g.player.y) && g.now >= this.nextToxicAt) {
+      this.nextToxicAt = g.now + 1400;
+      if (!this.toxicWarned) {
+        this.toxicWarned = true;
+        g.toast("Nebulosa tossica: corrode lo scafo!", "warning", "warning");
+      }
+      g.hurtPlayer(1);
+    }
+
+    // Nebbia densa: i nemici lontani dalla nave si vedono appena.
+    if (this.has("fog")) {
+      for (const e of g.enemies) {
+        if (e.dead || e.intangible || e.def.id === "boss") continue;
+        const d = Math.hypot(e.x - g.player.x, e.y - g.player.y);
+        e.sprite.setAlpha(clamp(1 - (d - 300) / 260, 0.1, 1));
+      }
+    }
+
     // Le armi sparano in avanti: il boss resta sempre nella metà destra dello schermo.
     for (const e of g.enemies) {
       if (e.dead || e.def.id !== "boss") continue;
@@ -179,7 +227,7 @@ export class CampaignMode implements GameMode {
     const spawnLimit = bossSeg ? bossSeg.start : g.arena.width - 700;
     while (this.scroll + VIEW_W >= this.nextSpawnX && this.nextSpawnX < spawnLimit) {
       this.spawnGroup(g);
-      this.nextSpawnX += rand(190, 330) * (1 - this.mission.tier * 0.05);
+      this.nextSpawnX += (rand(190, 330) * (1 - this.mission.tier * 0.05)) / this.density;
     }
 
     // Unità di terra e strutture compaiono appena prima del bordo destro.
@@ -233,18 +281,18 @@ export class CampaignMode implements GameMode {
   private spawnGroup(g: GameScene) {
     if (this.miniBoss) return;
     const alive = g.enemies.filter((e) => !e.dead && !e.anchor && !e.def.structure).length;
-    if (alive >= 18 + this.mission.tier * 6) return;
+    if (alive >= Math.min(LIMITS.maxEnemies, (18 + this.mission.tier * 6) * this.density)) return;
 
     const x = this.scroll + VIEW_W + rand(60, 140);
     const segment = segmentAt(this.segments, x);
-    const formation = pickFormation(segment.kind, this.mission.tier);
+    const formation = pickFormation(segment.kind, this.mission.tier, this.biome?.favored);
     if (!formation) return;
 
     // L'ondata entra nello spazio libero fra soffitto e pavimento.
     const terrain = g.arena.terrain;
     const top = (terrain ? Math.max(0, ceilAt(terrain, x)) : 0) + 40;
     const bottom = (terrain ? Math.min(VIEW_H, floorAt(terrain, x)) : VIEW_H) - 40;
-    const eliteChance = Math.min(0.25, 0.04 * this.mission.tier);
+    const eliteChance = Math.min(0.6, 0.04 * this.mission.tier * (this.has("elite") ? 2.5 : 1) * (this.mission.elite ? 1.8 : 1));
     const id = formation.spawn({
       g,
       x,
@@ -287,13 +335,15 @@ export class CampaignMode implements GameMode {
 
     const ground = Boolean(e.anchor || def.structure || def.id === "cargo");
     if (elite || isBoss || ground || Math.random() < 0.6) {
-      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.coinMul() * DIFFICULTIES[this.difficulty].reward));
+      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.coinMul() * this.coinScale * DIFFICULTIES[this.difficulty].reward));
     }
     if (Math.random() < (elite ? 0.15 : 0.025)) dropPickup(g, "heart", x - 10, y + 4, 2);
     if (Math.random() < (elite ? 0.06 : 0.006)) dropPickup(g, pick(["magnet", "venom", "emp"] as const), x, y - 12);
-    if (isBoss || def.id === "cargo" || (elite && Math.random() < 0.35) || Math.random() < 0.006) dropPickup(g, "chest", x, y);
+    const lootMul = this.has("loot") ? 2 : 1;
+    if (isBoss || def.id === "cargo" || (elite && Math.random() < 0.35 * lootMul) || Math.random() < 0.006 * lootMul) dropPickup(g, "chest", x, y);
+    if (isBoss && lootMul > 1) dropPickup(g, "chest", x + 30, y);
     if (isBoss) {
-      for (let i = 0; i < 10; i += 1) dropPickup(g, "coin", x + Math.cos(i) * 60, y + Math.sin(i) * 60, 5 * tier);
+      for (let i = 0; i < 10; i += 1) dropPickup(g, "coin", x + Math.cos(i) * 60, y + Math.sin(i) * 60, Math.ceil(5 * tier * this.coinScale));
     }
   }
 
@@ -304,9 +354,9 @@ export class CampaignMode implements GameMode {
 
   onCapsule(g: GameScene) {
     this.capsuleFound = true;
-    const coins = 50 * this.mission.tier;
+    const coins = Math.round(50 * this.mission.tier * this.coinScale);
     g.run.coins += coins;
-    const item = rollGear(this.lootTier, "rare");
+    const item = rollGear(this.lootTier, "rare", this.mission.ilvl);
     this.loot.push(item);
     banner("CAPSULA SEGRETA", `+${coins} monete e ${mustGearDef(item.defId).title}`, "epic");
     g.sfx("reward");
@@ -314,7 +364,7 @@ export class CampaignMode implements GameMode {
 
   /** In campagna la chest è una cassa di bottino: un pezzo d'equipaggiamento. */
   onChest(g: GameScene) {
-    const item = rollGear(this.lootTier);
+    const item = rollGear(this.lootTier, this.mission.elite ? "uncommon" : "common", this.mission.ilvl);
     this.loot.push(item);
     const def = mustGearDef(item.defId);
     g.toast(`Bottino: ${def.title}`, def.icon, item.rarity === "legendary" || item.rarity === "rare" ? "epic" : "good");
@@ -326,9 +376,11 @@ export class CampaignMode implements GameMode {
     const stars = DIFFICULTY_STARS[this.difficulty];
     // Prima vittoria a questa difficoltà: bonus doppio e bottino migliore.
     const firstClear = victory && (profile.stars[this.mission.id] ?? 0) < stars;
-    const bonus = victory ? Math.round(40 * this.mission.tier * DIFFICULTIES[this.difficulty].reward * (firstClear ? 2 : 1)) : 0;
-    const minRarity = stars >= 3 ? "rare" : stars === 2 || firstClear ? "uncommon" : "common";
-    const reward = victory ? [rollGear(this.lootTier, minRarity)] : [];
+    const bonus = victory ? Math.round(40 * this.mission.tier * DIFFICULTIES[this.difficulty].reward * (firstClear ? 2 : 1) * this.coinScale) : 0;
+    const minRarity = stars >= 3 || (this.mission.elite && firstClear) ? "rare" : stars === 2 || firstClear || this.mission.elite ? "uncommon" : "common";
+    // Bottino doppio e boss dei settori generati: un pezzo in più a fine missione.
+    const rewards = victory ? (this.has("loot") ? 2 : 1) + (this.mission.boss && this.mission.sector ? 1 : 0) : 0;
+    const reward = Array.from({ length: rewards }, () => rollGear(this.lootTier, minRarity, this.mission.ilvl));
 
     // Non è un roguelite: monete e bottino raccolti si tengono sempre.
     profile.coins += g.run.coins + bonus;
@@ -386,7 +438,7 @@ export class CampaignMode implements GameMode {
       ["WASD", "movimento"],
     ];
     return {
-      subtitle: `Missione ${this.mission.code} · ${this.mission.title} · ${DIFFICULTIES[this.difficulty].label}`,
+      subtitle: `Missione ${this.mission.code} · ${this.mission.title} · ${DIFFICULTIES[this.difficulty].label}${(this.mission.mutators ?? []).map((m) => ` · ${MUTATORS[m].label}`).join("")}`,
       body: `<div class="pause-build">${this.build()}</div>
         <p class="muted">${g.run.kills} abbattuti · ${g.run.coins} monete · ${this.loot.length} casse di bottino</p>
         <div class="menu__keys">${keys.map(([k, v]) => `<span><kbd>${k}</kbd> ${v}</span>`).join("")}</div>

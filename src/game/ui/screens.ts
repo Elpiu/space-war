@@ -60,12 +60,12 @@ export const showMenu = (
           </div>
         </section>
         <section class="menu__panel panel mode-card mode-card--campaign">
-          <header>${icon("map")}<div><b>Campagna</b><small>Attraversa il settore, raccogli equipaggiamento e potenzialo.</small></div></header>
+          <header>${icon("map")}<div><b>Campagna</b><small>Attraversa i settori, raccogli equipaggiamento e potenzialo.</small></div></header>
           <button class="btn btn--primary btn--campaign" data-act="campaign">${icon("flag")} Apri la mappa</button>
           <ul class="mode-card__list">
             <li>${icon("gear-blaster")} Armi, secondari, moduli e scafi</li>
             <li>${icon("arrow-up")} Potenzia o vendi il bottino</li>
-            <li>${icon("boss")} Il Dreadnought ti aspetta in fondo</li>
+            <li>${icon("boss")} Dopo il Dreadnought, settori infiniti generati</li>
           </ul>
         </section>
       </div>

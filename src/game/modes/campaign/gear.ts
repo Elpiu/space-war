@@ -111,7 +111,12 @@ export interface GearItem {
   fresh?: boolean;
   /** Bloccato: non si vende, nemmeno con la vendita multipla. */
   locked?: boolean;
+  /** Item level: 0 nel settore 1, cresce di 10 per settore della campagna infinita. */
+  ilvl?: number;
 }
+
+/** Potenza dell'item level con rendimenti decrescenti: 1 + 0.1·√ilvl. */
+export const ilvlMul = (ilvl = 0) => 1 + 0.1 * Math.sqrt(Math.max(0, ilvl));
 
 export const GEAR_MAX_LEVEL = 10;
 
@@ -518,15 +523,18 @@ export const GEAR: GearDef[] = [
 export const gearDef = (id: string) => GEAR.find((g) => g.id === id);
 export const mustGearDef = (id: string) => gearDef(id)!;
 
-export const gearPower = (item: GearItem) => GEAR_RARITY[item.rarity].power * (1 + (item.level - 1) * 0.08);
+/** Potenza = rarità × livello × item level. */
+export const gearPower = (item: GearItem) => GEAR_RARITY[item.rarity].power * (1 + (item.level - 1) * 0.08) * ilvlMul(item.ilvl);
 
-export const buyPrice = (def: GearDef) => Math.round(def.value * 1.5);
+export const buyPrice = (def: GearDef, ilvl = 0) => Math.round(def.value * 1.5 * ilvlMul(ilvl));
 
 export const sellPrice = (item: GearItem) =>
-  Math.round(mustGearDef(item.defId).value * GEAR_RARITY[item.rarity].value * (1 + (item.level - 1) * 0.5) * 0.5);
+  Math.round(mustGearDef(item.defId).value * GEAR_RARITY[item.rarity].value * (1 + (item.level - 1) * 0.5) * 0.5 * ilvlMul(item.ilvl));
 
 export const upgradeCost = (item: GearItem) =>
-  item.level >= GEAR_MAX_LEVEL ? Infinity : Math.round(mustGearDef(item.defId).value * GEAR_RARITY[item.rarity].value * 0.7 * item.level ** 1.3);
+  item.level >= GEAR_MAX_LEVEL
+    ? Infinity
+    : Math.round(mustGearDef(item.defId).value * GEAR_RARITY[item.rarity].value * 0.7 * item.level ** 1.3 * ilvlMul(item.ilvl));
 
 /** Parametri effettivi dell'arma: base × potenza + soglie raggiunte. */
 export const weaponSpec = (item: GearItem): WeaponSpec | undefined => {
@@ -580,6 +588,7 @@ export const describeGear = (item: GearItem) => {
     lines.push(`HP ${h.hp.toFixed(1)}`, `Velocità ${h.speed}`, `Calore ${h.heatCap} / ${h.heatSink}/s`);
     lines.push(`Slot: ${h.front} front · ${h.rear} coda · ${h.missile} missili · ${h.bomb} bombe · ${h.device} disp.`);
   }
+  if (item.ilvl) lines.push(`Item level ${item.ilvl} (potenza ×${ilvlMul(item.ilvl).toFixed(2)})`);
   const power = gearPower(item);
   for (const e of def.effects ?? []) {
     const value = e.scales ? e.value * power : e.value;
@@ -598,7 +607,7 @@ export const milestonesOf = (item: GearItem) => {
 };
 
 /** Bottino casuale: rarità migliori con il livello della missione. */
-export const rollGear = (tier: number, minRarity: Rarity = "common"): Omit<GearItem, "uid"> => {
+export const rollGear = (tier: number, minRarity: Rarity = "common", ilvl = 0): Omit<GearItem, "uid"> => {
   const weights: Record<GearSlot, number> = { front: 24, rear: 12, missile: 12, bomb: 8, device: 34, hull: 10 };
   const pool = GEAR.filter((g) => g.shopTier === null || g.shopTier <= tier + 1);
   const slot = pickWeighted(Object.keys(weights) as GearSlot[], (s) => (pool.some((g) => g.slot === s) ? weights[s] : 0))!;
@@ -612,7 +621,7 @@ export const rollGear = (tier: number, minRarity: Rarity = "common"): Omit<GearI
   };
   const allowed = order.slice(order.indexOf(minRarity));
   const rarity = pickWeighted(allowed, (r) => rarityWeights[r]) ?? minRarity;
-  return { defId: def.id, rarity, level: 1 };
+  return ilvl > 0 ? { defId: def.id, rarity, level: 1, ilvl } : { defId: def.id, rarity, level: 1 };
 };
 
 /** Danno al secondo di un'arma (per i confronti in hangar). */

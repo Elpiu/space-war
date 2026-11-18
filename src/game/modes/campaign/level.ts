@@ -69,11 +69,28 @@ const LENGTHS: Record<SegmentKind, [number, number]> = {
 const STEP = 40;
 const MIN_GAP = 290;
 
-/** Rumore morbido: somma di tre sinusoidi con fasi casuali. */
-const wave = (rng: Rng) => {
-  const parts = [0, 1, 2].map((i) => ({ f: rand(0.0015, 0.004, rng) * (i + 1), p: rand(0, Math.PI * 2, rng), a: 1 / (i + 1) }));
-  const norm = parts.reduce((s, p) => s + p.a, 0);
-  return (x: number) => parts.reduce((s, p) => s + Math.sin(x * p.f + p.p) * p.a, 0) / norm;
+/**
+ * Rumore frattale (fBm) a una dimensione: somma di ottave di rumore a valori
+ * interpolati, ognuna con ampiezza dimezzata e frequenza raddoppiata. Dà
+ * rilievi naturali a ogni scala. Restituisce valori circa in [-1, 1].
+ */
+const fbm = (rng: Rng, octaves = 4) => {
+  const table = Array.from({ length: 256 }, () => rng() * 2 - 1);
+  const base = rand(0.0018, 0.0032, rng);
+  const offset = rng() * 1000;
+  const noise = (x: number) => {
+    const i = Math.floor(x);
+    const f = x - i;
+    const u = f * f * (3 - 2 * f);
+    return table[i & 255] * (1 - u) + table[(i + 1) & 255] * u;
+  };
+  let norm = 0;
+  for (let o = 0; o < octaves; o += 1) norm += 0.5 ** o;
+  return (x: number) => {
+    let sum = 0;
+    for (let o = 0; o < octaves; o += 1) sum += noise((x + offset) * base * 2 ** o) * 0.5 ** o;
+    return (sum / norm) * 1.6;
+  };
 };
 
 /** Genera il livello di una missione: segmenti, terreno, asteroidi e nebulose. */
@@ -97,8 +114,8 @@ export const generateLevel = (mission: MissionDef, seed: number): Level => {
   const floor = new Array<number>(n).fill(H + OFFSCREEN);
   const ceil = new Array<number>(n).fill(-OFFSCREEN);
   const sampleKinds = new Array<string>(n).fill("open");
-  const floorWave = wave(rng);
-  const ceilWave = wave(rng);
+  const floorWave = fbm(rng);
+  const ceilWave = fbm(rng);
 
   for (const seg of segments) {
     for (let i = Math.floor(seg.start / STEP); i <= Math.min(n - 1, Math.ceil(seg.end / STEP)); i += 1) {
@@ -158,7 +175,7 @@ export const generateLevel = (mission: MissionDef, seed: number): Level => {
     }
   }
 
-  const terrain: Terrain = { step: STEP, height: H, floor: smoothFloor, ceil: smoothCeil, kinds: sampleKinds };
+  const terrain: Terrain = { step: STEP, height: H, floor: smoothFloor, ceil: smoothCeil, kinds: sampleKinds, palette: mission.palette };
 
   // Asteroidi: tanti nei rottami, pochi nello spazio aperto, mai dentro il terreno.
   const asteroids: Arena["asteroids"] = [];
@@ -196,7 +213,7 @@ export const generateLevel = (mission: MissionDef, seed: number): Level => {
       const entry = table.find((item) => (roll -= item.weight) <= 0) ?? table[0];
       const anchor = entry.anchor === "both" ? (rng() < 0.5 ? "ceil" : "floor") : (entry.anchor ?? "floor");
       props.push({ id: entry.id, x, anchor });
-      x += rand(260, 440, rng) * (1.15 - mission.tier * 0.06);
+      x += (rand(260, 440, rng) * (1.15 - mission.tier * 0.06)) / (mission.ground ?? 1);
     }
   }
 
@@ -210,7 +227,8 @@ export const generateLevel = (mission: MissionDef, seed: number): Level => {
     capsule = { x, y: low ? floorAt(terrain, x) - 34 : ceilAt(terrain, x) + 34 };
   }
 
-  return { arena: { seed, width, height: H, asteroids, nebulas, terrain }, segments, props, capsule };
+  const palette = mission.palette ? { nebula: mission.palette.nebula, rock: mission.palette.rock } : undefined;
+  return { arena: { seed, width, height: H, asteroids, nebulas, terrain, palette }, segments, props, capsule };
 };
 
 export const segmentAt = (segments: Segment[], x: number) =>

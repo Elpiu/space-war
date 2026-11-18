@@ -12,6 +12,8 @@ export type HubTab = "map" | "hangar" | "shop" | "workshop";
 /** Stato dell'interfaccia dell'hub (non salvato). */
 export interface HubState {
   tab: HubTab;
+  /** Settore mostrato nella mappa (1 = settore fatto a mano). */
+  sector: number;
   missionId: string;
   difficulty: DifficultyId;
   /** Presa selezionata nello schema della nave. */
@@ -70,7 +72,7 @@ export const itemScore = (item: GearItem) => {
 
 export const gearTile = (item: GearItem, opts: { selected?: boolean; equipped?: boolean; picked?: boolean; multi?: boolean } = {}) => {
   const def = mustGearDef(item.defId);
-  return `<button class="hq-tile ${opts.selected ? "is-selected" : ""} ${opts.picked ? "is-picked" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-action="item" data-uid="${item.uid}" title="${esc(def.title)} · ${RARITIES[item.rarity].label} · Liv. ${item.level}">
+  return `<button class="hq-tile ${opts.selected ? "is-selected" : ""} ${opts.picked ? "is-picked" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-action="item" data-uid="${item.uid}" title="${esc(def.title)} · ${RARITIES[item.rarity].label} · Liv. ${item.level}${item.ilvl ? ` · iL ${item.ilvl}` : ""}">
     ${icon(def.icon)}<b>${item.level}</b>
     ${opts.equipped ? `<i class="hq-tile__on">${icon("check")}</i>` : ""}
     ${item.locked ? `<i class="hq-tile__lock">${icon("lock")}</i>` : ""}

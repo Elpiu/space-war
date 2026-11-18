@@ -342,13 +342,15 @@ export const FORMATIONS: Formation[] = [
   },
 ];
 
-export const pickFormation = (segment: SegmentKind, tier: number) => {
+/** Sceglie un'ondata adatta al segmento; il bioma può favorirne alcune (peso x2.5). */
+export const pickFormation = (segment: SegmentKind, tier: number, favored: string[] = []) => {
   const pool = FORMATIONS.filter((f) => f.segments.includes(segment) && f.minTier <= tier);
   if (pool.length === 0) return undefined;
-  const total = pool.reduce((sum, f) => sum + f.weight, 0);
+  const weight = (f: (typeof pool)[number]) => f.weight * (favored.includes(f.id) ? 2.5 : 1);
+  const total = pool.reduce((sum, f) => sum + weight(f), 0);
   let roll = Math.random() * total;
   for (const f of pool) {
-    roll -= f.weight;
+    roll -= weight(f);
     if (roll <= 0) return f;
   }
   return pick(pool);

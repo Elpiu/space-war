@@ -3,11 +3,11 @@ import { RARITIES } from "../../../data/upgrades";
 import { esc } from "../../../ui/dom";
 import { hex } from "../../../utils";
 import { SLOT_LABELS, buyPrice, milestonesOf, mustGearDef, type GearItem } from "../gear";
-import { itemByUid, shopCatalog, simulateEquip, slotKeys, slotType, summarize, type CampaignProfile } from "../profile";
+import { itemByUid, shopCatalog, shopIlvl, simulateEquip, slotKeys, slotType, summarize, type CampaignProfile } from "../profile";
 import { SLOT_ORDER, gearLines, itemScore, statsPanel, type HubState } from "./common";
 
 /** Pezzo "virtuale" per mostrare le statistiche di un articolo del catalogo. */
-const virtualItem = (defId: string): GearItem => ({ uid: -1, defId, rarity: "common", level: 1 });
+const virtualItem = (defId: string, ilvl = 0): GearItem => ({ uid: -1, defId, rarity: "common", level: 1, ilvl });
 
 /** Slot in cui finirebbe il pezzo con "Compra e monta". */
 export const targetSlot = (profile: CampaignProfile, defId: string) => {
@@ -26,8 +26,8 @@ export const targetSlot = (profile: CampaignProfile, defId: string) => {
 
 const previewPanel = (profile: CampaignProfile, defId: string, feedback: string) => {
   const def = mustGearDef(defId);
-  const item = virtualItem(defId);
-  const price = buyPrice(def);
+  const item = virtualItem(defId, shopIlvl(profile));
+  const price = buyPrice(def, shopIlvl(profile));
   const slot = targetSlot(profile, defId);
   let compare = `<p class="muted">Lo scafo montato non ha slot di questo tipo.</p>`;
   if (slot) {
@@ -60,7 +60,7 @@ export const shopView = (profile: CampaignProfile, state: HubState) => {
     if (!defs.length) return "";
     const cards = defs
       .map((def) => {
-        const price = buyPrice(def);
+        const price = buyPrice(def, shopIlvl(profile));
         const isNew = !profile.seenShop.includes(def.id);
         const owned = profile.inventory.filter((i) => i.defId === def.id).length;
         return `<button class="hq-card ${state.preview === def.id ? "is-selected" : ""}" style="--c:${hex(def.color)}" data-action="preview" data-id="${def.id}">

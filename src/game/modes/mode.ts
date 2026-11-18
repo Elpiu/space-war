@@ -39,6 +39,8 @@ export interface ModeSetup {
   /** Livello di minaccia: scala i nemici come la wave del survival. */
   wave: number;
   difficulty: DifficultyId;
+  /** Moltiplicatori extra dei nemici (campagna infinita). */
+  threat?: { hp: number; damage: number; speed: number };
 }
 
 /**

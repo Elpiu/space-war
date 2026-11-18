@@ -250,6 +250,8 @@ export interface Terrain {
   ceil: number[];
   /** Tipo di segmento per campione: decide lo stile del disegno. */
   kinds: string[];
+  /** Colori del bioma: sostituiscono lo stile per tipo di segmento. */
+  palette?: { fill: number; edge: number; vein: number };
 }
 
 export interface Arena {
@@ -259,6 +261,8 @@ export interface Arena {
   terrain?: Terrain;
   asteroids: { x: number; y: number; r: number }[];
   nebulas: { x: number; y: number; r: number }[];
+  /** Colori di nebulose e asteroidi del bioma. */
+  palette?: { nebula: [number, number]; rock: [number, number] };
 }
 
 // ---------- Progressione ----------
@@ -314,6 +318,8 @@ export interface TomeOffer {
 
 export interface Run {
   difficulty: DifficultyId;
+  /** Moltiplicatori dei nemici (campagna infinita); 1 altrove. */
+  threat: { hp: number; damage: number; speed: number };
   seed: number;
   time: number;
   wave: number;

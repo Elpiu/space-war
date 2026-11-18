@@ -78,7 +78,7 @@ export const drawTerrain = (scene: Scene, t: Terrain) => {
   };
 
   const drawRun = (values: number[], from: number, to: number, kind: string, isFloor: boolean) => {
-    const style = STYLE[kind] ?? STYLE.default;
+    const style = t.palette && kind !== "boss" ? t.palette : (STYLE[kind] ?? STYLE.default);
     const edge: PMath.Vector2[] = [];
     for (let i = from; i <= to; i += 1) {
       const v = isFloor ? Math.min(values[i], bottom) : Math.max(values[i], top);

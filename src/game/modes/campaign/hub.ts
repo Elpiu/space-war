@@ -6,7 +6,9 @@ import { asset, el, esc, layer, morph } from "../../ui/dom";
 import { closeScreen } from "../../ui/screens";
 import { formatTime, hex } from "../../utils";
 import { SLOT_LABELS, mustGearDef, type GearItem, type GearSlot } from "./gear";
-import { SECTOR, type MissionDef } from "./missions";
+import type { MissionDef } from "./missions";
+import { resolveNode } from "./events";
+import { generateSector, nodeById, nodeState } from "./sectors";
 import {
   buy,
   equipTo,
@@ -29,7 +31,7 @@ import {
 } from "./profile";
 import { rarityColor, slotLabel, starsHtml, type HubState, type HubTab } from "./ui/common";
 import { filteredInventory, hangarView, hoverStats } from "./ui/hangarView";
-import { mapView } from "./ui/mapView";
+import { mapView, sectorHeading } from "./ui/mapView";
 import { shopView, targetSlot } from "./ui/shopView";
 import { workshopView } from "./ui/workshopView";
 
@@ -47,9 +49,11 @@ const TABS: { id: HubTab; label: string; icon: Parameters<typeof icon>[0] }[] = 
  */
 export const openCampaignHub = (actions: { launch: (missionId: string, difficulty: DifficultyId) => void; back: () => void }) => {
   const profile = loadProfile();
+  const next = nextMission(profile);
   const state: HubState = {
     tab: "map",
-    missionId: nextMission(profile).id,
+    sector: next.sector,
+    missionId: next.id,
     difficulty: "normal",
     slot: "front0",
     selected: null,
@@ -66,7 +70,7 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
     const shopNew = shopCatalog(profile).filter((d) => !profile.seenShop.includes(d.id)).length;
     const badge = (tab: HubTab) => (tab === "hangar" && freshCount ? `<i>${freshCount}</i>` : tab === "shop" && shopNew ? `<i>${shopNew}</i>` : "");
     return `<header class="hq-head">
-      <div class="hq-brand"><small>${icon("map")} CAMPAGNA · ${esc(SECTOR.subtitle)}</small><b>${esc(SECTOR.title)}</b></div>
+      <div class="hq-brand"><small>${icon("map")} CAMPAGNA · ${esc(sectorHeading(profile, state.sector).subtitle)}</small><b>${esc(sectorHeading(profile, state.sector).title)}</b></div>
       <nav class="hq-tabs">${TABS.map((t) => `<button class="hq-tab ${state.tab === t.id ? "is-on" : ""}" data-action="tab" data-id="${t.id}">${icon(t.icon)}${t.label}${badge(t.id)}</button>`).join("")}</nav>
       <span class="pill pill--big">${icon("coin")}${profile.coins}</span>
       <button class="btn btn--small" data-action="back">${icon("home")} Menu</button>
@@ -144,7 +148,28 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
       case "mission":
         state.missionId = id!;
         state.difficulty = "normal";
+        state.feedback = "";
         break;
+      case "sector": {
+        const n = Math.max(1, Math.min(profile.sector, Number(id)));
+        state.sector = n;
+        state.feedback = "";
+        state.difficulty = "normal";
+        if (n === 1) state.missionId = nextMission({ ...profile, sector: 1 }).id;
+        else {
+          // Seleziona il primo nodo giocabile del settore (o il primo in assoluto).
+          const sector = generateSector(profile.seed, n);
+          const done = new Set(profile.completed);
+          const open = [...sector.nodes.values()].find((node) => nodeState(sector, node, done) === "open");
+          state.missionId = (open ?? sector.layers[0][0]).id;
+        }
+        break;
+      }
+      case "node-choice": {
+        const node = nodeById(profile.seed, state.missionId);
+        if (node) state.feedback = resolveNode(profile, node, Number(id));
+        break;
+      }
       case "difficulty":
         state.difficulty = id as DifficultyId;
         break;

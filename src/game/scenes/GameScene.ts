@@ -280,7 +280,7 @@ export class GameScene extends Scene {
     this.arena = setup.arena;
     this.arenaObjects = drawArena(this, this.arena);
     this.now = 0;
-    this.run = this.createRun(setup.difficulty, setup.arena.seed, setup.base, setup.wave);
+    this.run = this.createRun(setup.difficulty, setup.arena.seed, setup.base, setup.wave, setup.threat);
 
     const { x, y } = setup.start;
     this.engine = this.add.image(x, y, "glow").setTint(0xfb923c).setBlendMode(BlendModes.ADD).setDepth(DEPTH.player - 1).setDisplaySize(34, 34);
@@ -305,9 +305,10 @@ export class GameScene extends Scene {
     audio.playMusic("game");
   }
 
-  private createRun(difficulty: DifficultyId, seed: number, base: Stats, wave: number): Run {
+  private createRun(difficulty: DifficultyId, seed: number, base: Stats, wave: number, threat = { hp: 1, damage: 1, speed: 1 }): Run {
     const run: Run = {
       difficulty,
+      threat,
       seed,
       time: 0,
       wave,

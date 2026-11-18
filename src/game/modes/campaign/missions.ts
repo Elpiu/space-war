@@ -20,6 +20,21 @@ export interface MissionDef {
   /** Moltiplicatori di densità per asteroidi e nebulose. */
   asteroids: number;
   nebulas: number;
+  // ---- Solo missioni generate (settore 2 in poi) ----
+  sector?: number;
+  layer?: number;
+  elite?: boolean;
+  biome?: string;
+  mutators?: ("armored" | "fog" | "heat" | "loot" | "elite" | "swift")[];
+  /** Item level del bottino. */
+  ilvl?: number;
+  /** Moltiplicatori dei nemici dalla curva di minaccia. */
+  threat?: { hp: number; damage: number };
+  /** Densità di spawn dalla curva logistica. */
+  density?: number;
+  /** Densità delle unità di terra. */
+  ground?: number;
+  palette?: { fill: number; edge: number; vein: number; nebula: [number, number]; rock: [number, number] };
 }
 
 export const SECTOR = {
@@ -149,4 +164,4 @@ export const MISSIONS: MissionDef[] = [
   },
 ];
 
-export const missionById = (id: string) => MISSIONS.find((m) => m.id === id)!;
+export const missionById = (id: string) => MISSIONS.find((m) => m.id === id);

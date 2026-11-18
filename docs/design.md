@@ -339,3 +339,68 @@ Quattro schermate a tutto spazio, con una barra in alto:
   sostituisce il pezzo più debole.
 - **Officina:** potenziamento con barra dei livelli e anteprima, blocco,
   vendita (con conferma) e vendita rapida dei comuni.
+
+## Campagna infinita
+
+Il settore 1 resta fatto a mano. Battere il suo Dreadnought apre il
+**settore 2**, e da lì ogni boss apre il settore successivo, senza fine.
+Le frecce in cima alla mappa passano da un settore sbloccato all'altro.
+
+- **Seed:** ogni profilo ha un seed; il settore n nasce da `hash(seed, n)`.
+  Lo stesso profilo rivede sempre lo stesso settore.
+- **Mappa a nodi:** 6 strati, con 2 nodi al primo strato, 2–3 negli strati
+  intermedi e il boss all'ultimo. Gli archi collegano solo nodi vicini.
+  Completare un nodo apre i successivi collegati e chiude gli altri nodi
+  dello stesso strato: la rotta è una scelta.
+- **Tipi di nodo:**
+  - **Missione:** un percorso a segmenti, come nel settore 1.
+  - **Élite:** minaccia +25%, mini-boss garantito, più élite, bottino almeno
+    non comune e monete +30%.
+  - **Cantiere:** una revisione gratuita (+1 livello al pezzo montato più
+    basso) oppure monete.
+  - **Evento:** una scelta con rischio (Relitto, Contrabbandiere, Segnale
+    di soccorso, Laboratorio pirata).
+  - **Tesoro:** un pezzo non comune o migliore e delle monete.
+  - **Boss:** il Dreadnought con la minaccia del settore; dà un pezzo in più.
+- **Regole della mappa:** al massimo un nodo senza combattimento per strato,
+  e due nodi senza combattimento non sono mai collegati: nessuna rotta salta
+  tutti gli scontri.
+- **Segmenti:** una catena di Markov sceglie la sequenza (per esempio dopo
+  una caverna è probabile una stazione); il bioma pesa le transizioni.
+- **Terreno:** rumore frattale (fBm, 4 ottave) per pavimento e soffitto,
+  anche nel settore 1.
+- **Curve**, con `s` = progresso (0 all'inizio del settore 2, +1 per settore):
+
+  | Curva | Formula | Esempi (a inizio settore) |
+  | --- | --- | --- |
+  | HP nemici | `1 + 0.35·s^1.15` | settore 3: ×1,35 · settore 7: ×3,2 · settore 12: ×5,9 |
+  | Danno nemici | `1 + 0.2·s^1.05` | settore 3: ×1,2 · settore 7: ×2,1 |
+  | Densità | `1 + 0.6 / (1 + e^(−0.6(s−4)))` | da ×1,05 a ×1,6, poi stabile |
+  | Item level | `10·(n−1)` + fino a 10 lungo il settore | settore 2: 10–20 |
+  | Potenza item level | `1 + 0.1·√ilvl` | iL 10: ×1,32 · iL 100: ×2 |
+
+  Monete, prezzi di vendita e costi di upgrade crescono con la stessa
+  potenza dell'item level, così l'economia resta proporzionata. Il negozio
+  vende pezzi con l'item level di un settore indietro.
+- **Biomi** a rotazione (`(n−2) mod 5`), ognuno con colori di terreno,
+  nebulose e asteroidi, segmenti e formazioni favorite:
+
+  | Bioma | Carattere |
+  | --- | --- |
+  | Discarica Orbitale | Rottami, sciami e scissionisti |
+  | Anelli di Ghiaccio | Molti asteroidi, caverne, cecchini e laser |
+  | Nebulosa Tossica | Nebulose ovunque: restarci dentro toglie 1 HP ogni 1,4 s |
+  | Cantieri Corporate | Stazioni e superfici, più unità di terra, batterie e scorte |
+  | Campo Minato | Kamikaze, pozzi gravitazionali e bombardieri |
+
+- **Mutatori** (dal settore 4: uno per missione, fino a due dal settore 7),
+  con più monete come compenso:
+
+  | Mutatore | Effetto | Monete |
+  | --- | --- | --- |
+  | Corazze pesanti | Nemici +30% HP | +25% |
+  | Nebbia densa | I nemici lontani si vedono appena | +20% |
+  | Calore +20% | Dissipazione delle armi −17% | +20% |
+  | Bottino doppio | Casse doppie e un pezzo in più a fine missione; nemici +15% danno | — |
+  | Ondata élite | Élite 2,5 volte più frequenti | +30% |
+  | Nemici rapidi | Nemici +20% velocità | +20% |

@@ -20,6 +20,7 @@ import {
   type WeaponSpec,
 } from "./gear";
 import { MISSIONS, type MissionDef } from "./missions";
+import { LAYERS, generateSector, ilvlOf, nodeState, sectorOfId } from "./sectors";
 
 const KEY = "space-war-campaign-v2";
 const LEGACY_KEY = "space-war-campaign-v1";
@@ -45,6 +46,12 @@ export interface CampaignProfile {
    * Servono a gestire il calore spegnendo le armi più calde.
    */
   fireProfiles: { 2: SlotKey[]; 3: SlotKey[] };
+  /** Seed della campagna infinita: rende i settori generati riproducibili. */
+  seed: number;
+  /** Settore più alto sbloccato (1 = solo il settore fatto a mano). */
+  sector: number;
+  /** Esito dei nodi senza combattimento già risolti (cantiere, evento, tesoro). */
+  nodeOutcomes: Record<string, string>;
 }
 
 export const DIFFICULTY_STARS: Record<DifficultyId, number> = { normal: 1, hard: 2, nightmare: 3 };
@@ -69,6 +76,9 @@ const starter = (): CampaignProfile => ({
   stars: {},
   secrets: [],
   fireProfiles: { 2: ["front0"], 3: ["rear0", "missile0"] },
+  seed: Math.floor(Math.random() * 0x7fffffff),
+  sector: 1,
+  nodeOutcomes: {},
 });
 
 export const toggleFireSlot = (profile: CampaignProfile, which: 2 | 3, key: SlotKey) => {
@@ -106,11 +116,16 @@ export const loadProfile = (): CampaignProfile => {
       saveProfile(profile);
       return profile;
     }
-    const profile = { ...starter(), ...(JSON.parse(raw) as CampaignProfile) };
+    const stored = JSON.parse(raw) as Partial<CampaignProfile>;
+    const profile = { ...starter(), ...stored } as CampaignProfile;
     // Chi aveva già completato missioni prima delle stelle parte da una stella.
     for (const id of profile.completed) profile.stars[id] = Math.max(1, profile.stars[id] ?? 0);
+    // Chi aveva già battuto il Dreadnought del settore 1 trova aperto il settore 2.
+    if (profile.completed.includes(BOSS_S1)) profile.sector = Math.max(profile.sector, 2);
     profile.inventory = profile.inventory.filter((item) => Boolean(gearDef(item.defId)));
     sanitize(profile);
+    // Il seed dei settori va fissato subito, o ogni caricamento ne genererebbe uno nuovo.
+    if (typeof stored.seed !== "number") saveProfile(profile);
     return profile;
   } catch {
     return starter();
@@ -159,17 +174,37 @@ export const slotKeys = (profile: CampaignProfile): SlotKey[] => {
 export const equippedSlotOf = (profile: CampaignProfile, uid: number) =>
   Object.keys(profile.equipped).find((key) => profile.equipped[key] === uid);
 
-export const isMissionUnlocked = (profile: CampaignProfile, mission: MissionDef) =>
-  mission.requires.length === 0 ||
-  profile.completed.includes(mission.id) ||
-  mission.requires.some((id) => profile.completed.includes(id));
+const BOSS_S1 = "s1-5";
+
+export const isMissionUnlocked = (profile: CampaignProfile, mission: MissionDef) => {
+  if (mission.sector && mission.sector >= 2) {
+    if (mission.sector > profile.sector) return false;
+    const sector = generateSector(profile.seed, mission.sector);
+    const node = sector.nodes.get(mission.id);
+    const state = node ? nodeState(sector, node, new Set(profile.completed)) : "locked";
+    return state === "open" || state === "done";
+  }
+  return (
+    mission.requires.length === 0 ||
+    profile.completed.includes(mission.id) ||
+    mission.requires.some((id) => profile.completed.includes(id))
+  );
+};
+
+/** Segna un nodo come completato; il boss di un settore apre il successivo. */
+export const completeNode = (profile: CampaignProfile, id: string) => {
+  if (!profile.completed.includes(id)) profile.completed.push(id);
+  const n = sectorOfId(id);
+  const isBoss = n === 1 ? id === BOSS_S1 : id === `g${n}-${LAYERS - 1}-0`;
+  if (isBoss) profile.sector = Math.max(profile.sector, n + 1);
+};
 
 /** Una difficoltà si sblocca vincendo la missione a quella precedente. */
 export const difficultyUnlocked = (profile: CampaignProfile, missionId: string, difficulty: DifficultyId) =>
   DIFFICULTY_STARS[difficulty] <= (profile.stars[missionId] ?? 0) + 1;
 
 export const recordVictory = (profile: CampaignProfile, missionId: string, difficulty: DifficultyId) => {
-  if (!profile.completed.includes(missionId)) profile.completed.push(missionId);
+  completeNode(profile, missionId);
   profile.stars[missionId] = Math.max(profile.stars[missionId] ?? 0, DIFFICULTY_STARS[difficulty]);
 };
 
@@ -251,17 +286,21 @@ export const upgrade = (profile: CampaignProfile, uid: number) => {
 
 /** Tier massimo raggiunto: sblocca il catalogo del negozio. */
 export const shopTier = (profile: CampaignProfile) =>
-  Math.max(0, ...MISSIONS.filter((m) => profile.completed.includes(m.id)).map((m) => m.tier));
+  profile.sector >= 2 ? 5 : Math.max(0, ...MISSIONS.filter((m) => profile.completed.includes(m.id)).map((m) => m.tier));
+
+/** Item level dei pezzi del negozio: un settore indietro rispetto al più alto sbloccato. */
+export const shopIlvl = (profile: CampaignProfile) => ilvlOf(profile.sector - 1, 0);
 
 export const shopCatalog = (profile: CampaignProfile): GearDef[] =>
   GEAR.filter((g) => g.shopTier !== null && g.shopTier <= shopTier(profile));
 
 export const buy = (profile: CampaignProfile, defId: string) => {
   const def = mustGearDef(defId);
-  const price = buyPrice(def);
+  const ilvl = shopIlvl(profile);
+  const price = buyPrice(def, ilvl);
   if (profile.coins < price) return null;
   profile.coins -= price;
-  const [item] = addLoot(profile, [{ defId, rarity: "common", level: 1 }]);
+  const [item] = addLoot(profile, [ilvl > 0 ? { defId, rarity: "common", level: 1, ilvl } : { defId, rarity: "common", level: 1 }]);
   saveProfile(profile);
   return item;
 };
@@ -339,14 +378,23 @@ export const equippedOfType = (profile: CampaignProfile, type: string) =>
     .map((key) => itemByUid(profile, profile.equipped[key]))
     .find(Boolean);
 
-export const addLoot = (profile: CampaignProfile, items: { defId: string; rarity: Rarity; level: number }[]) => {
+export const addLoot = (profile: CampaignProfile, items: { defId: string; rarity: Rarity; level: number; ilvl?: number }[]) => {
   const added = items.map((item) => ({ ...item, uid: profile.nextUid++, fresh: true }));
   profile.inventory.push(...added);
   return added;
 };
 
-export const nextMission = (profile: CampaignProfile) =>
-  MISSIONS.find((m) => isMissionUnlocked(profile, m) && !profile.completed.includes(m.id)) ?? MISSIONS[0];
+/** Primo nodo da giocare: nel settore più alto sbloccato, altrimenti nel settore 1. */
+export const nextMission = (profile: CampaignProfile): { id: string; sector: number } => {
+  if (profile.sector >= 2) {
+    const sector = generateSector(profile.seed, profile.sector);
+    const done = new Set(profile.completed);
+    const open = [...sector.nodes.values()].find((node) => nodeState(sector, node, done) === "open");
+    return { id: (open ?? sector.layers[0][0]).id, sector: profile.sector };
+  }
+  const m = MISSIONS.find((x) => isMissionUnlocked(profile, x) && !profile.completed.includes(x.id)) ?? MISSIONS[0];
+  return { id: m.id, sector: 1 };
+};
 
 // ---------- Loadout per la missione ----------
 

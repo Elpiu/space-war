@@ -41,10 +41,12 @@ export const drawArena = (scene: Scene, arena: Arena) => {
   const objects: GameObjects.GameObject[] = [];
   const rng = createRng(arena.seed ^ 0x9e3779b9);
 
+  const [nebulaA, nebulaB] = arena.palette?.nebula ?? [0x7c3aed, 0xdb2777];
+  const [rock, rockLight] = arena.palette?.rock ?? [0x334155, 0x475569];
   arena.nebulas.forEach((n) => {
     objects.push(
-      scene.add.image(n.x, n.y, "glow").setDisplaySize(n.r * 2.6, n.r * 2.6).setTint(0x7c3aed).setAlpha(0.55).setDepth(DEPTH.hazard),
-      scene.add.image(n.x + n.r * 0.2, n.y - n.r * 0.15, "glow").setDisplaySize(n.r * 1.6, n.r * 1.6).setTint(0xdb2777).setAlpha(0.35).setDepth(DEPTH.hazard),
+      scene.add.image(n.x, n.y, "glow").setDisplaySize(n.r * 2.6, n.r * 2.6).setTint(nebulaA).setAlpha(0.55).setDepth(DEPTH.hazard),
+      scene.add.image(n.x + n.r * 0.2, n.y - n.r * 0.15, "glow").setDisplaySize(n.r * 1.6, n.r * 1.6).setTint(nebulaB).setAlpha(0.35).setDepth(DEPTH.hazard),
     );
   });
 
@@ -59,11 +61,11 @@ export const drawArena = (scene: Scene, arena: Arena) => {
     });
     g.fillStyle(0x0b1020, 0.5);
     g.fillCircle(a.x + 10, a.y + 14, a.r);
-    g.fillStyle(0x334155, 1);
+    g.fillStyle(rock, 1);
     g.lineStyle(4, 0x0b1020, 1);
     g.fillPoints(points, true);
     g.strokePoints(points, true);
-    g.fillStyle(0x475569, 1);
+    g.fillStyle(rockLight, 1);
     g.fillPoints(
       points.map((p) => new PMath.Vector2(a.x + (p.x - a.x) * 0.72 - a.r * 0.12, a.y + (p.y - a.y) * 0.72 - a.r * 0.14)),
       true,

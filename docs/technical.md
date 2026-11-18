@@ -23,6 +23,8 @@ src/
     modes/survival.ts     survival roguelite: wave, level-up con tomi, chest, crediti
     modes/campaign/       campagna: equipaggiamento, missioni, livelli a segmenti, formazioni, profilo
     modes/campaign/hub.ts regia dell'hub (stato, eventi delegati, esito missione)
+    modes/campaign/sectors.ts  campagna infinita: seed, mappa a nodi, Markov, curve, biomi, mutatori
+    modes/campaign/events.ts   cantiere, eventi e tesori (nodi senza combattimento)
     modes/campaign/ui/    viste dell'hub: mappa, hangar, negozio, officina, elementi comuni
     modes/campaign/schematic.ts  sagome SVG degli scafi e posizione delle prese
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
@@ -90,6 +92,18 @@ src/
   dichiarativi su nave e rack. Scheda, prezzi e upgrade si derivano da soli.
 - **Missione**: una voce in `MISSIONS` (`modes/campaign/missions.ts`), con
   la sequenza dei segmenti, la posizione sulla mappa e le missioni richieste.
+  Solo per il settore 1: dal 2 in poi le missioni sono generate da
+  `generateSector` (`modes/campaign/sectors.ts`) e si risolvono con
+  `resolveMission(seed, id)`. Gli id generati hanno la forma `g{settore}-{strato}-{indice}`.
+- **Bioma**: una voce in `BIOMES` (`sectors.ts`) con pesi dei segmenti,
+  formazioni favorite e colori. Eventuali pericoli speciali vanno in
+  `CampaignMode.update` (vedi la nebulosa tossica).
+- **Mutatore**: una voce in `MUTATORS` (`sectors.ts`), più l'effetto in
+  `CampaignMode` (`this.has("id")`).
+- **Evento**: un `case` in `nodeContent` (`modes/campaign/events.ts`) e l'id
+  in `EVENTS` (`sectors.ts`).
+- **Minaccia**: `ModeSetup.threat` moltiplica HP, danno e velocità dei nemici
+  in `spawnEnemy`, tramite `run.threat`.
 - **Ondata di campagna**: una voce in `FORMATIONS` (`modes/campaign/formations.ts`)
   con segmenti, tier minimo e peso. Le traiettorie disponibili sono
   `straight`, `sine`, `dive` e `hold` (`FlightPath` in `types.ts`).

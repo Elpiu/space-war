@@ -35,7 +35,7 @@ export const spawnEnemy = (
 
   let hp = def.hp * ws.hp * diff.hp;
   if (isBoss) hp = def.hp * diff.hp * (1 + (bossTier - 1) * 0.9);
-  hp *= 0.5 ** gen;
+  hp *= 0.5 ** gen * run.threat.hp;
   if (opts.affix === "armored") hp *= 3;
   else if (elite) hp *= 2.2;
   if (opts.small) hp *= 0.5;
@@ -50,8 +50,8 @@ export const spawnEnemy = (
     vy: 0,
     hp,
     maxHp: hp,
-    speed: (def.speed + (isBoss ? 0 : ws.speed)) * (opts.affix === "swift" ? 1.45 : 1),
-    damage: def.damage * ws.damage * diff.damage,
+    speed: (def.speed + (isBoss ? 0 : ws.speed)) * (opts.affix === "swift" ? 1.45 : 1) * run.threat.speed,
+    damage: def.damage * ws.damage * diff.damage * run.threat.damage,
     radius: def.radius * scale,
     scale: baseScale,
     state: "move",
