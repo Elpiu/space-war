@@ -1,4 +1,6 @@
+import type { IconId } from "../art/svg";
 import type { DifficultyId } from "../config";
+import type { Armament } from "../systems/rack";
 import type { GameScene } from "../scenes/GameScene";
 import type { Arena, Enemy, Stats } from "../types";
 
@@ -12,6 +14,19 @@ export interface HudInfo {
   detail: string;
   event: string;
   bar: { ratio: number; text: string; kind: "xp" | "route" };
+}
+
+/** Un'abilità mostrata in basso a sinistra nell'HUD (anello di ricarica). */
+export interface SkillInfo {
+  id: string;
+  icon: IconId;
+  key: string;
+  /** Riempimento dell'anello, da 0 a 1. */
+  ratio: number;
+  ready: boolean;
+  info?: string;
+  /** Anello rosso: calore alto o surriscaldamento. */
+  hot?: boolean;
 }
 
 export interface ModeSetup {
@@ -31,7 +46,11 @@ export interface GameMode {
   readonly id: ModeId;
   /** Direzione fissa del muso in radianti, oppure null se segue il movimento. */
   readonly heading: number | null;
+  /** Lo scatto è disponibile in questa modalità. */
+  readonly allowDash: boolean;
   setup(g: GameScene): ModeSetup;
+  /** Sistema d'arma della nave; senza, il nucleo usa l'arsenale del survival. */
+  createArmament?(g: GameScene): Armament;
   /** Chiamato quando nave e camera esistono. */
   begin(g: GameScene): void;
   update(g: GameScene, dt: number): void;
@@ -44,6 +63,7 @@ export interface GameMode {
   /** Fine run: assegna ricompense e mostra la schermata finale. */
   end(g: GameScene, outcome: RunOutcome): void;
   hud(g: GameScene): HudInfo;
+  skills(g: GameScene): SkillInfo[];
   /** Markup della striscia in basso a destra (build o equipaggiamento). */
   build(g: GameScene): string;
 }

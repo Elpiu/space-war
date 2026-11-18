@@ -64,6 +64,10 @@ export const ICONS = {
   map: S("M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z") + S("M9 4v13.5M15 6.5V20"),
   flag: S("M5 21V3.5") + F("M5 4h12l-2.5 4L17 12H5z"),
   crate: S("M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z") + S("M3 7.5 12 12l9-4.5M12 12v9"),
+  "gear-missile": S("M3 12h3l2-3h9l4 3-4 3H8l-2-3") + S("M10 9l-2-4M10 15l-2 4"),
+  "gear-bomb": `<circle cx="11" cy="14" r="7"/>` + S("M15.5 8.5 18 6") + F("M19 3.5l1 1.6 1.8.4-1.3 1.2.3 1.8-1.8-.9-1.6.9.3-1.8-1.3-1.2 1.8-.4z"),
+  "gear-radiator": S("M5 4v16M9.5 4v16M14 4v16M18.5 4v16M3 7h18M3 17h18"),
+  heat: F("M12 2.5c1 3.5 5.5 6 5.5 11a5.5 5.5 0 0 1-11 0c0-2.4 1.2-4.1 2.5-5.4.2 1.9 1 3 2.2 3.6C10.6 9 11 5.8 12 2.5z"),
 
   // Drop speciali
   "special-magnet": S("M6 3.5v8a6 6 0 0 0 12 0v-8") + F("M3.5 3h5v4h-5zM15.5 3h5v4h-5z"),
@@ -182,6 +186,12 @@ export const SPRITES: Record<string, string> = {
     <rect x="23" y="25" width="18" height="4" rx="2" fill="#38bdf8"/>
     <path d="M24 42h16M27 46h10" stroke="#0b1020" stroke-width="2.5" stroke-linecap="round"/>
     <circle cx="14" cy="24" r="2.5" fill="#38bdf8"/><circle cx="50" cy="24" r="2.5" fill="#38bdf8"/>
+  `),
+  // Missile orientato lungo l'asse X (muso a destra).
+  missile: doc(`
+    <path d="M6 26h8l-6-12h6l10 12h22l12 6-12 6H24L14 50H8l6-12H6z" fill="#e2e8f0" stroke="#0b1020" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M46 26l12 6-12 6z" fill="#ef4444"/>
+    <path d="M26 30h16" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
   `),
   "shield-arc": doc(
     `<path d="M10 52A34 34 0 0 1 54 52" fill="none" stroke="#7dd3fc" stroke-width="7" stroke-linecap="round"/>

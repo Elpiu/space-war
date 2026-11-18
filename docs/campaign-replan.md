@@ -219,7 +219,7 @@ potenziare un pezzo importante.
 
 | Fase | Contenuto | Fatto quando |
 | --- | --- | --- |
-| **A. Nave a slot e calore** | `WeaponRack`, fuoco tenuto, calore, missili, bombe, layout di slot degli scafi, HUD di calore e bombe, migrazione del salvataggio | La 1-1 si gioca con 2 frontali + bomba e il calore conta |
+| **A. Nave a slot e calore** ✅ | `WeaponRack`, fuoco tenuto, calore, missili, bombe, layout di slot degli scafi, HUD di calore e bombe, migrazione del salvataggio | La 1-1 si gioca con 2 frontali + bomba e il calore conta |
 | **B. Terreno e segmenti** | `Terrain`, `LevelScript`, segmenti spazio/rottami/superficie/caverna, collisioni | Una missione attraversa almeno 3 tipi di segmento |
 | **C. Nemici da shmup** | Formazioni a traiettoria, unità di terra, strutture distruttibili, trasporti | Ogni segmento ha ondate riconoscibili e bersagli a terra |
 | **D. Hangar negozio** | Catalogo d'acquisto, sblocco progressivo, soglie di upgrade, dispositivi | Comprare e potenziare cambia davvero come si gioca la missione successiva |

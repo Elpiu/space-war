@@ -142,3 +142,24 @@
 @media (max-width: 1100px) {
   .hub__top, .hub__bottom { grid-template-columns: 1fr; }
 }
+
+/* ---------- Hangar: schede, negozio, soglie ---------- */
+
+.hub__tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(2, 6, 23, 0.5); color: var(--muted); font: 700 12px/1 var(--font-title); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.tab.is-on { border-color: var(--accent); background: rgba(56, 189, 248, 0.15); color: #e0f2fe; }
+.shop-note { margin: 0 0 8px; font-size: 12px; }
+.shop-list { display: grid; gap: 6px; max-height: 190px; overflow-y: auto; padding-right: 4px; }
+.shop-row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--c) 30%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--c) 8%, rgba(2, 6, 23, 0.6)); }
+.shop-row__icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); }
+.shop-row__icon .ico { width: 20px; height: 20px; }
+.shop-row__body { display: grid; gap: 2px; }
+.shop-row__body b { font-size: 13px; }
+.shop-row__body small { color: var(--muted); font-size: 11px; }
+.shop-row .btn { padding: 7px 10px; font-size: 12px; color: var(--gold); }
+.gear-milestones { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; }
+.gear-milestones li { display: flex; align-items: center; gap: 6px; }
+.gear-milestones li.is-reached { color: var(--good); }
+.gear-milestones .ico { width: 14px; height: 14px; }
+.loadout-slot:last-child { grid-column: auto; }
+.loadout-slot:first-child { grid-column: 1 / -1; }

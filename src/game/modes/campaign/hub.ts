@@ -3,46 +3,68 @@ import { RARITIES } from "../../data/upgrades";
 import { asset, el, esc, layer } from "../../ui/dom";
 import { closeScreen } from "../../ui/screens";
 import { formatTime, hex } from "../../utils";
-import { GEAR_MAX_LEVEL, SLOT_LABELS, describeGear, gearDef, sellPrice, upgradeCost, type EquipSlot, type GearItem } from "./gear";
+import {
+  GEAR_MAX_LEVEL,
+  SLOT_LABELS,
+  buyPrice,
+  describeGear,
+  milestonesOf,
+  mustGearDef,
+  sellPrice,
+  upgradeCost,
+  type GearItem,
+} from "./gear";
 import { MISSIONS, SECTOR, type MissionDef } from "./missions";
 import {
-  EQUIP_ORDER,
+  buildLoadout,
+  buy,
   canUnequip,
   equip,
   equippedSlotOf,
   isMissionUnlocked,
   itemByUid,
   loadProfile,
-  loadoutStats,
   nextMission,
   sell,
+  shopCatalog,
+  slotKeys,
+  slotType,
   unequip,
   upgrade,
   type CampaignProfile,
+  type SlotKey,
 } from "./profile";
 
-const EQUIP_LABELS: Record<EquipSlot, string> = {
-  primary: "Arma",
-  secondary: "Secondario",
-  module1: "Modulo",
-  module2: "Modulo",
+const SLOT_SHORT: Record<string, string> = {
   hull: "Scafo",
+  front: "Frontale",
+  rear: "Coda",
+  missile: "Missili",
+  bomb: "Bombe",
+  device: "Dispositivo",
+};
+
+const slotLabel = (key: SlotKey) => {
+  const type = slotType(key);
+  const index = Number(key.replace(/\D/g, ""));
+  return type === "front" || type === "device" ? `${SLOT_SHORT[type]} ${index + 1}` : SLOT_SHORT[type];
 };
 
 const rarityColor = (item: GearItem) => hex(RARITIES[item.rarity].color);
 
 const itemTile = (item: GearItem, selected: boolean, equipped: boolean) => {
-  const def = gearDef(item.defId);
-  return `<button class="gear-tile ${selected ? "is-selected" : ""} ${equipped ? "is-equipped" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-item="${item.uid}" title="${esc(def.title)}">
+  const def = mustGearDef(item.defId);
+  return `<button class="gear-tile ${selected ? "is-selected" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-item="${item.uid}" title="${esc(def.title)}">
     ${icon(def.icon)}<b>${item.level}</b>${equipped ? `<i>${icon("check")}</i>` : ""}
   </button>`;
 };
 
-/** Hub della campagna: mappa del settore + equipaggiamento + inventario. */
+/** Hub della campagna: mappa del settore + equipaggiamento + hangar/negozio. */
 export const openCampaignHub = (actions: { launch: (missionId: string) => void; back: () => void }) => {
   const profile = loadProfile();
   let missionId = nextMission(profile).id;
-  let selected: number | null = profile.equipped.primary;
+  let selected: number | null = profile.equipped.front0 ?? null;
+  let tab: "hangar" | "shop" = "hangar";
   let feedback = "";
 
   const render = () => {
@@ -62,8 +84,11 @@ export const openCampaignHub = (actions: { launch: (missionId: string) => void; 
         <div class="hub__bottom">
           <section class="hub__loadout panel">${renderLoadout(profile, selected)}</section>
           <section class="hub__inventory panel">
-            <h3>${icon("crate")} Hangar · ${profile.inventory.length} oggetti</h3>
-            <div class="gear-grid">${sortedInventory(profile).map((item) => itemTile(item, item.uid === selected, Boolean(equippedSlotOf(profile, item.uid)))).join("")}</div>
+            <div class="hub__tabs">
+              <button class="tab ${tab === "hangar" ? "is-on" : ""}" data-tab="hangar">${icon("crate")} Hangar · ${profile.inventory.length}</button>
+              <button class="tab ${tab === "shop" ? "is-on" : ""}" data-tab="shop">${icon("coin")} Negozio</button>
+            </div>
+            ${tab === "hangar" ? renderInventory(profile, selected) : renderShop(profile)}
           </section>
           <aside class="hub__detail panel">${renderDetail(profile, selected, feedback)}</aside>
         </div>
@@ -71,43 +96,43 @@ export const openCampaignHub = (actions: { launch: (missionId: string) => void; 
     `);
     layer("screen").appendChild(root);
 
+    const click = (selector: string, fn: (node: HTMLElement) => void) =>
+      root.querySelectorAll<HTMLElement>(selector).forEach((node) =>
+        node.addEventListener("click", () => {
+          fn(node);
+          render();
+        }),
+      );
+
     root.querySelector("[data-act=back]")?.addEventListener("click", actions.back);
     root.querySelector("[data-act=launch]")?.addEventListener("click", () => actions.launch(missionId));
-    root.querySelectorAll<HTMLElement>("[data-mission]").forEach((node) =>
-      node.addEventListener("click", () => {
-        missionId = node.dataset.mission!;
-        render();
-      }),
-    );
-    root.querySelectorAll<HTMLElement>("[data-item]").forEach((node) =>
-      node.addEventListener("click", () => {
-        selected = Number(node.dataset.item);
-        feedback = "";
-        render();
-      }),
-    );
-    root.querySelectorAll<HTMLElement>("[data-slot]").forEach((node) =>
-      node.addEventListener("click", () => {
-        const uid = profile.equipped[node.dataset.slot as EquipSlot];
-        if (uid !== null) selected = uid;
-        feedback = "";
-        render();
-      }),
-    );
-    const act = (name: string, fn: () => void) => root.querySelector(`[data-gear=${name}]`)?.addEventListener("click", () => {
-      fn();
-      render();
+    click("[data-mission]", (node) => (missionId = node.dataset.mission!));
+    click("[data-tab]", (node) => (tab = node.dataset.tab as typeof tab));
+    click("[data-item]", (node) => {
+      selected = Number(node.dataset.item);
+      feedback = "";
     });
-    act("equip", () => selected !== null && equip(profile, selected));
-    act("unequip", () => {
-      const slot = selected !== null ? equippedSlotOf(profile, selected) : undefined;
-      if (slot) unequip(profile, slot);
+    click("[data-slot]", (node) => {
+      const uid = profile.equipped[node.dataset.slot!];
+      if (uid !== null && uid !== undefined) selected = uid;
+      feedback = "";
     });
-    act("upgrade", () => {
-      if (selected === null) return;
-      feedback = upgrade(profile, selected) ? "Potenziato!" : "Monete insufficienti";
+    click("[data-buy]", (node) => {
+      const item = buy(profile, node.dataset.buy!);
+      feedback = item ? `Acquistato: ${mustGearDef(item.defId).title}` : "Monete insufficienti";
+      if (item) selected = item.uid;
     });
-    act("sell", () => {
+    click("[data-gear=equip]", () => {
+      if (selected !== null) feedback = equip(profile, selected);
+    });
+    click("[data-gear=unequip]", () => {
+      const key = selected !== null ? equippedSlotOf(profile, selected) : undefined;
+      if (key) unequip(profile, key);
+    });
+    click("[data-gear=upgrade]", () => {
+      if (selected !== null) feedback = upgrade(profile, selected) ? "Potenziato!" : "Monete insufficienti";
+    });
+    click("[data-gear=sell]", () => {
       if (selected === null) return;
       const price = sell(profile, selected);
       feedback = price ? `Venduto per ${price} monete` : "";
@@ -119,17 +144,36 @@ export const openCampaignHub = (actions: { launch: (missionId: string) => void; 
 };
 
 const sortedInventory = (profile: CampaignProfile) => {
-  const slotOrder = ["primary", "secondary", "module", "hull"];
+  const slotOrder = ["front", "rear", "missile", "bomb", "device", "hull"];
   const rarityOrder = ["legendary", "rare", "uncommon", "common"];
   return [...profile.inventory].sort((a, b) => {
-    const da = gearDef(a.defId);
-    const db = gearDef(b.defId);
+    const da = mustGearDef(a.defId);
+    const db = mustGearDef(b.defId);
     return (
       slotOrder.indexOf(da.slot) - slotOrder.indexOf(db.slot) ||
       rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity) ||
       b.level - a.level
     );
   });
+};
+
+const renderInventory = (profile: CampaignProfile, selected: number | null) =>
+  `<div class="gear-grid">${sortedInventory(profile)
+    .map((item) => itemTile(item, item.uid === selected, Boolean(equippedSlotOf(profile, item.uid))))
+    .join("")}</div>`;
+
+const renderShop = (profile: CampaignProfile) => {
+  const rows = shopCatalog(profile)
+    .map((def) => {
+      const price = buyPrice(def);
+      return `<div class="shop-row" style="--c:${hex(def.color)}">
+        <span class="shop-row__icon">${icon(def.icon)}</span>
+        <span class="shop-row__body"><b>${esc(def.title)}</b><small>${SLOT_LABELS[def.slot]} · ${esc(def.description)}</small></span>
+        <button class="btn" data-buy="${def.id}" ${profile.coins < price ? "disabled" : ""}>${icon("coin")} ${price}</button>
+      </div>`;
+    })
+    .join("");
+  return `<p class="muted shop-note">Il catalogo si allarga completando missioni. Le rarità migliori si trovano solo nel bottino.</p><div class="shop-list">${rows}</div>`;
 };
 
 const renderMap = (profile: CampaignProfile, selectedId: string) => {
@@ -169,33 +213,42 @@ const renderMission = (profile: CampaignProfile, m: MissionDef) => {
 };
 
 const renderLoadout = (profile: CampaignProfile, selected: number | null) => {
-  const slots = EQUIP_ORDER.map((slot) => {
-    const item = itemByUid(profile, profile.equipped[slot]);
-    if (!item) return `<button class="loadout-slot is-empty" data-slot="${slot}"><span>${EQUIP_LABELS[slot]}</span><em>vuoto</em></button>`;
-    const def = gearDef(item.defId);
-    return `<button class="loadout-slot ${item.uid === selected ? "is-selected" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-slot="${slot}">
-      <span>${EQUIP_LABELS[slot]}</span>${icon(def.icon)}<b>${esc(def.title)}</b><small>Liv. ${item.level}</small>
-    </button>`;
-  }).join("");
-  const s = loadoutStats(profile);
+  const slots = slotKeys(profile)
+    .map((key) => {
+      const item = itemByUid(profile, profile.equipped[key]);
+      if (!item) return `<button class="loadout-slot is-empty" data-slot="${key}"><span>${slotLabel(key)}</span><em>vuoto</em></button>`;
+      const def = mustGearDef(item.defId);
+      return `<button class="loadout-slot ${item.uid === selected ? "is-selected" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-slot="${key}">
+        <span>${slotLabel(key)}</span>${icon(def.icon)}<b>${esc(def.title)}</b><small>Liv. ${item.level}</small>
+      </button>`;
+    })
+    .join("");
+  const { ship, rack, mounts } = buildLoadout(profile);
+  const dps = mounts
+    .filter((m) => m.slot === "front")
+    .reduce((sum, m) => sum + ((m.spec.damage * m.spec.projectiles * 1000) / m.spec.interval) * rack.damageMul * rack.rateMul, 0);
   return `
     <h3>${icon("gear-hull")} Equipaggiamento</h3>
     <div class="loadout">${slots}</div>
     <div class="loadout-stats">
-      <span>${icon("heart")} ${s.maxHp.toFixed(1)} HP</span>
-      <span>${icon("tome-power")} ${s.damage.toFixed(1)} danno</span>
-      <span>${icon("tome-cadence")} ${(1000 / s.fireInterval).toFixed(1)} colpi/s</span>
-      <span>${icon("tome-mobility")} ${Math.round(s.speed)} velocità</span>
+      <span>${icon("heart")} ${ship.maxHp.toFixed(1)} HP</span>
+      <span>${icon("tome-power")} ${dps.toFixed(1)} danno/s</span>
+      <span>${icon("heat")} ${Math.round(rack.heatCap)} · ${Math.round(rack.heatSink)}/s</span>
+      <span>${icon("tome-mobility")} ${Math.round(ship.speed)} velocità</span>
     </div>`;
 };
 
 const renderDetail = (profile: CampaignProfile, uid: number | null, feedback: string) => {
   const item = itemByUid(profile, uid);
-  if (!item) return `<p class="muted">Seleziona un oggetto per vederne le statistiche.</p>${feedback ? `<p class="hub__feedback">${esc(feedback)}</p>` : ""}`;
-  const def = gearDef(item.defId);
-  const slot = equippedSlotOf(profile, item.uid);
+  const fb = feedback ? `<p class="hub__feedback">${esc(feedback)}</p>` : "";
+  if (!item) return `<p class="muted">Seleziona un oggetto o uno slot per vederne le statistiche.</p>${fb}`;
+  const def = mustGearDef(item.defId);
+  const key = equippedSlotOf(profile, item.uid);
   const cost = upgradeCost(item);
   const maxed = item.level >= GEAR_MAX_LEVEL;
+  const milestones = milestonesOf(item)
+    .map((m) => `<li class="${m.reached ? "is-reached" : ""}">${icon(m.reached ? "check" : "lock")} Liv. ${m.level}: ${esc(m.text)}</li>`)
+    .join("");
   return `
     <div class="gear-detail" style="--c:${hex(def.color)};--r:${rarityColor(item)}">
       <span class="gear-detail__icon">${icon(def.icon)}</span>
@@ -206,12 +259,19 @@ const renderDetail = (profile: CampaignProfile, uid: number | null, feedback: st
     </div>
     <p class="muted">${esc(def.description)}</p>
     <ul class="gear-stats">${describeGear(item).map((line) => `<li>${esc(line)}</li>`).join("")}</ul>
+    ${milestones ? `<ul class="gear-milestones">${milestones}</ul>` : ""}
     <div class="gear-actions">
-      ${slot ? (canUnequip(slot) ? `<button class="btn" data-gear="unequip">Rimuovi</button>` : `<span class="muted">Equipaggiato</span>`) : `<button class="btn" data-gear="equip">${icon("check")} Equipaggia</button>`}
+      ${
+        key
+          ? canUnequip(profile, key)
+            ? `<button class="btn" data-gear="unequip">Rimuovi</button>`
+            : `<span class="muted">Montato</span>`
+          : `<button class="btn" data-gear="equip">${icon("check")} Monta</button>`
+      }
       <button class="btn" data-gear="upgrade" ${maxed || profile.coins < cost ? "disabled" : ""}>${icon("arrow-up")} ${maxed ? "Livello max" : `Potenzia ${cost}`}</button>
-      <button class="btn btn--danger" data-gear="sell" ${slot ? "disabled" : ""}>${icon("coin")} Vendi ${sellPrice(item)}</button>
+      <button class="btn btn--danger" data-gear="sell" ${key ? "disabled" : ""}>${icon("coin")} Vendi ${sellPrice(item)}</button>
     </div>
-    ${feedback ? `<p class="hub__feedback">${esc(feedback)}</p>` : ""}`;
+    ${fb}`;
 };
 
 // ---------- Esito missione ----------
@@ -224,7 +284,7 @@ export const showMissionResult = (
   const loot = result.items.length
     ? result.items
         .map((item) => {
-          const def = gearDef(item.defId);
+          const def = mustGearDef(item.defId);
           return `<li style="--c:${hex(def.color)};--r:${rarityColor(item)}">${icon(def.icon)}<span><b>${esc(def.title)}</b><small>${RARITIES[item.rarity].label} · ${SLOT_LABELS[def.slot]}</small></span></li>`;
         })
         .join("")
@@ -244,7 +304,7 @@ export const showMissionResult = (
         <section class="result__loot"><h3>Bottino</h3><ul class="build-list">${loot}</ul></section>
         ${result.victory ? "" : `<p class="muted">Monete e bottino raccolti restano tuoi: riprova quando vuoi.</p>`}
         <div class="pause__actions">
-          <button class="btn btn--primary" data-act="map">${icon("map")} Mappa</button>
+          <button class="btn btn--primary" data-act="map">${icon("map")} Hangar e mappa</button>
           <button class="btn" data-act="retry">${icon("reroll")} Riprova</button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { icon } from "../art/svg";
-import { CHEST_KILL_STEP, DIFFICULTIES, LIMITS, type DifficultyId } from "../config";
+import { CHEST_KILL_STEP, DEPLOY, DIFFICULTIES, LIMITS, type DifficultyId } from "../config";
 import { ITEMS, RARITIES, TOMES, defaultLoadout, rollItem, rollTomeOffers, tomeById, tomeLevel } from "../data/upgrades";
 import { runCredits, saveMeta, unlockedItems, unlockedTomes } from "../meta";
 import type { GameScene } from "../scenes/GameScene";
@@ -11,12 +11,13 @@ import { banner } from "../ui/hud";
 import { closeScreen, showGameOver, showLevelUp } from "../ui/screens";
 import { esc } from "../ui/dom";
 import { formatTime, hex, pick } from "../utils";
-import type { GameMode, HudInfo, ModeSetup, RunOutcome } from "./mode";
+import type { GameMode, HudInfo, ModeSetup, RunOutcome, SkillInfo } from "./mode";
 
 /** Survival roguelite: wave infinite, tomi al level-up, oggetti dalle chest. */
 export class SurvivalMode implements GameMode {
   readonly id = "survival" as const;
   readonly heading = null;
+  readonly allowDash = true;
   private director: Director | null = null;
   private offers: TomeOffer[] = [];
 
@@ -180,6 +181,33 @@ export class SurvivalMode implements GameMode {
       event,
       bar: { ratio: run.xp / run.xpToNext, text: `LV ${run.level}`, kind: "xp" },
     };
+  }
+
+  skills(g: GameScene): SkillInfo[] {
+    const run = g.run;
+    const s = run.stats;
+    const dashLeft = Math.max(0, run.dashReadyAt - g.now);
+    const turrets = g.deployables.turrets.length;
+    const mines = g.deployables.mines.length;
+    return [
+      { id: "dash", icon: "dash", key: "SPAZIO", ratio: 1 - dashLeft / s.dashCooldown, ready: dashLeft <= 0 },
+      {
+        id: "turret",
+        icon: "turret",
+        key: "Q",
+        ratio: 1,
+        ready: turrets < s.maxTurrets && run.coins >= DEPLOY.turretCost,
+        info: `${turrets}/${s.maxTurrets} · ${DEPLOY.turretCost}¢`,
+      },
+      {
+        id: "mine",
+        icon: "mine",
+        key: "E",
+        ratio: 1,
+        ready: mines < s.maxMines && run.coins >= DEPLOY.mineCost,
+        info: `${mines}/${s.maxMines} · ${DEPLOY.mineCost}¢`,
+      },
+    ];
   }
 
   build(g: GameScene) {

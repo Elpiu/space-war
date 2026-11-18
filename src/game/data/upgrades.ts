@@ -186,7 +186,6 @@ export const defaultLoadout = (): Stats => ({
   arc: 0,
   mineRadius: 1,
   spread: 0.15,
-  aim: "auto",
 });
 
 /** Statistiche derivate: loadout base + tomi + oggetti. Niente stato duplicato. */

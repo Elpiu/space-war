@@ -312,7 +312,8 @@ kbd {
 .hud-skills { position: absolute; left: 16px; bottom: 16px; display: flex; gap: 10px; }
 .skill { display: grid; justify-items: center; gap: 4px; opacity: 0.55; transition: opacity 150ms ease; }
 .skill.is-ready { opacity: 1; }
-.skill.is-hidden { display: none; }
+.skill.is-hot .skill__ring { --accent: #f43f5e; color: #fda4af; box-shadow: 0 0 18px rgba(244, 63, 94, 0.55); }
+.skill.is-hot small { color: #fda4af; }
 .skill small { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .skill__ring {
   --p: 360deg;

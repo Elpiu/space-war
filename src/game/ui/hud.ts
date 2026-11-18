@@ -1,5 +1,4 @@
 import { icon, type IconId } from "../art/svg";
-import { DEPLOY } from "../config";
 import { isEvolved } from "../data/upgrades";
 import type { GameScene } from "../scenes/GameScene";
 import type { Enemy } from "../types";
@@ -13,6 +12,7 @@ export class Hud {
   private q: Record<string, HTMLElement> = {};
   private buildKey = "";
   private effectsKey = "";
+  private skillIds = "";
   private boss: Enemy | null = null;
   private nextTick = 0;
 
@@ -45,11 +45,7 @@ export class Hud {
           <div class="hud-boss__name">${icon("boss")}<span data-q="bossName">Dreadnought</span><small data-q="bossPhase">FASE 1</small></div>
           <div class="bar bar--boss"><i data-q="bossFill"></i></div>
         </div>
-        <div class="hud-skills">
-          <div class="skill" data-q="dash"><div class="skill__ring" data-q="dashRing">${icon("dash")}</div><kbd>SPAZIO</kbd></div>
-          <div class="skill" data-q="turret"><div class="skill__ring">${icon("turret")}</div><kbd>Q</kbd><small data-q="turretInfo"></small></div>
-          <div class="skill" data-q="mine"><div class="skill__ring">${icon("mine")}</div><kbd>E</kbd><small data-q="mineInfo"></small></div>
-        </div>
+        <div class="hud-skills" data-q="skills"></div>
         <div class="hud-effects" data-q="effects"></div>
         <div class="hud-build" data-q="build"></div>
         <div class="hud-hurt" data-q="hurt"></div>
@@ -118,19 +114,7 @@ export class Hud {
       setText(this.q.bossPhase, `FASE ${this.boss.bossPhase}`);
     }
 
-    const dashLeft = Math.max(0, run.dashReadyAt - g.now);
-    const dashRatio = 1 - dashLeft / s.dashCooldown;
-    this.q.dashRing.style.setProperty("--p", `${Math.min(1, dashRatio) * 360}deg`);
-    this.q.dash.classList.toggle("is-ready", dashLeft <= 0);
-
-    const turrets = g.deployables.turrets.length;
-    const mines = g.deployables.mines.length;
-    this.q.turret.classList.toggle("is-hidden", s.maxTurrets <= 0);
-    this.q.mine.classList.toggle("is-hidden", s.maxMines <= 0);
-    setText(this.q.turretInfo, `${turrets}/${s.maxTurrets} · ${DEPLOY.turretCost}¢`);
-    setText(this.q.mineInfo, `${mines}/${s.maxMines} · ${DEPLOY.mineCost}¢`);
-    this.q.turret.classList.toggle("is-ready", turrets < s.maxTurrets && run.coins >= DEPLOY.turretCost);
-    this.q.mine.classList.toggle("is-ready", mines < s.maxMines && run.coins >= DEPLOY.mineCost);
+    this.renderSkills(g);
 
     const effects: { id: IconId; label: string; color: number; left: number }[] = [];
     if (g.now < run.magnetUntil) effects.push({ id: "special-magnet", label: "Magnete", color: 0x22d3ee, left: run.magnetUntil - g.now });
@@ -151,6 +135,26 @@ export class Hud {
     }
 
     this.renderBuild(g);
+  }
+
+  /** Anelli delle abilità: la struttura si ricrea solo quando cambia l'elenco. */
+  private renderSkills(g: GameScene) {
+    const skills = g.mode.skills(g);
+    const ids = skills.map((sk) => sk.id).join(",");
+    if (ids !== this.skillIds) {
+      this.skillIds = ids;
+      this.q.skills.innerHTML = skills
+        .map((sk) => `<div class="skill" data-skill="${sk.id}"><div class="skill__ring">${icon(sk.icon)}</div><kbd>${esc(sk.key)}</kbd><small></small></div>`)
+        .join("");
+    }
+    skills.forEach((sk) => {
+      const node = this.q.skills.querySelector<HTMLElement>(`[data-skill="${sk.id}"]`);
+      if (!node) return;
+      node.classList.toggle("is-ready", sk.ready);
+      node.classList.toggle("is-hot", Boolean(sk.hot));
+      (node.firstElementChild as HTMLElement).style.setProperty("--p", `${Math.max(0, Math.min(1, sk.ratio)) * 360}deg`);
+      setText(node.querySelector("small"), sk.info ?? "");
+    });
   }
 
   private renderBuild(g: GameScene) {

@@ -10,11 +10,12 @@ import { CampaignMode } from "../modes/campaign/campaignMode";
 import { openCampaignHub } from "../modes/campaign/hub";
 import type { GameMode, RunOutcome } from "../modes/mode";
 import { SurvivalMode } from "../modes/survival";
-import { Starfield, clampToArena, drawArena, inNebula, pushOutOfAsteroids } from "../systems/arena";
+import { Starfield, clampToArena, drawArena, hitsAsteroid, inNebula, pushOutOfAsteroids } from "../systems/arena";
 import { Deployables } from "../systems/deployables";
 import { destroyEnemy, spawnEnemy, updateEnemies } from "../systems/enemies";
 import { Fx } from "../systems/fx";
 import { activeChests, dropPickup, updatePickups } from "../systems/pickups";
+import type { Armament } from "../systems/rack";
 import { Arsenal, clearEnemyBullets, fireEnemyBullet, updateBullets, updateEnemyBullets } from "../systems/weapons";
 import type { Arena, Bullet, DamageSource, Enemy, EnemyBullet, EnemyId, ItemId, Pickup, ProjectileDef, Run, Stats } from "../types";
 import { mountDevPanel } from "../ui/devPanel";
@@ -60,9 +61,12 @@ export class GameScene extends Scene {
   hints!: Hints;
   hud!: Hud;
   pendingLevels = 0;
+  /** Input di combattimento letto a ogni frame (usato dal sistema d'arma della campagna). */
+  controls = { firing: false, bomb: false };
+  armament: Armament | null = null;
 
   private starfield!: Starfield;
-  private arsenal: Arsenal | null = null;
+  private rightClick = false;
   private arenaObjects: GameObjects.GameObject[] = [];
   private engine!: GameObjects.Image;
   private keys!: Record<string, Input.Keyboard.Key>;
@@ -92,8 +96,12 @@ export class GameScene extends Scene {
     this.keys = kb.addKeys({
       w: K.W, a: K.A, s: K.S, d: K.D,
       up: K.UP, left: K.LEFT, down: K.DOWN, right: K.RIGHT,
-      dash: K.SPACE, shift: K.SHIFT, turret: K.Q, mine: K.E, pause: K.P, esc: K.ESC, mute: K.M,
+      dash: K.SPACE, shift: K.SHIFT, turret: K.Q, mine: K.E, bomb: K.B, pause: K.P, esc: K.ESC, mute: K.M,
     }) as Record<string, Input.Keyboard.Key>;
+    this.input.mouse?.disableContextMenu();
+    this.input.on("pointerdown", (pointer: Input.Pointer) => {
+      if (pointer.rightButtonDown()) this.rightClick = true;
+    });
 
     const unlock = () => audio.unlock();
     window.addEventListener("pointerdown", unlock);
@@ -130,11 +138,16 @@ export class GameScene extends Scene {
     this.now += delta;
     this.run.time += delta;
 
+    const pointer = this.input.activePointer;
+    this.controls.firing = this.keys.dash.isDown || (pointer.isDown && pointer.leftButtonDown());
+    this.controls.bomb = Input.Keyboard.JustDown(this.keys.bomb) || this.rightClick;
+    this.rightClick = false;
+
     this.mode.update(this, dt);
     if (this.state !== "playing") return;
     this.updatePlayer(dt);
     updateEnemies(this, dt);
-    this.arsenal!.update(dt);
+    this.armament?.update(dt);
     this.deployables.update();
     updateBullets(this, dt);
     updateEnemyBullets(this, dt);
@@ -165,7 +178,7 @@ export class GameScene extends Scene {
       my /= len;
     }
 
-    const wantsDash = Input.Keyboard.JustDown(k.dash) || Input.Keyboard.JustDown(k.shift);
+    const wantsDash = this.mode.allowDash && (Input.Keyboard.JustDown(k.dash) || Input.Keyboard.JustDown(k.shift));
     if (wantsDash && this.now >= run.dashReadyAt) {
       const facing = this.player.rotation - Math.PI / 2;
       run.dashDir = len > 0 ? { x: mx, y: my } : { x: Math.cos(facing), y: Math.sin(facing) };
@@ -216,8 +229,8 @@ export class GameScene extends Scene {
     this.player.setAlpha(blinking ? (Math.floor(this.now / 70) % 2 ? 0.35 : 1) : 1);
 
     if (run.coins >= 8 && run.stats.maxTurrets > 0) this.hints.trigger("coins");
-    if (Input.Keyboard.JustDown(k.turret)) this.deployables.placeTurret();
-    if (Input.Keyboard.JustDown(k.mine)) this.deployables.placeMine();
+    if (run.stats.maxTurrets > 0 && Input.Keyboard.JustDown(k.turret)) this.deployables.placeTurret();
+    if (run.stats.maxMines > 0 && Input.Keyboard.JustDown(k.mine)) this.deployables.placeMine();
   }
 
   // ---------- Run ----------
@@ -245,7 +258,7 @@ export class GameScene extends Scene {
     cam.startFollow(this.player, true, 0.12, 0.12);
     cam.setZoom(1);
 
-    this.arsenal = new Arsenal(this);
+    this.armament = mode.createArmament?.(this) ?? new Arsenal(this);
     this.state = "playing";
     mode.begin(this);
     this.hud.show();
@@ -305,8 +318,8 @@ export class GameScene extends Scene {
     this.pickups = [];
     this.arenaObjects.forEach((o) => o.destroy());
     this.arenaObjects = [];
-    this.arsenal?.destroy();
-    this.arsenal = null;
+    this.armament?.destroy();
+    this.armament = null;
     this.deployables.destroy();
     this.player?.destroy();
     this.engine?.destroy();
@@ -317,6 +330,11 @@ export class GameScene extends Scene {
     this.fx.pause(false);
     this.hud.setBoss(null);
     this.cameras.main.stopFollow();
+  }
+
+  /** Punto pieno per proiettili e collisioni: asteroidi (e in futuro terreno). */
+  solidAt(x: number, y: number, radius: number) {
+    return hitsAsteroid(this.arena, x, y, radius);
   }
 
   /** Oggetti grafici legati alla run, distrutti a fine run (usato dalle modalità). */

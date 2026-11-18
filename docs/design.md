@@ -130,28 +130,48 @@ situazione (movimento, scatto, gemme, monete, chest, evoluzioni, ogni nuovo
 tipo di nemico) compare un suggerimento contestuale, una volta sola per
 profilo.
 
-## Campagna (MVP)
+## Campagna
 
-- **Hub**: in alto la mappa del settore con le missioni collegate, in basso
-  equipaggiamento, inventario e scheda dell'oggetto selezionato.
-- **Missioni**: corridoio orizzontale generato da un seed. La camera scorre da
-  sola verso destra e rallenta quando lo schermo è affollato. I nemici
-  arrivano da destra, innescati dalla distanza percorsa. Si vince
-  raggiungendo il portale d'uscita oppure, nella 1-5, abbattendo il
-  Dreadnought.
-- **Settore 1, "Fascia dei Rottami"**: 1-1 → 1-2 → (1-3 Nebulosa oppure 1-3
-  Asteroidi) → 1-4 → 1-5 boss. La minaccia (tier 1-5) scala nemici e
-  bottino.
-- **Equipaggiamento**: arma principale (Blaster, Spargitore, Railgun,
-  Mitragliera), secondario (Torretta, Posamine, Drone Gregario, Anello di
-  Lame), due moduli (Piastre, Propulsore, Mirino, Caricatore, Bobina) e uno
-  scafo (Ricognitore, Fregata, Bastione). L'arma principale spara in avanti,
-  con un aiuto alla mira entro ~30 gradi.
-- **Bottino**: gli elite (35%) e il boss lasciano casse; ogni vittoria dà un
-  pezzo garantito, non comune o migliore alla prima vittoria. Rarità:
-  potenza ×1 / ×1.15 / ×1.35 / ×1.6.
-- **Hangar**: ogni pezzo si potenzia fino al livello 10 (+8% per livello) con
-  le monete, oppure si vende. Arma e scafo sono obbligatori e si possono solo
-  sostituire.
-- **Non è un roguelite**: monete e bottino raccolti si tengono anche quando la
-  missione fallisce.
+Shoot 'em up a scorrimento orizzontale con hangar fra le missioni: il genere
+e le meccaniche sono quelli dei classici con negozio (slot d'arma multipli,
+calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
+[campaign-replan.md](campaign-replan.md).
+
+**Fatto (fase A):**
+- **Controlli:** WASD per muoversi, Spazio o click sinistro **tenuti** per
+  sparare, B o click destro per la bomba. Niente scatto e niente
+  torrette/mine in campagna.
+- **Slot per scafo:**
+
+  | Scafo | Frontali | Coda | Missili | Bombe | Dispositivi |
+  | --- | --- | --- | --- | --- | --- |
+  | Ricognitore | 2 | 0 | 1 | 0 | 1 |
+  | Fregata | 2 | 1 | 0 | 1 | 1 |
+  | Bastione | 3 | 1 | 1 | 1 | 2 |
+
+- **Fuoco e calore:** frontali e coda sparano insieme e scaldano. Al massimo
+  la nave si surriscalda e riparte al 35%. Il dissipatore lavora più in fretta
+  quando non si spara.
+- **Missili e bombe:** i missili partono da soli e non scaldano. Le bombe
+  cadono con gravità ed esplodono ad area; l'indicatore si ricarica da solo.
+- **Armi e soglie:**
+  - frontali: Blaster, Spargitore, Mitragliera, Railgun;
+  - coda: Cannone di coda, Flak;
+  - missili: Razzi, Sciame a ricerca;
+  - bomba: a grappolo.
+
+  Ogni arma cambia comportamento ai livelli 5 e 10.
+- **Dispositivi:** Piastre, Radiatore, Serbatoio termico, Mirino, Caricatore,
+  Propulsore, Bobina, Vano bombe, più Scanner taglie, Drone gregario e
+  Anello di lame che si trovano solo nel bottino.
+- **Hangar:** scheda Hangar (inventario: monta, potenzia fino al livello 10,
+  vendi) e scheda Negozio. Il catalogo si allarga con il tier delle missioni
+  completate; nel negozio tutto è comune, le rarità migliori arrivano solo
+  dal bottino.
+- **Missioni:** il corridoio a scorrimento dell'MVP con portale d'uscita e
+  boss nella 1-5. Monete e bottino si tengono anche in caso di sconfitta.
+- **Salvataggio:** `space-war-campaign-v2`, migrato in automatico dal v1.
+  Torrette e posamine vengono rimborsati in monete.
+
+**Prossime fasi:** terreno con pavimento e soffitto e livelli a segmenti (B),
+nemici in formazione e unità di terra (C), poi contenuti e rifinitura.

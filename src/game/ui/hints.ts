@@ -13,6 +13,9 @@ const HINTS: Record<string, { title: string; text: string; icon: IconId }> = {
   coins: { title: "Monete", text: "Con le monete piazzi difese: Q torretta, E mina, dove si trova la nave.", icon: "coin" },
   chest: { title: "Chest in arrivo", text: "Segui la freccia dorata: ogni chest contiene un oggetto.", icon: "star" },
   evolve: { title: "Evoluzioni", text: "Un tomo al livello 5 si evolve e cambia il modo di combattere.", icon: "star" },
+  fire: { title: "Armi a slot", text: "Tieni premuto SPAZIO (o il click) per sparare con tutte le armi. Ogni colpo scalda: guarda l'anello del calore.", icon: "heat" },
+  overheat: { title: "Surriscaldamento", text: "Le armi ripartono quando il calore scende al 35%. Radiatori e serbatoi termici si comprano in hangar.", icon: "heat" },
+  bomb: { title: "Bombe", text: "B (o click destro) sgancia una bomba che cade e devasta un'area. L'indicatore si ricarica da solo.", icon: "gear-bomb" },
   "turret-placed": { title: "Torretta", text: "Le torrette durano 30 secondi: piazzale dove vuoi combattere.", icon: "turret" },
 };
 

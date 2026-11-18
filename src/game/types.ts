@@ -13,8 +13,6 @@ export type Stats = typeof BASE_STATS & {
   arc: number;
   mineRadius: number;
   spread: number;
-  /** "auto": mira il nemico più vicino; "forward": spara in avanti con un piccolo aiuto alla mira. */
-  aim: "auto" | "forward";
 };
 
 // ---------- Nemici ----------
@@ -110,7 +108,9 @@ export type DamageSource =
   | "trail"
   | "pulse"
   | "emp"
-  | "blast";
+  | "blast"
+  | "missile"
+  | "bomb";
 
 export interface Bullet {
   sprite: GameObjects.Image;
@@ -123,6 +123,12 @@ export interface Bullet {
   radius: number;
   pierce: number;
   bounce: number;
+  /** Virata in rad/s verso il nemico più vicino (0 = dritto). */
+  homing: number;
+  gravity: number;
+  /** Raggio dell'esplosione all'impatto (0 = nessuna). */
+  blast: number;
+  target: number;
   hit: Set<number>;
   source: DamageSource;
   active: boolean;

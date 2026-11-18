@@ -10,11 +10,13 @@ import type { AffixId, Enemy } from "../../types";
 import { esc } from "../../ui/dom";
 import { banner } from "../../ui/hud";
 import { clamp, hex, pick, pickWeighted, rand, randInt } from "../../utils";
-import type { GameMode, HudInfo, ModeSetup, RunOutcome } from "../mode";
-import { gearDef, rollGear, type GearItem } from "./gear";
+import { defaultLoadout } from "../../data/upgrades";
+import { WeaponRack } from "../../systems/rack";
+import type { GameMode, HudInfo, ModeSetup, RunOutcome, SkillInfo } from "../mode";
+import { mustGearDef, rollGear, type GearItem } from "./gear";
 import { showMissionResult } from "./hub";
 import { missionById, type MissionDef } from "./missions";
-import { EQUIP_ORDER, addLoot, itemByUid, loadProfile, loadoutStats, saveProfile, type CampaignProfile } from "./profile";
+import { addLoot, buildLoadout, itemByUid, loadProfile, saveProfile, slotKeys, type CampaignLoadout, type CampaignProfile } from "./profile";
 
 const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
 const BASE_SCROLL = 78;
@@ -26,8 +28,11 @@ const BASE_SCROLL = 78;
 export class CampaignMode implements GameMode {
   readonly id = "campaign" as const;
   readonly heading = 0;
+  readonly allowDash = false;
   private mission: MissionDef;
   private profile: CampaignProfile;
+  private loadout: CampaignLoadout;
+  private rack: WeaponRack | null = null;
   private loot: Omit<GearItem, "uid">[] = [];
   private scroll = 0;
   private speed = BASE_SCROLL;
@@ -38,6 +43,7 @@ export class CampaignMode implements GameMode {
   constructor(private readonly missionId: string) {
     this.mission = missionById(missionId);
     this.profile = loadProfile();
+    this.loadout = buildLoadout(this.profile);
   }
 
   setup(): ModeSetup {
@@ -46,10 +52,21 @@ export class CampaignMode implements GameMode {
     return {
       arena,
       start: { x: 220, y: VIEW_H / 2 },
-      base: loadoutStats(this.profile),
+      base: {
+        ...defaultLoadout(),
+        ...this.loadout.ship,
+        damage: 2 * this.loadout.rack.damageMul,
+        maxTurrets: 0,
+        maxMines: 0,
+      },
       wave: this.mission.tier * 2 - 1,
       difficulty: "normal",
     };
+  }
+
+  createArmament(g: GameScene) {
+    this.rack = new WeaponRack(g, this.loadout);
+    return this.rack;
   }
 
   begin(g: GameScene) {
@@ -82,6 +99,7 @@ export class CampaignMode implements GameMode {
     }
 
     banner(`MISSIONE ${this.mission.code}`, this.mission.title);
+    g.hints.trigger("fire");
   }
 
   update(g: GameScene, dt: number) {
@@ -156,7 +174,7 @@ export class CampaignMode implements GameMode {
     const tier = this.mission.tier;
 
     if (elite || isBoss || Math.random() < 0.6) {
-      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1)));
+      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.loadout.rack.coinMul));
     }
     if (Math.random() < (elite ? 0.15 : 0.025)) dropPickup(g, "heart", x - 10, y + 4, 2);
     if (Math.random() < (elite ? 0.06 : 0.006)) dropPickup(g, pick(["magnet", "venom", "emp"] as const), x, y - 12);
@@ -170,7 +188,7 @@ export class CampaignMode implements GameMode {
   onChest(g: GameScene) {
     const item = rollGear(this.mission.tier);
     this.loot.push(item);
-    const def = gearDef(item.defId);
+    const def = mustGearDef(item.defId);
     g.toast(`Bottino: ${def.title}`, def.icon, item.rarity === "legendary" || item.rarity === "rare" ? "epic" : "good");
   }
 
@@ -219,11 +237,36 @@ export class CampaignMode implements GameMode {
     };
   }
 
+  skills(): SkillInfo[] {
+    const rack = this.rack;
+    if (!rack) return [];
+    const heatRatio = rack.heat / rack.heatCap;
+    const list: SkillInfo[] = [
+      {
+        id: "heat",
+        icon: "heat",
+        key: "SPAZIO",
+        ratio: heatRatio,
+        ready: !rack.overheated,
+        hot: rack.overheated || heatRatio > 0.75,
+        info: rack.overheated ? "SURRISCALDATO" : `calore ${Math.round(heatRatio * 100)}%`,
+      },
+    ];
+    if (rack.hasBomb) {
+      list.push({ id: "bomb", icon: "gear-bomb", key: "B", ratio: rack.bombCharge, ready: rack.bombCharge >= 1, info: rack.bombCharge >= 1 ? "pronta" : "" });
+    }
+    if (rack.hasMissiles) {
+      list.push({ id: "missile", icon: "gear-missile", key: "AUTO", ratio: rack.missileReady, ready: rack.missileReady >= 1 });
+    }
+    return list;
+  }
+
   build() {
-    const gear = EQUIP_ORDER.map((slot) => itemByUid(this.profile, this.profile.equipped[slot]))
+    const gear = slotKeys(this.profile)
+      .map((key) => itemByUid(this.profile, this.profile.equipped[key]))
       .filter((item): item is GearItem => Boolean(item))
       .map((item) => {
-        const def = gearDef(item.defId);
+        const def = mustGearDef(item.defId);
         return `<div class="build-chip build-chip--item rarity-${item.rarity}" style="--c:${hex(def.color)}" title="${esc(def.title)}">${icon(def.icon)}<b>${item.level}</b></div>`;
       });
     const loot = `<div class="build-chip build-chip--loot" style="--c:${hex(AFFIXES.splitter.color)}" title="Bottino raccolto">${icon("crate")}<b>${this.loot.length}</b></div>`;

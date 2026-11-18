@@ -4,7 +4,7 @@ import { isEvolved } from "../data/upgrades";
 import type { GameScene } from "../scenes/GameScene";
 import type { Bullet, DamageSource, Enemy, ProjectileDef } from "../types";
 import { dist2 } from "../utils";
-import { hitsAsteroid, insideArena } from "./arena";
+import { insideArena } from "./arena";
 import { shieldBlocks } from "./enemies";
 
 const near: Enemy[] = [];
@@ -26,17 +26,29 @@ export const nearestEnemy = (g: GameScene, x: number, y: number, range: number, 
 
 // ---------- Proiettili della nave ----------
 
-export const fireBullet = (
-  g: GameScene,
-  x: number,
-  y: number,
-  angle: number,
-  opts: { damage: number; speed: number; range: number; source: DamageSource; color: number; pierce?: number; bounce?: number; scale?: number },
-) => {
+export interface FireOptions {
+  damage: number;
+  speed: number;
+  range: number;
+  source: DamageSource;
+  color: number;
+  pierce?: number;
+  bounce?: number;
+  scale?: number;
+  homing?: number;
+  gravity?: number;
+  blast?: number;
+  texture?: "bullet" | "orb" | "missile";
+}
+
+export const fireBullet = (g: GameScene, x: number, y: number, angle: number, opts: FireOptions) => {
   let b = g.bullets.find((entry) => !entry.active);
   if (!b) {
-    const sprite = g.add.image(0, 0, "bullet").setBlendMode(BlendModes.ADD).setDepth(DEPTH.bullet);
-    b = { sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, life: 0, radius: 6, pierce: 0, bounce: 0, hit: new Set(), source: "blaster", active: false };
+    const sprite = g.add.image(0, 0, "bullet").setDepth(DEPTH.bullet);
+    b = {
+      sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, life: 0, radius: 6, pierce: 0, bounce: 0,
+      homing: 0, gravity: 0, blast: 0, target: -1, hit: new Set(), source: "blaster", active: false,
+    };
     g.bullets.push(b);
   }
   b.x = x;
@@ -47,16 +59,23 @@ export const fireBullet = (
   b.life = opts.range;
   b.pierce = opts.pierce ?? 0;
   b.bounce = opts.bounce ?? 0;
+  b.homing = opts.homing ?? 0;
+  b.gravity = opts.gravity ?? 0;
+  b.blast = opts.blast ?? 0;
+  b.target = -1;
   b.source = opts.source;
   b.hit.clear();
   b.active = true;
-  b.sprite
-    .setActive(true)
-    .setVisible(true)
-    .setPosition(x, y)
-    .setRotation(angle)
-    .setTint(opts.color)
-    .setScale(opts.scale ?? 1);
+
+  const scale = opts.scale ?? 1;
+  const texture = opts.texture ?? "bullet";
+  b.radius = texture === "missile" ? 8 * scale : texture === "orb" ? 7 * scale : 6 * scale;
+  b.sprite.setActive(true).setVisible(true).setPosition(x, y).setRotation(angle).setTexture(texture);
+  if (texture === "missile") {
+    b.sprite.clearTint().setBlendMode(BlendModes.NORMAL).setDisplaySize(30 * scale, 30 * scale);
+  } else {
+    b.sprite.setTint(opts.color).setBlendMode(BlendModes.ADD).setScale(scale);
+  }
   return b;
 };
 
@@ -65,21 +84,55 @@ const killBullet = (b: Bullet) => {
   b.sprite.setActive(false).setVisible(false);
 };
 
+/** Esplosione di missili e bombe: danno ad area, nessun bonus da scudo. */
+const detonate = (g: GameScene, b: Bullet) => {
+  g.fx.explosion(b.x, b.y, b.source === "bomb" ? 0xf97316 : 0xfca5a5, b.blast / 60);
+  g.fx.ring(b.x, b.y, 0xfdba74, b.blast);
+  g.sfx("boom");
+  if (b.blast >= 100) g.shake(120, 0.006);
+  g.enemyHash.query(b.x, b.y, b.blast + 60, near);
+  for (const e of near) {
+    if (e.dead || dist2(b.x, b.y, e.x, e.y) > (b.blast + e.radius) ** 2) continue;
+    g.damageEnemy(e, b.damage, b.source, Math.atan2(e.y - b.y, e.x - b.x), 260);
+  }
+  killBullet(b);
+};
+
+const steer = (g: GameScene, b: Bullet, dt: number) => {
+  let target = b.target >= 0 ? g.enemies.find((e) => e.uid === b.target && !e.dead) : undefined;
+  if (!target) {
+    target = nearestEnemy(g, b.x, b.y, 700) ?? undefined;
+    b.target = target?.uid ?? -1;
+  }
+  if (!target) return;
+  const speed = Math.hypot(b.vx, b.vy);
+  const current = Math.atan2(b.vy, b.vx);
+  let diff = Math.atan2(target.y - b.y, target.x - b.x) - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  const a = current + Math.max(-b.homing * dt, Math.min(b.homing * dt, diff));
+  b.vx = Math.cos(a) * speed;
+  b.vy = Math.sin(a) * speed;
+};
+
 export const updateBullets = (g: GameScene, dt: number) => {
   for (const b of g.bullets) {
     if (!b.active) continue;
+    if (b.homing) steer(g, b, dt);
+    if (b.gravity) b.vy += b.gravity * dt;
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.life -= Math.hypot(b.vx, b.vy) * dt;
     b.sprite.setPosition(b.x, b.y);
+    if (b.homing || b.gravity) b.sprite.setRotation(Math.atan2(b.vy, b.vx));
+    if (b.blast && Math.random() < 0.5) g.fx.trailDot(b.x, b.y, 0xfb923c);
 
-    if (b.life <= 0 || !insideArena(g.arena, b.x, b.y)) {
-      killBullet(b);
-      continue;
-    }
-    if (hitsAsteroid(g.arena, b.x, b.y, b.radius)) {
-      g.fx.burst(b.x, b.y, 0x94a3b8, 4);
-      killBullet(b);
+    if (b.life <= 0 || !insideArena(g.arena, b.x, b.y) || g.solidAt(b.x, b.y, b.radius)) {
+      if (b.blast) detonate(g, b);
+      else {
+        if (g.solidAt(b.x, b.y, b.radius)) g.fx.burst(b.x, b.y, 0x94a3b8, 4);
+        killBullet(b);
+      }
       continue;
     }
 
@@ -88,6 +141,11 @@ export const updateBullets = (g: GameScene, dt: number) => {
       if (e.dead || b.hit.has(e.uid)) continue;
       if (dist2(b.x, b.y, e.x, e.y) > (e.radius + b.radius) ** 2) continue;
       const angle = Math.atan2(b.vy, b.vx);
+
+      if (b.blast) {
+        detonate(g, b);
+        break;
+      }
 
       if (SHIELDABLE.includes(b.source) && shieldBlocks(e, angle)) {
         g.fx.burst(b.x, b.y, COLORS.shield, 6);
@@ -151,7 +209,7 @@ export const updateEnemyBullets = (g: GameScene, dt: number) => {
     b.y += b.vy * dt;
     b.life -= Math.hypot(b.vx, b.vy) * dt;
     b.sprite.setPosition(b.x, b.y);
-    const dead = b.life <= 0 || !insideArena(g.arena, b.x, b.y) || hitsAsteroid(g.arena, b.x, b.y, b.radius);
+    const dead = b.life <= 0 || !insideArena(g.arena, b.x, b.y) || g.solidAt(b.x, b.y, b.radius);
     if (!dead && dist2(b.x, b.y, px, py) < (b.radius + PLAYER_RADIUS - 3) ** 2) {
       g.hurtPlayer(b.damage);
       g.fx.burst(b.x, b.y, COLORS.enemyBullet, 6);
@@ -186,7 +244,11 @@ export class Arsenal {
   private nextTrailTick = 0;
   private shieldRing: GameObjects.Image;
 
-  constructor(private readonly g: GameScene) {
+  /** Con `blaster: false` restano solo droni, lame e simili (usato dalla campagna). */
+  constructor(
+    private readonly g: GameScene,
+    private readonly opts: { blaster: boolean } = { blaster: true },
+  ) {
     this.shieldRing = g.add
       .image(0, 0, "ring")
       .setTint(COLORS.shield)
@@ -205,7 +267,7 @@ export class Arsenal {
 
   update(dt: number) {
     const g = this.g;
-    this.updateBlaster();
+    if (this.opts.blaster) this.updateBlaster();
     this.updateDrones(dt);
     this.updateBlades();
     this.updateArc();
@@ -220,7 +282,7 @@ export class Arsenal {
     const run = g.run;
     const stats = run.stats;
     if (g.now < this.nextShot) return;
-    const base = stats.aim === "forward" ? this.forwardAim(stats.range) : this.autoAim(stats.range);
+    const base = this.autoAim(stats.range);
     if (base === null) return;
 
     const venom = g.now < run.venomUntil;
@@ -267,26 +329,6 @@ export class Arsenal {
     const { player } = this.g;
     const target = nearestEnemy(this.g, player.x, player.y, range);
     return target ? Math.atan2(target.y - player.y, target.x - player.x) : null;
-  }
-
-  /** Fuoco in avanti (verso destra) con aiuto alla mira entro un cono di ~30 gradi. */
-  private forwardAim(range: number): number | null {
-    const { player, enemies } = this.g;
-    let best: number | null = null;
-    let bestD = range * range;
-    let anyAhead = false;
-    for (const e of enemies) {
-      if (e.dead || e.x < player.x) continue;
-      const d = dist2(player.x, player.y, e.x, e.y);
-      if (d > range * range) continue;
-      anyAhead = true;
-      const a = Math.atan2(e.y - player.y, e.x - player.x);
-      if (Math.abs(a) < 0.52 && d < bestD) {
-        bestD = d;
-        best = a;
-      }
-    }
-    return best ?? (anyAhead ? 0 : null);
   }
 
   private updateDrones(dt: number) {

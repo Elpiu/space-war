@@ -237,6 +237,8 @@ const SOURCE_LABELS: Record<DamageSource, string> = {
   pulse: "Repulsore",
   emp: "EMP",
   blast: "Esplosioni",
+  missile: "Missili",
+  bomb: "Bombe",
 };
 
 export const showGameOver = (

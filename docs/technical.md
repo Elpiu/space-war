@@ -24,7 +24,8 @@ src/
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
     systems/director.ts   wave del survival, eventi orda/boss, spawn
     systems/enemies.ts    spawn e IA di tutti i nemici, boss a fasi
-    systems/weapons.ts    proiettili in pool, cannone, droni, lame, arco, evoluzioni
+    systems/weapons.ts    proiettili in pool (anche a ricerca, a gravità, esplosivi), arsenale del survival
+    systems/rack.ts       armi a slot della campagna: fuoco tenuto, calore, missili, bombe
     systems/deployables.ts torrette e mine
     systems/pickups.ts    gemme, monete, drop speciali, chest
     systems/fx.ts         particelle, numeri di danno, anelli, fulmini, frecce
@@ -50,7 +51,7 @@ src/
   "cotto" dentro le entità, quindi un upgrade non deve aggiornare a mano
   torrette o droni già esistenti.
 - **Salvataggi separati.** `space-war-meta-v4` contiene crediti e sblocchi del
-  survival; `space-war-campaign-v1` contiene monete, inventario,
+  survival; `space-war-campaign-v2` contiene monete, inventario,
   equipaggiamento e missioni completate.
 - **Tempo di gioco proprio.** `g.now` avanza solo in modalità `playing`:
   pausa e level-up congelano automaticamente timer, cooldown e buff. Al
@@ -65,9 +66,11 @@ src/
 
 ## Aggiungere contenuti
 
-- **Pezzo d'equipaggiamento**: una voce in `GEAR` (`modes/campaign/gear.ts`),
-  con effetti dichiarativi `set`/`add`/`mul` sulle statistiche. Scheda,
-  prezzi e upgrade si derivano da soli.
+- **Pezzo d'equipaggiamento**: una voce in `GEAR` (`modes/campaign/gear.ts`).
+  Le armi hanno una `WeaponSpec` (danno, cadenza, calore, proiettili, ricerca,
+  gravità, esplosione) e soglie ai livelli 5 e 10. Gli scafi hanno una
+  `HullSpec` con il layout degli slot. I dispositivi hanno effetti
+  dichiarativi su nave e rack. Scheda, prezzi e upgrade si derivano da soli.
 - **Missione**: una voce in `MISSIONS` (`modes/campaign/missions.ts`), con
   posizione sulla mappa e missioni richieste.
 
