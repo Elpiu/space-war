@@ -2,7 +2,10 @@ import type { DifficultyId } from "../../config";
 import type { Rarity } from "../../types";
 import {
   GEAR,
+  GEAR_RARITY,
   applyDevice,
+  ilvlMul,
+  rollGear,
   buyPrice,
   gearDef,
   hullSpec,
@@ -20,6 +23,7 @@ import {
   type WeaponSpec,
 } from "./gear";
 import { MISSIONS, type MissionDef } from "./missions";
+import { AFFIX_COUNT, applyShipAffixes, rollAffix, rollAffixes } from "./affixes";
 import { LAYERS, generateSector, ilvlOf, nodeState, sectorOfId } from "./sectors";
 
 const KEY = "space-war-campaign-v2";
@@ -52,6 +56,10 @@ export interface CampaignProfile {
   sector: number;
   /** Esito dei nodi senza combattimento già risolti (cantiere, evento, tesoro). */
   nodeOutcomes: Record<string, string>;
+  /** Missioni vinte in totale: fa ruotare le offerte del settore. */
+  victories: number;
+  /** Offerte del settore nel negozio: pezzi rari o migliori con affissi. */
+  offers: { stamp: number; rerolls: number; items: (Omit<GearItem, "uid"> | null)[] };
 }
 
 export const DIFFICULTY_STARS: Record<DifficultyId, number> = { normal: 1, hard: 2, nightmare: 3 };
@@ -79,6 +87,8 @@ const starter = (): CampaignProfile => ({
   seed: Math.floor(Math.random() * 0x7fffffff),
   sector: 1,
   nodeOutcomes: {},
+  victories: 0,
+  offers: { stamp: -1, rerolls: 0, items: [] },
 });
 
 export const toggleFireSlot = (profile: CampaignProfile, which: 2 | 3, key: SlotKey) => {
@@ -205,6 +215,7 @@ export const difficultyUnlocked = (profile: CampaignProfile, missionId: string, 
 
 export const recordVictory = (profile: CampaignProfile, missionId: string, difficulty: DifficultyId) => {
   completeNode(profile, missionId);
+  profile.victories += 1;
   profile.stars[missionId] = Math.max(profile.stars[missionId] ?? 0, DIFFICULTY_STARS[difficulty]);
 };
 
@@ -305,6 +316,127 @@ export const buy = (profile: CampaignProfile, defId: string) => {
   return item;
 };
 
+// ---------- Officina: fusione e ricalibrazione ----------
+
+const NEXT_RARITY: Partial<Record<Rarity, Rarity>> = { common: "uncommon", uncommon: "rare", rare: "legendary" };
+
+/** Doppioni fondibili con un pezzo: stessa definizione e rarità, liberi e non bloccati. */
+export const fusionPartners = (profile: CampaignProfile, item: GearItem) =>
+  profile.inventory.filter((o) => o.uid !== item.uid && o.defId === item.defId && o.rarity === item.rarity && isSellable(profile, o));
+
+export const fusionCost = (item: GearItem) => {
+  const next = NEXT_RARITY[item.rarity];
+  if (!next) return Infinity;
+  return Math.round(mustGearDef(item.defId).value * GEAR_RARITY[next].value * 2.5 * ilvlMul(item.ilvl));
+};
+
+/**
+ * Fonde 3 pezzi uguali (questo + 2 doppioni) in uno della rarità superiore.
+ * Il pezzo scelto resta dov'è (anche se montato), prende il livello e
+ * l'item level migliori e ritira gli affissi per la nuova rarità.
+ */
+export const fuse = (profile: CampaignProfile, uid: number) => {
+  const item = itemByUid(profile, uid);
+  if (!item) return "";
+  const next = NEXT_RARITY[item.rarity];
+  if (!next) return "I pezzi leggendari non si fondono";
+  const partners = fusionPartners(profile, item).sort((a, b) => a.level - b.level).slice(0, 2);
+  if (partners.length < 2) return "Servono altri 2 pezzi uguali, liberi e non bloccati";
+  const cost = fusionCost(item);
+  if (profile.coins < cost) return "Monete insufficienti";
+  profile.coins -= cost;
+  const used = new Set(partners.map((p) => p.uid));
+  item.level = Math.max(item.level, ...partners.map((p) => p.level));
+  const ilvl = Math.max(item.ilvl ?? 0, ...partners.map((p) => p.ilvl ?? 0));
+  if (ilvl > 0) item.ilvl = ilvl;
+  item.rarity = next;
+  const def = mustGearDef(item.defId);
+  // Gli affissi esistenti si tengono; si aggiungono quelli mancanti per la nuova rarità.
+  const affixes = [...(item.affixes ?? [])];
+  while (affixes.length < AFFIX_COUNT[next]) {
+    const a = rollAffix(def.slot, next, Boolean(def.weapon?.beam), affixes.map((x) => x.id));
+    if (!a) break;
+    affixes.push(a);
+  }
+  if (affixes.length) item.affixes = affixes;
+  profile.inventory = profile.inventory.filter((i) => !used.has(i.uid));
+  saveProfile(profile);
+  return `Fusione riuscita: ${def.title} ora è ${RARITY_LABEL[next]}`;
+};
+
+const RARITY_LABEL: Record<Rarity, string> = { common: "comune", uncommon: "non comune", rare: "raro", legendary: "leggendario" };
+
+export const recalCost = (item: GearItem) =>
+  Math.round(mustGearDef(item.defId).value * GEAR_RARITY[item.rarity].value * 0.6 * ilvlMul(item.ilvl) * (1 + 0.5 * (item.recal ?? 0)));
+
+/** Ritira un affisso (tipo e valore), diverso dagli altri del pezzo. */
+export const recalibrate = (profile: CampaignProfile, uid: number, index: number) => {
+  const item = itemByUid(profile, uid);
+  const current = item?.affixes?.[index];
+  if (!item || !current) return "";
+  const cost = recalCost(item);
+  if (profile.coins < cost) return "Monete insufficienti";
+  const def = mustGearDef(item.defId);
+  const others = item.affixes!.filter((_, i) => i !== index).map((a) => a.id);
+  const rolled = rollAffix(def.slot, item.rarity, Boolean(def.weapon?.beam), others);
+  if (!rolled) return "";
+  profile.coins -= cost;
+  item.affixes![index] = rolled;
+  item.recal = (item.recal ?? 0) + 1;
+  saveProfile(profile);
+  return "Affisso ricalibrato";
+};
+
+// ---------- Offerte del settore ----------
+
+const OFFER_COUNT = 4;
+
+/** Item level delle offerte: quello del bottino del settore più alto sbloccato. */
+const offerIlvl = (profile: CampaignProfile) => ilvlOf(profile.sector, 0);
+
+const rollOffer = (profile: CampaignProfile): Omit<GearItem, "uid"> => {
+  const item = rollGear(Math.max(1, shopTier(profile)), "rare", offerIlvl(profile));
+  const def = mustGearDef(item.defId);
+  // Le offerte hanno sempre affissi, anche se il pezzo era senza.
+  return item.affixes?.length ? item : { ...item, affixes: rollAffixes(def.slot, item.rarity, Boolean(def.weapon?.beam)) };
+};
+
+/** Offerte correnti: si rinnovano dopo ogni missione vinta. */
+export const sectorOffers = (profile: CampaignProfile) => {
+  if (profile.offers.stamp !== profile.victories || profile.offers.items.length !== OFFER_COUNT) {
+    profile.offers = { stamp: profile.victories, rerolls: 0, items: Array.from({ length: OFFER_COUNT }, () => rollOffer(profile)) };
+    saveProfile(profile);
+  }
+  return profile.offers.items;
+};
+
+export const offerPrice = (item: Omit<GearItem, "uid">) =>
+  Math.round(buyPrice(mustGearDef(item.defId), item.ilvl) * GEAR_RARITY[item.rarity].value * 1.4 * (1 + 0.15 * (item.affixes?.length ?? 0)));
+
+export const offerRerollCost = (profile: CampaignProfile) => Math.round(60 * ilvlMul(offerIlvl(profile)) * (1 + profile.offers.rerolls));
+
+export const rerollOffers = (profile: CampaignProfile) => {
+  const cost = offerRerollCost(profile);
+  if (profile.coins < cost) return "Monete insufficienti";
+  profile.coins -= cost;
+  profile.offers = { stamp: profile.victories, rerolls: profile.offers.rerolls + 1, items: Array.from({ length: OFFER_COUNT }, () => rollOffer(profile)) };
+  saveProfile(profile);
+  return "Offerte rinnovate";
+};
+
+export const buyOffer = (profile: CampaignProfile, index: number) => {
+  const offer = sectorOffers(profile)[index];
+  if (!offer) return null;
+  const price = offerPrice(offer);
+  if (profile.coins < price) return null;
+  profile.coins -= price;
+  const [item] = addLoot(profile, [offer]);
+  item.fresh = false;
+  profile.offers.items[index] = null;
+  saveProfile(profile);
+  return item;
+};
+
 /** Vende tutti i pezzi comuni di livello 1 non montati. */
 export const sellCommons = (profile: CampaignProfile) =>
   sellMany(
@@ -378,7 +510,7 @@ export const equippedOfType = (profile: CampaignProfile, type: string) =>
     .map((key) => itemByUid(profile, profile.equipped[key]))
     .find(Boolean);
 
-export const addLoot = (profile: CampaignProfile, items: { defId: string; rarity: Rarity; level: number; ilvl?: number }[]) => {
+export const addLoot = (profile: CampaignProfile, items: Omit<GearItem, "uid">[]) => {
   const added = items.map((item) => ({ ...item, uid: profile.nextUid++, fresh: true }));
   profile.inventory.push(...added);
   return added;
@@ -414,8 +546,8 @@ export interface CampaignLoadout {
 export const buildLoadout = (profile: CampaignProfile): CampaignLoadout => {
   const hullItem = equippedHull(profile);
   const hull = hullItem ? hullSpec(hullItem) : { hp: 10, speed: 250, heatCap: 100, heatSink: 30 };
-  const ship: ShipStats = { maxHp: hull.hp, speed: hull.speed, pickupRadius: 160, drones: 0, blades: 0, shield: 0, shieldRegen: 0, regen: 0 };
-  const rack: RackStats = { damageMul: 1, rateMul: 1, heatCap: hull.heatCap, heatSink: hull.heatSink, bombRate: 1, coinMul: 1, comboBonus: 0 };
+  const ship: ShipStats = { maxHp: hull.hp, speed: hull.speed, pickupRadius: 160, drones: 0, blades: 0, shield: 0, shieldRegen: 0, regen: 0, lifeSteal: 0 };
+  const rack: RackStats = { damageMul: 1, rateMul: 1, heatCap: hull.heatCap, heatSink: hull.heatSink, bombRate: 1, coinMul: 1, comboBonus: 0, killBlast: 0 };
   const mounts: Mount[] = [];
 
   for (const key of slotKeys(profile)) {
@@ -428,5 +560,13 @@ export const buildLoadout = (profile: CampaignProfile): CampaignLoadout => {
       if (spec) mounts.push({ slot: type as WeaponSlot, index: Number(key.replace(/\D/g, "")), spec });
     }
   }
+  // Affissi di nave: valgono per ogni pezzo montato, scafo compreso.
+  for (const key of slotKeys(profile)) {
+    const item = itemByUid(profile, profile.equipped[key]);
+    if (item) applyShipAffixes(ship, rack, item.affixes);
+  }
+  // Tetti agli affissi che si sommano su molti pezzi.
+  rack.killBlast = Math.min(0.5, rack.killBlast);
+  ship.lifeSteal = Math.min(0.08, ship.lifeSteal);
   return { ship, rack, mounts, fireProfiles: profile.fireProfiles };
 };

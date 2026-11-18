@@ -474,7 +474,7 @@ export class GameScene extends Scene {
   }
 
   /** Esplosione ad area: danneggia i nemici e, se richiesto, anche la nave. */
-  private blast(x: number, y: number, radius: number, damage: number, hurtsPlayer: boolean) {
+  blast(x: number, y: number, radius: number, damage: number, hurtsPlayer: boolean) {
     this.fx.explosion(x, y, 0xf97316, radius / 50);
     this.fx.ring(x, y, 0xfb923c, radius);
     this.sfx("boom");

@@ -325,6 +325,11 @@ export class CampaignMode implements GameMode {
     this.combo = g.now - this.lastKillAt < 1800 ? this.combo + 1 : 1;
     this.lastKillAt = g.now;
     const { x, y, def } = e;
+    // Affisso "esplosione all'uccisione": danno ad area pari a 1.5 colpi dell'arma migliore.
+    if (this.loadout.rack.killBlast > 0 && Math.random() < this.loadout.rack.killBlast) {
+      const best = Math.max(1, ...this.loadout.mounts.filter((m) => m.slot === "front" || m.slot === "rear").map((m) => m.spec.damage));
+      g.blast(x, y, 90, best * this.loadout.rack.damageMul * 1.5, false);
+    }
     const elite = Boolean(e.affix);
     const isBoss = def.id === "boss" || def.id === "gunship";
     const tier = this.mission.tier;

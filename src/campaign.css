@@ -280,3 +280,27 @@
 .pause-build { display: flex; justify-content: center; }
 .pause-build .build-row { flex-wrap: wrap; justify-content: center; }
 
+
+/* ---------- Affissi, fusione, ricalibrazione, offerte (G4) ---------- */
+.hq-tile__aff { position: absolute; top: 2px; right: 4px; color: #fbbf24; font-size: 7px; letter-spacing: 1px; text-decoration: none; text-shadow: 0 0 4px rgba(251, 191, 36, 0.7); }
+.gear-stats li.is-affix { color: #fde68a; }
+.gear-stats li.is-affix::before { content: ""; }
+.gear-stats li.is-affix .ico { width: 11px; height: 11px; color: #fbbf24; vertical-align: -1px; }
+.hq-forge { display: grid; gap: 7px; margin-top: 10px; padding: 10px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(2, 6, 23, 0.35); }
+.hq-forge h4 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; font: 700 13px/1.2 var(--font-title); letter-spacing: 0.06em; text-transform: uppercase; }
+.hq-forge h4 small { color: var(--muted); font: 400 12px/1.2 var(--font); text-transform: none; letter-spacing: 0; }
+.hq-forge p { margin: 0; font-size: 12px; }
+.hq-forge .btn { justify-self: start; }
+.hq-forge__slots { display: flex; gap: 6px; }
+.hq-forge__slots i { width: 26px; height: 26px; border-radius: 7px; border: 2px dashed rgba(148, 163, 184, 0.35); }
+.hq-forge__slots i.on { border: 2px solid var(--r); background: color-mix(in srgb, var(--r) 20%, transparent); }
+.hq-recal { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.hq-recal li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: #fde68a; }
+.hq-recal li .ico { width: 12px; height: 12px; color: #fbbf24; }
+.hq-offers__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hq-offers__head h3 { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.hq-cards--offers { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 8px; }
+.hq-card--offer { border-color: color-mix(in srgb, var(--r) 55%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--r) 16%, transparent), rgba(9, 14, 34, 0.92)); }
+.hq-card__aff { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; color: #fde68a; font-size: 11px; line-height: 1.3; }
+.hq-card__aff li::before { content: "◆ "; color: #fbbf24; }
+.hq-card--sold { display: grid; place-content: center; text-align: center; opacity: 0.5; cursor: default; border-style: dashed; border-color: rgba(148, 163, 184, 0.4); background: transparent; }

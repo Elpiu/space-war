@@ -25,6 +25,7 @@ src/
     modes/campaign/hub.ts regia dell'hub (stato, eventi delegati, esito missione)
     modes/campaign/sectors.ts  campagna infinita: seed, mappa a nodi, Markov, curve, biomi, mutatori
     modes/campaign/events.ts   cantiere, eventi e tesori (nodi senza combattimento)
+    modes/campaign/affixes.ts  affissi del bottino: tiro, etichette, effetti su arma e nave
     modes/campaign/ui/    viste dell'hub: mappa, hangar, negozio, officina, elementi comuni
     modes/campaign/schematic.ts  sagome SVG degli scafi e posizione delle prese
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
@@ -100,6 +101,10 @@ src/
   `CampaignMode.update` (vedi la nebulosa tossica).
 - **Mutatore**: una voce in `MUTATORS` (`sectors.ts`), più l'effetto in
   `CampaignMode` (`this.has("id")`).
+- **Affisso del bottino**: una voce in `GEAR_AFFIXES` (`modes/campaign/affixes.ts`)
+  con slot, intervallo e l'effetto `weapon` (sulla WeaponSpec) oppure `ship`
+  (su ShipStats o RackStats). Fusione, ricalibrazione e offerte del settore
+  sono in `profile.ts`.
 - **Evento**: un `case` in `nodeContent` (`modes/campaign/events.ts`) e l'id
   in `EVENTS` (`sectors.ts`).
 - **Minaccia**: `ModeSetup.threat` moltiplica HP, danno e velocità dei nemici

@@ -2,8 +2,18 @@ import { icon } from "../../../art/svg";
 import { RARITIES } from "../../../data/upgrades";
 import { esc } from "../../../ui/dom";
 import { hex } from "../../../utils";
-import { GEAR_MAX_LEVEL, SLOT_LABELS, describeGear, milestonesOf, mustGearDef, sellPrice, upgradeCost, type GearItem } from "../gear";
-import { commonsValue, equippedSlotOf, isSellable, itemByUid, type CampaignProfile } from "../profile";
+import { GEAR_MAX_LEVEL, SLOT_LABELS, affixLinesOf, describeGear, milestonesOf, mustGearDef, sellPrice, upgradeCost, type GearItem } from "../gear";
+import { AFFIX_COUNT } from "../affixes";
+import {
+  commonsValue,
+  equippedSlotOf,
+  fusionCost,
+  fusionPartners,
+  isSellable,
+  itemByUid,
+  recalCost,
+  type CampaignProfile,
+} from "../profile";
 import { gearLines, slotLabel, type HubState } from "./common";
 import { inventoryPanel } from "./hangarView";
 
@@ -23,7 +33,7 @@ const upgradePreview = (item: GearItem) => {
 
 const detail = (profile: CampaignProfile, state: HubState) => {
   const item = itemByUid(profile, state.selected);
-  if (!item) return `<p class="muted">Scegli un pezzo dall'inventario per potenziarlo, bloccarlo o venderlo.</p>`;
+  if (!item) return `<p class="muted">Scegli un pezzo dall'inventario per potenziarlo, fonderlo, ricalibrarlo, bloccarlo o venderlo.</p>`;
   const def = mustGearDef(item.defId);
   const where = equippedSlotOf(profile, item.uid);
   const cost = upgradeCost(item);
@@ -48,8 +58,47 @@ const detail = (profile: CampaignProfile, state: HubState) => {
       <button class="btn btn--small" data-action="lock" data-uid="${item.uid}">${icon("lock")} ${item.locked ? "Sblocca" : "Blocca"}</button>
       <button class="btn btn--small ${state.confirm === `sell-${item.uid}` ? "btn--danger" : ""}" data-action="sell" data-uid="${item.uid}" ${isSellable(profile, item) ? "" : "disabled"}>${icon("coin")} ${state.confirm === `sell-${item.uid}` ? "Conferma" : "Vendi"} ${sellPrice(item)}</button>
     </div>
-    <p class="muted hq-note">Fusione e ricalibrazione arriveranno nell'Officina con il bottino con affissi.</p>
-    ${state.feedback ? `<p class="hub__feedback">${esc(state.feedback)}</p>` : ""}`;
+    ${state.feedback ? `<p class="hub__feedback">${esc(state.feedback)}</p>` : ""}
+    ${fusionPanel(profile, item)}
+    ${recalPanel(profile, item)}`;
+};
+
+const NEXT: Record<string, keyof typeof RARITIES | undefined> = { common: "uncommon", uncommon: "rare", rare: "legendary" };
+
+/** Fusione: 3 pezzi uguali della stessa rarità + monete → rarità superiore. */
+const fusionPanel = (profile: CampaignProfile, item: GearItem) => {
+  const next = NEXT[item.rarity];
+  if (!next) return `<section class="hq-forge"><h4>${icon("reroll")} Fusione</h4><p class="muted">I leggendari sono già al massimo.</p></section>`;
+  const partners = fusionPartners(profile, item);
+  const cost = fusionCost(item);
+  const have = Math.min(2, partners.length);
+  const slots = [item, ...partners.slice(0, 2)]
+    .map((p) => `<i class="on" style="--r:${hex(RARITIES[p.rarity].color)}"></i>`)
+    .concat(Array.from({ length: 2 - have }, () => `<i></i>`))
+    .join("");
+  const ready = partners.length >= 2;
+  return `<section class="hq-forge">
+    <h4>${icon("reroll")} Fusione <small>3 × ${RARITIES[item.rarity].label} → <b style="color:${hex(RARITIES[next].color)}">${RARITIES[next].label}</b></small></h4>
+    <div class="hq-forge__slots">${slots}</div>
+    <p class="muted">${ready ? `Usa 2 doppioni liberi e non bloccati. Tiene il livello e l'item level migliori, aggiunge ${AFFIX_COUNT[next] - (item.affixes?.length ?? 0)} affisso.` : `Hai ${partners.length} doppioni liberi su 2 necessari.`}</p>
+    <button class="btn btn--small" data-action="fuse" data-uid="${item.uid}" ${ready && profile.coins >= cost ? "" : "disabled"}>${icon("reroll")} Fondi ${cost}</button>
+  </section>`;
+};
+
+/** Ricalibrazione: ritira un affisso, a costo crescente. */
+const recalPanel = (profile: CampaignProfile, item: GearItem) => {
+  if (!item.affixes?.length) return "";
+  const cost = recalCost(item);
+  const rows = item.affixes
+    .map(
+      (a, i) => `<li><span>${icon("star")} ${esc(affixLinesOf({ ...item, affixes: [a] })[0])}</span>
+        <button class="btn btn--small" data-action="recal" data-uid="${item.uid}" data-id="${i}" ${profile.coins < cost ? "disabled" : ""} title="Ritira questo affisso">${icon("reroll")} ${cost}</button></li>`,
+    )
+    .join("");
+  return `<section class="hq-forge">
+    <h4>${icon("star")} Ricalibrazione <small>${item.recal ? `${item.recal} già fatte: costa sempre di più` : "ritira un affisso a scelta"}</small></h4>
+    <ul class="hq-recal">${rows}</ul>
+  </section>`;
 };
 
 export const workshopView = (profile: CampaignProfile, state: HubState) => {

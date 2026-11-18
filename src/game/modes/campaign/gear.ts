@@ -1,4 +1,5 @@
 import type { IconId } from "../../art/svg";
+import { affixLabel, applyWeaponAffixes, rollAffixes, type GearAffix } from "./affixes";
 import type { Rarity } from "../../types";
 import { pick, pickWeighted } from "../../utils";
 
@@ -28,6 +29,10 @@ export interface WeaponSpec {
   groundMul?: number;
   /** Raggio continuo: `damage` è al secondo, `heat` è al secondo. */
   beam?: boolean;
+  /** Probabilità di colpo critico (danno doppio), dagli affissi. */
+  crit?: number;
+  /** Ogni N colpi parte un proiettile in più, dagli affissi. */
+  volley?: number;
   color: number;
   scale?: number;
   texture?: "bullet" | "orb" | "missile";
@@ -55,6 +60,8 @@ export interface RackStats {
   coinMul: number;
   /** Bonus monete per ogni passo di combo (con il Moltiplicatore). */
   comboBonus: number;
+  /** Probabilità che un nemico abbattuto esploda (affissi). */
+  killBlast: number;
 }
 
 export interface ShipStats {
@@ -68,6 +75,8 @@ export interface ShipStats {
   shieldRegen: number;
   /** HP rigenerati al secondo (nanobot). */
   regen: number;
+  /** Frazione del danno delle armi di bordo restituita in HP (affissi). */
+  lifeSteal: number;
 }
 
 interface GearEffect {
@@ -113,6 +122,10 @@ export interface GearItem {
   locked?: boolean;
   /** Item level: 0 nel settore 1, cresce di 10 per settore della campagna infinita. */
   ilvl?: number;
+  /** Affissi casuali del bottino (0-3 in base alla rarità). */
+  affixes?: GearAffix[];
+  /** Ricalibrazioni già fatte: ognuna rende la successiva più cara. */
+  recal?: number;
 }
 
 /** Potenza dell'item level con rendimenti decrescenti: 1 + 0.1·√ilvl. */
@@ -544,6 +557,7 @@ export const weaponSpec = (item: GearItem): WeaponSpec | undefined => {
   if (item.level >= 5 && def.milestones?.[5]) Object.assign(spec, def.milestones[5].patch);
   if (item.level >= 10 && def.milestones?.[10]) Object.assign(spec, def.milestones[10].patch);
   spec.damage *= gearPower(item);
+  applyWeaponAffixes(spec, item.affixes);
   return spec;
 };
 
@@ -621,12 +635,26 @@ export const rollGear = (tier: number, minRarity: Rarity = "common", ilvl = 0): 
   };
   const allowed = order.slice(order.indexOf(minRarity));
   const rarity = pickWeighted(allowed, (r) => rarityWeights[r]) ?? minRarity;
-  return ilvl > 0 ? { defId: def.id, rarity, level: 1, ilvl } : { defId: def.id, rarity, level: 1 };
+  const affixes = rollAffixes(def.slot, rarity, Boolean(def.weapon?.beam));
+  return {
+    defId: def.id,
+    rarity,
+    level: 1,
+    ...(ilvl > 0 ? { ilvl } : {}),
+    ...(affixes.length ? { affixes } : {}),
+  };
 };
 
-/** Danno al secondo di un'arma (per i confronti in hangar). */
-export const weaponDps = (spec: WeaponSpec) =>
-  spec.beam ? spec.damage * (1 + (spec.pierce ?? 0)) : (spec.damage * spec.projectiles * 1000) / spec.interval;
+/** Danno al secondo di un'arma (per i confronti in hangar), con critici e raffiche. */
+export const weaponDps = (spec: WeaponSpec) => {
+  const crit = 1 + (spec.crit ?? 0);
+  if (spec.beam) return spec.damage * (1 + (spec.pierce ?? 0)) * crit;
+  const extra = spec.volley ? 1 / spec.volley : 0;
+  return ((spec.damage * (spec.projectiles + extra) * 1000) / spec.interval) * crit;
+};
+
+/** Righe degli affissi di un pezzo. */
+export const affixLinesOf = (item: GearItem) => (item.affixes ?? []).map(affixLabel);
 
 /** Calore al secondo a fuoco continuo. */
 export const weaponHeat = (spec: WeaponSpec) => (spec.beam ? spec.heat : (spec.heat * 1000) / spec.interval);

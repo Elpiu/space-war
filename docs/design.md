@@ -339,6 +339,40 @@ Quattro schermate a tutto spazio, con una barra in alto:
   sostituisce il pezzo più debole.
 - **Officina:** potenziamento con barra dei livelli e anteprima, blocco,
   vendita (con conferma) e vendita rapida dei comuni.
+  - **Fusione:** 3 pezzi uguali (stessa definizione e rarità) più monete
+    danno un pezzo della rarità superiore. Il pezzo scelto resta montato
+    dov'è, prende il livello e l'item level migliori, tiene i suoi affissi e
+    ne aggiunge uno. Usa solo doppioni liberi e non bloccati.
+  - **Ricalibrazione:** ritira un affisso a scelta (tipo e valore). Ogni
+    ricalibrazione dello stesso pezzo costa il 50% in più.
+- **Offerte del settore** (in cima al Negozio): 4 pezzi rari o migliori,
+  sempre con affissi, all'item level del settore più alto. Cambiano dopo
+  ogni missione vinta; "Rinnova" li ripesca, a costo crescente.
+
+## Affissi del bottino
+
+Ogni pezzo trovato ha affissi casuali in base alla rarità: comune 0, non
+comune 1, raro 2, leggendario 3 (i leggendari pescano nella metà alta dei
+valori). I pezzi del catalogo non ne hanno.
+
+| Affisso | Valori | Dove |
+| --- | --- | --- |
+| Danno | +6–14% | armi |
+| Cadenza | +5–12% | armi |
+| Calore | −8–18% per colpo | frontali e coda |
+| Colpo critico (danno ×2) | 5–12% | armi |
+| Gittata | +10–22% | frontali e coda (non laser) |
+| Raffica | +1 proiettile ogni 4 colpi | frontali e coda (non laser) |
+| Perforazione | +1 | frontali e coda, solo rari e leggendari |
+| Rubavita | 1–3% del danno delle armi di bordo (tetto 8%) | tutti |
+| Esplosione all'uccisione | 8–16% (tetto 50%) | tutti |
+| Monete | +8–20% | tutti |
+| HP | +1–3 | dispositivi e scafi |
+| Dissipazione | +6–14% | dispositivi, scafi, frontali e coda |
+| Velocità | +4–10% | dispositivi e scafi |
+
+Gli affissi d'arma modificano la scheda dell'arma; gli altri valgono per
+tutta la nave finché il pezzo è montato.
 
 ## Campagna infinita
 

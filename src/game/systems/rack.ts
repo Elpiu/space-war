@@ -13,6 +13,9 @@ export interface Armament {
 
 const OVERHEAT_RESUME = 0.35;
 
+/** Colpo critico dagli affissi: danno doppio. */
+const critMul = (spec: Mount["spec"]) => (spec.crit && Math.random() < spec.crit ? 2 : 1);
+
 /**
  * Armi a slot della campagna: frontali e posteriori sparano insieme finché il
  * fuoco è tenuto e generano calore; i missili partono da soli; le bombe usano
@@ -24,7 +27,7 @@ export class WeaponRack implements Armament {
   bombCharge = 1;
   /** Profilo di fuoco attivo (1 = tutte le armi). */
   profile: 1 | 2 | 3 = 1;
-  private guns: { mount: Mount; nextShot: number }[];
+  private guns: { mount: Mount; nextShot: number; shots: number }[];
   private beams: { mount: Mount; nextTick: number }[];
   private missiles: { mount: Mount; nextShot: number }[];
   private bomb: Mount | undefined;
@@ -37,7 +40,7 @@ export class WeaponRack implements Armament {
   ) {
     const mounts = loadout.mounts;
     const guns = mounts.filter((m) => m.slot === "front" || m.slot === "rear");
-    this.guns = guns.filter((m) => !m.spec.beam).map((mount) => ({ mount, nextShot: 0 }));
+    this.guns = guns.filter((m) => !m.spec.beam).map((mount) => ({ mount, nextShot: 0, shots: 0 }));
     this.beams = guns.filter((m) => m.spec.beam).map((mount) => ({ mount, nextTick: 0 }));
     this.missiles = mounts.filter((m) => m.slot === "missile").map((mount) => ({ mount, nextShot: 600 }));
     this.bomb = mounts.find((m) => m.slot === "bomb");
@@ -90,7 +93,10 @@ export class WeaponRack implements Armament {
     if (firing) {
       for (const gun of this.guns) {
         if (g.now < gun.nextShot || !this.active(gun.mount)) continue;
-        this.fireGun(gun.mount);
+        gun.shots += 1;
+        // Affisso raffica: ogni N colpi parte un proiettile in più.
+        const extra = gun.mount.spec.volley && gun.shots % gun.mount.spec.volley === 0 ? 1 : 0;
+        this.fireGun(gun.mount, extra);
         gun.nextShot = g.now + gun.mount.spec.interval / rack.rateMul;
         this.heat += gun.mount.spec.heat;
       }
@@ -142,14 +148,16 @@ export class WeaponRack implements Armament {
     return { x: g.player.x + (front ? 20 : -20), y: g.player.y + offsetY, angle: front ? 0 : Math.PI };
   }
 
-  private fireGun(mount: Mount) {
+  private fireGun(mount: Mount, extra = 0) {
     const { g } = this;
     const spec = mount.spec;
     const { x, y, angle } = this.muzzle(mount);
-    for (let i = 0; i < spec.projectiles; i += 1) {
+    const count = spec.projectiles + extra;
+    const spread = spec.spread || (extra ? 0.06 : 0);
+    for (let i = 0; i < count; i += 1) {
       const jitter = spec.jitter ? (Math.random() - 0.5) * spec.jitter * 2 : 0;
-      fireBullet(g, x, y, angle + (i - (spec.projectiles - 1) / 2) * spec.spread + jitter, {
-        damage: spec.damage * this.loadout.rack.damageMul,
+      fireBullet(g, x, y, angle + (i - (count - 1) / 2) * spread + jitter, {
+        damage: spec.damage * this.loadout.rack.damageMul * critMul(spec),
         speed: spec.speed,
         range: spec.range,
         source: "blaster",
@@ -191,7 +199,7 @@ export class WeaponRack implements Armament {
 
     if (g.now >= beam.nextTick) {
       const damage = spec.damage * this.loadout.rack.damageMul * (spec.interval / 1000) * this.loadout.rack.rateMul;
-      hits.forEach((e) => g.damageEnemy(e, damage, "blaster", 0, 20));
+      hits.forEach((e) => g.damageEnemy(e, damage * critMul(spec), "blaster", 0, 20));
       beam.nextTick = g.now + spec.interval;
       g.sfx("zap");
     }
@@ -203,7 +211,7 @@ export class WeaponRack implements Armament {
     for (let i = 0; i < spec.projectiles; i += 1) {
       const side = (i - (spec.projectiles - 1) / 2) * spec.spread;
       fireBullet(g, g.player.x, g.player.y + (i % 2 ? 10 : -10), side, {
-        damage: spec.damage * this.loadout.rack.damageMul,
+        damage: spec.damage * this.loadout.rack.damageMul * critMul(spec),
         speed: spec.speed,
         range: spec.range,
         source: "missile",
@@ -221,7 +229,7 @@ export class WeaponRack implements Armament {
     const { g } = this;
     const spec = mount.spec;
     fireBullet(g, g.player.x, g.player.y + 14, 0, {
-      damage: spec.damage * this.loadout.rack.damageMul,
+      damage: spec.damage * this.loadout.rack.damageMul * critMul(spec),
       speed: spec.speed,
       range: spec.range,
       source: "bomb",

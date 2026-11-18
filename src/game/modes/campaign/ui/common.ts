@@ -4,7 +4,7 @@ import { RARITIES } from "../../../data/upgrades";
 import type { Rarity } from "../../../types";
 import { esc } from "../../../ui/dom";
 import { hex } from "../../../utils";
-import { describeGear, gearPower, mustGearDef, weaponDps, weaponSpec, type GearItem, type GearSlot } from "../gear";
+import { affixLinesOf, describeGear, gearPower, mustGearDef, weaponDps, weaponSpec, type GearItem, type GearSlot } from "../gear";
 import type { ShipSummary, SlotKey } from "../profile";
 
 export type HubTab = "map" | "hangar" | "shop" | "workshop";
@@ -72,11 +72,12 @@ export const itemScore = (item: GearItem) => {
 
 export const gearTile = (item: GearItem, opts: { selected?: boolean; equipped?: boolean; picked?: boolean; multi?: boolean } = {}) => {
   const def = mustGearDef(item.defId);
-  return `<button class="hq-tile ${opts.selected ? "is-selected" : ""} ${opts.picked ? "is-picked" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-action="item" data-uid="${item.uid}" title="${esc(def.title)} · ${RARITIES[item.rarity].label} · Liv. ${item.level}${item.ilvl ? ` · iL ${item.ilvl}` : ""}">
+  return `<button class="hq-tile ${opts.selected ? "is-selected" : ""} ${opts.picked ? "is-picked" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-action="item" data-uid="${item.uid}" title="${esc(def.title)} · ${RARITIES[item.rarity].label} · Liv. ${item.level}${item.ilvl ? ` · iL ${item.ilvl}` : ""}${affixLinesOf(item).map((l) => ` · ${esc(l)}`).join("")}">
     ${icon(def.icon)}<b>${item.level}</b>
     ${opts.equipped ? `<i class="hq-tile__on">${icon("check")}</i>` : ""}
     ${item.locked ? `<i class="hq-tile__lock">${icon("lock")}</i>` : ""}
     ${item.fresh ? `<em class="badge-new">NUOVO</em>` : ""}
+    ${item.affixes?.length ? `<s class="hq-tile__aff">${"◆".repeat(item.affixes.length)}</s>` : ""}
     ${opts.multi ? `<span class="hq-tile__check">${opts.picked ? icon("check") : ""}</span>` : ""}
   </button>`;
 };
@@ -115,4 +116,9 @@ export const statsPanel = (now: ShipSummary, next?: ShipSummary) => {
 };
 
 /** Righe di statistiche di un pezzo. */
-export const gearLines = (item: GearItem) => `<ul class="gear-stats">${describeGear(item).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
+export const gearLines = (item: GearItem) => {
+  const affixes = affixLinesOf(item)
+    .map((l) => `<li class="is-affix">${icon("star")} ${esc(l)}</li>`)
+    .join("");
+  return `<ul class="gear-stats">${describeGear(item).map((l) => `<li>${esc(l)}</li>`).join("")}${affixes}</ul>`;
+};

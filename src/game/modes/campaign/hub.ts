@@ -11,6 +11,10 @@ import { resolveNode } from "./events";
 import { generateSector, nodeById, nodeState } from "./sectors";
 import {
   buy,
+  buyOffer,
+  fuse,
+  recalibrate,
+  rerollOffers,
   equipTo,
   equippedSlotOf,
   isSellable,
@@ -226,7 +230,7 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
       case "preview":
         state.preview = id!;
         state.feedback = "";
-        if (!profile.seenShop.includes(id!)) {
+        if (!id!.startsWith("offer:") && !profile.seenShop.includes(id!)) {
           profile.seenShop.push(id!);
           saveProfile(profile);
         }
@@ -247,6 +251,32 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
         saveProfile(profile);
         break;
       }
+      case "buy-offer":
+      case "buy-offer-mount": {
+        const item = buyOffer(profile, Number(id));
+        if (!item) {
+          state.feedback = "Monete insufficienti";
+          break;
+        }
+        const title = mustGearDef(item.defId).title;
+        state.feedback = `Acquistato: ${title}`;
+        if (action === "buy-offer-mount") {
+          const slot = targetSlot(profile, item.defId);
+          if (slot) state.feedback = equipTo(profile, item.uid, slot) || `${title} montato in ${slotLabel(slot)}`;
+        }
+        saveProfile(profile);
+        break;
+      }
+      case "reroll-offers":
+        state.feedback = rerollOffers(profile);
+        state.preview = null;
+        break;
+      case "fuse":
+        if (uid !== null) state.feedback = fuse(profile, uid);
+        break;
+      case "recal":
+        if (uid !== null) state.feedback = recalibrate(profile, uid, Number(id));
+        break;
       case "upgrade":
         if (uid !== null) state.feedback = upgrade(profile, uid) ? "Potenziato!" : "Monete insufficienti";
         break;
