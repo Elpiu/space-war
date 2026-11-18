@@ -2,6 +2,7 @@ import { Math as PMath, type GameObjects, type Scene } from "phaser";
 import { ARENA_H, ARENA_W, DEPTH, VIEW_H, VIEW_W } from "../config";
 import type { Arena } from "../types";
 import { clamp, createRng, dist2, rand } from "../utils";
+import { drawTerrain } from "./terrain";
 
 /** Arena quadrata del survival: asteroidi che bloccano e nebulose che rallentano. */
 export const generateArena = (seed: number): Arena => {
@@ -32,43 +33,6 @@ export const generateArena = (seed: number): Arena => {
   }
 
   return { seed, width, height, asteroids, nebulas };
-};
-
-/**
- * Corridoio orizzontale della campagna, alto quanto lo schermo.
- * La densita' di asteroidi e nebulose dipende dalla missione.
- */
-export const generateCorridor = (
-  seed: number,
-  length: number,
-  density: { asteroids: number; nebulas: number },
-): Arena => {
-  const rng = createRng(seed);
-  const height = VIEW_H;
-  const asteroids: Arena["asteroids"] = [];
-  const nebulas: Arena["nebulas"] = [];
-  const safeStart = 700;
-  const safeEnd = 500;
-
-  const asteroidCount = Math.round((length / 1000) * 3.2 * density.asteroids);
-  for (let tries = 0; asteroids.length < asteroidCount && tries < asteroidCount * 30; tries += 1) {
-    const r = rand(30, 95, rng);
-    const x = rand(safeStart, length - safeEnd, rng);
-    const y = rand(r * 0.4, height - r * 0.4, rng);
-    if (asteroids.some((a) => dist2(x, y, a.x, a.y) < (a.r + r + 170) ** 2)) continue;
-    asteroids.push({ x, y, r });
-  }
-
-  const nebulaCount = Math.round((length / 1000) * 0.8 * density.nebulas);
-  for (let tries = 0; nebulas.length < nebulaCount && tries < nebulaCount * 30; tries += 1) {
-    const r = rand(160, 260, rng);
-    const x = rand(safeStart, length - safeEnd, rng);
-    const y = rand(0, height, rng);
-    if (nebulas.some((n) => dist2(x, y, n.x, n.y) < (n.r + r) ** 2)) continue;
-    nebulas.push({ x, y, r });
-  }
-
-  return { seed, width: length, height, asteroids, nebulas };
 };
 
 export const arenaCenter = (arena: Arena) => ({ x: arena.width / 2, y: arena.height / 2 });
@@ -113,6 +77,8 @@ export const drawArena = (scene: Scene, arena: Arena) => {
       g.fillCircle(a.x + Math.cos(angle) * d, a.y + Math.sin(angle) * d, cr);
     }
   });
+
+  if (arena.terrain) objects.push(...drawTerrain(scene, arena.terrain));
 
   // Bordo dell'arena e vuoto esterno scurito.
   const pad = 2000;

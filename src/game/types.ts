@@ -176,10 +176,21 @@ export interface Mine {
   armedAt: number;
 }
 
+/** Profili di pavimento e soffitto campionati ogni `step` pixel. */
+export interface Terrain {
+  step: number;
+  height: number;
+  floor: number[];
+  ceil: number[];
+  /** Tipo di segmento per campione: decide lo stile del disegno. */
+  kinds: string[];
+}
+
 export interface Arena {
   seed: number;
   width: number;
   height: number;
+  terrain?: Terrain;
   asteroids: { x: number; y: number; r: number }[];
   nebulas: { x: number; y: number; r: number }[];
 }

@@ -168,10 +168,34 @@ calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
   vendi) e scheda Negozio. Il catalogo si allarga con il tier delle missioni
   completate; nel negozio tutto è comune, le rarità migliori arrivano solo
   dal bottino.
-- **Missioni:** il corridoio a scorrimento dell'MVP con portale d'uscita e
-  boss nella 1-5. Monete e bottino si tengono anche in caso di sconfitta.
+- **Missioni:** monete e bottino si tengono anche in caso di sconfitta.
+
+**Fatto (fase B):**
+- **Livelli a segmenti.** Ogni missione è una sequenza di segmenti
+  generata da un seed: si parte sempre con un tratto aperto e si chiude con
+  l'uscita, oppure con l'arena del boss nella 1-5.
+
+  | Segmento | Geometria |
+  | --- | --- |
+  | Spazio aperto | Pochi asteroidi, nebulose |
+  | Fascia di rottami | Molti asteroidi |
+  | Superficie | Pavimento ondulato |
+  | Caverna | Pavimento e soffitto, passaggio stretto |
+  | Stazione | Pavimento e soffitto piatti, con pilastri alternati |
+  | Arena del boss | Pavimento piatto, niente spawn |
+
+- **Terreno.** Pavimento e soffitto sono profili campionati ogni 40 px, con
+  rampe morbide fra un segmento e l'altro e un varco minimo di 290 px.
+  - **Nave:** scivola lungo pareti e pendii. Se il bordo dello schermo la
+    schiaccia contro una parete, prende danno.
+  - **Proiettili:** si fermano sul terreno; bombe e missili ci esplodono.
+  - **Nemici e pickup:** restano nello spazio libero.
+- **Ritmo.** Ogni segmento favorisce certi nemici: kamikaze e scudati nei
+  rottami, tiratori in superficie, sciami in caverna, cecchini in stazione.
+  Entrando in un segmento compare il suo nome, e la barra del percorso ha
+  una tacca per ogni segmento.
 - **Salvataggio:** `space-war-campaign-v2`, migrato in automatico dal v1.
   Torrette e posamine vengono rimborsati in monete.
 
-**Prossime fasi:** terreno con pavimento e soffitto e livelli a segmenti (B),
-nemici in formazione e unità di terra (C), poi contenuti e rifinitura.
+**Prossime fasi:** nemici in formazione, unità di terra, strutture distruttibili
+e trasporti (C), poi negozio completo, contenuti e rifinitura.

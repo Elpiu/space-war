@@ -5,6 +5,7 @@ import type { GameScene } from "../scenes/GameScene";
 import type { AffixId, Enemy, EnemyId } from "../types";
 import { angleDiff, clamp, pick } from "../utils";
 import { clampToArena, inNebula, pushOutOfAsteroids } from "./arena";
+import { clampToGap } from "./terrain";
 
 let nextUid = 1;
 const neighbors: Enemy[] = [];
@@ -278,6 +279,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     }
 
     pushOutOfAsteroids(g.arena, e, e.radius);
+    if (g.arena.terrain) e.y = clampToGap(g.arena.terrain, e.x, e.y, e.radius);
     clampToArena(g.arena, e, e.radius);
 
     // Rendering.

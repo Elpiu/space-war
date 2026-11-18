@@ -13,7 +13,7 @@ export interface HudInfo {
   value: string;
   detail: string;
   event: string;
-  bar: { ratio: number; text: string; kind: "xp" | "route" };
+  bar: { ratio: number; text: string; kind: "xp" | "route"; marks?: number[] };
 }
 
 /** Un'abilità mostrata in basso a sinistra nell'HUD (anello di ricarica). */

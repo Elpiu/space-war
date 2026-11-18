@@ -12,6 +12,7 @@ import type { GameMode, RunOutcome } from "../modes/mode";
 import { SurvivalMode } from "../modes/survival";
 import { Starfield, clampToArena, drawArena, hitsAsteroid, inNebula, pushOutOfAsteroids } from "../systems/arena";
 import { Deployables } from "../systems/deployables";
+import { clampToGap, terrainSolid } from "../systems/terrain";
 import { destroyEnemy, spawnEnemy, updateEnemies } from "../systems/enemies";
 import { Fx } from "../systems/fx";
 import { activeChests, dropPickup, updatePickups } from "../systems/pickups";
@@ -204,7 +205,24 @@ export class GameScene extends Scene {
 
     const pos = { x: this.player.x + vx * dt, y: this.player.y + vy * dt };
     pushOutOfAsteroids(this.arena, pos, PLAYER_RADIUS);
+
+    // Terreno: si scivola lungo pareti e pendii invece di attraversarli.
+    const terrain = this.arena.terrain;
+    if (terrain && terrainSolid(terrain, pos.x, pos.y, PLAYER_RADIUS)) {
+      const { x: ox, y: oy } = this.player;
+      if (!terrainSolid(terrain, ox, pos.y, PLAYER_RADIUS)) pos.x = ox;
+      else if (!terrainSolid(terrain, pos.x, oy, PLAYER_RADIUS)) pos.y = oy;
+      else {
+        pos.x = ox;
+        pos.y = oy;
+      }
+    }
     this.mode.constrainPlayer?.(this, pos);
+    // Spinti contro una parete dal bordo dello schermo: la nave si schiaccia.
+    if (terrain && terrainSolid(terrain, pos.x, pos.y, PLAYER_RADIUS)) {
+      pos.y = clampToGap(terrain, pos.x, pos.y, PLAYER_RADIUS);
+      this.hurtPlayer(1);
+    }
     clampToArena(this.arena, pos, PLAYER_RADIUS);
     this.player.setPosition(pos.x, pos.y);
 
@@ -332,9 +350,9 @@ export class GameScene extends Scene {
     this.cameras.main.stopFollow();
   }
 
-  /** Punto pieno per proiettili e collisioni: asteroidi (e in futuro terreno). */
+  /** Punto pieno per proiettili e collisioni: asteroidi e terreno. */
   solidAt(x: number, y: number, radius: number) {
-    return hitsAsteroid(this.arena, x, y, radius);
+    return hitsAsteroid(this.arena, x, y, radius) || terrainSolid(this.arena.terrain, x, y, radius);
   }
 
   /** Oggetti grafici legati alla run, distrutti a fine run (usato dalle modalità). */

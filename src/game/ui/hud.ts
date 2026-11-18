@@ -13,13 +13,14 @@ export class Hud {
   private buildKey = "";
   private effectsKey = "";
   private skillIds = "";
+  private marksKey = "";
   private boss: Enemy | null = null;
   private nextTick = 0;
 
   constructor(actions: { pause: () => void; toggleSound: () => boolean }) {
     this.root = el(`
       <div class="hud is-hidden">
-        <div class="hud-xp"><div class="hud-xp__fill" data-q="xpFill"></div><span class="hud-xp__lv" data-q="level">LV 1</span></div>
+        <div class="hud-xp"><div class="hud-xp__fill" data-q="xpFill"></div><div class="hud-xp__marks" data-q="marks"></div><span class="hud-xp__lv" data-q="level">LV 1</span></div>
         <div class="hud-vitals panel">
           <div class="hud-hp">
             <span class="hud-hp__icon">${icon("heart")}</span>
@@ -97,6 +98,11 @@ export class Hud {
     setText(this.q.level, info.bar.text);
     this.q.xpFill.style.width = `${Math.min(100, Math.max(0, info.bar.ratio) * 100)}%`;
     this.q.xpFill.parentElement!.classList.toggle("is-route", info.bar.kind === "route");
+    const marks = (info.bar.marks ?? []).map((m) => `<i style="left:${(m * 100).toFixed(2)}%"></i>`).join("");
+    if (marks !== this.marksKey) {
+      this.marksKey = marks;
+      this.q.marks.innerHTML = marks;
+    }
     setText(this.q.hp, `${fmt(Math.max(0, Math.ceil(run.hp * 10) / 10))}/${fmt(Math.round(s.maxHp * 10) / 10)}`);
     this.q.hpFill.style.width = `${Math.max(0, (run.hp / s.maxHp) * 100)}%`;
     this.q.hpFill.parentElement!.classList.toggle("is-low", run.hp / s.maxHp < 0.3);

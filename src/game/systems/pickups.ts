@@ -4,6 +4,7 @@ import type { GameScene } from "../scenes/GameScene";
 import type { Pickup, PickupKind } from "../types";
 import { dist2, rand } from "../utils";
 import { hitsAsteroid } from "./arena";
+import { clampToGap } from "./terrain";
 
 const LOOK: Record<PickupKind, { texture: string; size: number; glow?: number }> = {
   xp: { texture: "gem-s", size: 16 },
@@ -96,6 +97,7 @@ export const updatePickups = (g: GameScene, dt: number) => {
       }
     }
 
+    if (g.arena.terrain && !p.pulled) p.y = clampToGap(g.arena.terrain, p.x, p.y, 14);
     const floatY = p.kind === "chest" || p.glow ? bob * 3 : 0;
     p.sprite.setPosition(p.x, p.y + floatY);
     p.glow?.setPosition(p.x, p.y + floatY).setAlpha(0.45 + bob * 0.15);

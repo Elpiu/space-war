@@ -3,10 +3,11 @@ import { icon } from "../../art/svg";
 import { DEPTH, LIMITS, VIEW_H, VIEW_W } from "../../config";
 import { AFFIXES, SPAWNABLE } from "../../data/enemies";
 import type { GameScene } from "../../scenes/GameScene";
-import { generateCorridor, hitsAsteroid } from "../../systems/arena";
+import { hitsAsteroid } from "../../systems/arena";
+import { ceilAt, floorAt } from "../../systems/terrain";
 import { spawnEnemy } from "../../systems/enemies";
 import { dropPickup } from "../../systems/pickups";
-import type { AffixId, Enemy } from "../../types";
+import type { AffixId, Enemy, EnemyId } from "../../types";
 import { esc } from "../../ui/dom";
 import { banner } from "../../ui/hud";
 import { clamp, hex, pick, pickWeighted, rand, randInt } from "../../utils";
@@ -15,10 +16,21 @@ import { WeaponRack } from "../../systems/rack";
 import type { GameMode, HudInfo, ModeSetup, RunOutcome, SkillInfo } from "../mode";
 import { mustGearDef, rollGear, type GearItem } from "./gear";
 import { showMissionResult } from "./hub";
+import { SEGMENT_LABELS, generateLevel, segmentAt, type Segment, type SegmentKind } from "./level";
 import { missionById, type MissionDef } from "./missions";
 import { addLoot, buildLoadout, itemByUid, loadProfile, saveProfile, slotKeys, type CampaignLoadout, type CampaignProfile } from "./profile";
 
 const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
+
+/** Ogni segmento favorisce certi nemici (fase C: copioni di ondate dedicati). */
+const SEGMENT_WEIGHTS: Record<SegmentKind, Partial<Record<EnemyId, number>>> = {
+  open: { carrier: 1.5, swarm: 1.2 },
+  debris: { kamikaze: 2, shielded: 1.5, swarm: 1.4 },
+  surface: { shooter: 1.6, charger: 1.3, sniper: 1.2 },
+  cave: { swarm: 1.6, chaser: 1.4, brute: 0.4, carrier: 0, sniper: 0.3, charger: 0.6 },
+  station: { shooter: 1.6, sniper: 1.6, shielded: 1.3, carrier: 0.5 },
+  boss: {},
+};
 const BASE_SCROLL = 78;
 
 /**
@@ -39,6 +51,8 @@ export class CampaignMode implements GameMode {
   private nextSpawnX = VIEW_W + 200;
   private bossSpawned = false;
   private exitX = 0;
+  private segments: Segment[] = [];
+  private currentSegment: SegmentKind | null = null;
 
   constructor(private readonly missionId: string) {
     this.mission = missionById(missionId);
@@ -48,7 +62,8 @@ export class CampaignMode implements GameMode {
 
   setup(): ModeSetup {
     const seed = Math.floor(Math.random() * 0x7fffffff);
-    const arena = generateCorridor(seed, this.mission.length, this.mission.density);
+    const { arena, segments } = generateLevel(this.mission, seed);
+    this.segments = segments;
     return {
       arena,
       start: { x: 220, y: VIEW_H / 2 },
@@ -113,8 +128,16 @@ export class CampaignMode implements GameMode {
     this.scroll = Math.min(maxScroll, this.scroll + this.speed * dt);
     cam.setScroll(this.scroll, 0);
 
-    // Spawn innescati dalla distanza percorsa.
-    const spawnLimit = g.arena.width - (this.mission.boss ? 300 : 700);
+    // Annuncio del segmento in cui sta entrando lo schermo.
+    const ahead = segmentAt(this.segments, this.scroll + VIEW_W * 0.6);
+    if (ahead.kind !== this.currentSegment) {
+      if (this.currentSegment !== null && ahead.kind !== "open") g.toast(SEGMENT_LABELS[ahead.kind], ahead.kind === "boss" ? "boss" : "map");
+      this.currentSegment = ahead.kind;
+    }
+
+    // Spawn innescati dalla distanza percorsa (niente spawn nell'arena del boss).
+    const bossSeg = this.segments.find((sg) => sg.kind === "boss");
+    const spawnLimit = bossSeg ? bossSeg.start : g.arena.width - 700;
     while (this.scroll + VIEW_W >= this.nextSpawnX && this.nextSpawnX < spawnLimit) {
       this.spawnGroup(g);
       this.nextSpawnX += rand(190, 330) * (1 - this.mission.tier * 0.05);
@@ -129,7 +152,10 @@ export class CampaignMode implements GameMode {
       if (this.mission.boss) {
         if (!this.bossSpawned) {
           this.bossSpawned = true;
-          const boss = spawnEnemy(g, "boss", this.scroll + VIEW_W - 220, VIEW_H / 2);
+          const bx = this.scroll + VIEW_W - 220;
+          const terrain = g.arena.terrain;
+          const by = terrain ? (Math.max(0, ceilAt(terrain, bx)) + Math.min(VIEW_H, floorAt(terrain, bx))) / 2 : VIEW_H / 2;
+          const boss = spawnEnemy(g, "boss", bx, by);
           g.onBossSpawned(boss);
         } else if (!g.enemies.some((e) => e.def.id === "boss" && !e.dead)) {
           g.endRun("victory");
@@ -145,20 +171,27 @@ export class CampaignMode implements GameMode {
     const alive = g.enemies.filter((e) => !e.dead).length;
     if (alive >= Math.min(LIMITS.maxEnemies, 30 + this.mission.tier * 10)) return;
 
+    const x = this.scroll + VIEW_W + rand(60, 160);
+    const segment = segmentAt(this.segments, x);
+    const bias = SEGMENT_WEIGHTS[segment.kind];
     const def = pickWeighted(
       SPAWNABLE.filter((d) => d.minWave <= wave),
-      (d) => d.weight(wave),
+      (d) => d.weight(wave) * (bias[d.id] ?? 1),
     );
     if (!def) return;
-    const count = def.group ? randInt(def.group[0], def.group[1]) : randInt(1, 2 + Math.floor(this.mission.tier / 2));
+    const crampedMul = segment.kind === "cave" || segment.kind === "station" ? 0.7 : 1;
+    const count = Math.max(1, Math.round((def.group ? randInt(def.group[0], def.group[1]) : randInt(1, 2 + Math.floor(this.mission.tier / 2))) * crampedMul));
     const eliteChance = Math.min(0.2, 0.03 * this.mission.tier);
-    const x = this.scroll + VIEW_W + rand(60, 160);
 
+    // Lo spawn cade nello spazio libero fra soffitto e pavimento.
+    const terrain = g.arena.terrain;
+    const top = (terrain ? Math.max(0, ceilAt(terrain, x)) : 0) + def.radius + 20;
+    const bottom = (terrain ? Math.min(VIEW_H, floorAt(terrain, x)) : VIEW_H) - def.radius - 20;
     for (let i = 0; i < count; i += 1) {
-      let y = rand(50, VIEW_H - 50);
-      for (let tries = 0; tries < 6 && hitsAsteroid(g.arena, x, y, def.radius + 10); tries += 1) y = rand(50, VIEW_H - 50);
+      let y = rand(top, Math.max(top, bottom));
+      for (let tries = 0; tries < 6 && hitsAsteroid(g.arena, x, y, def.radius + 10); tries += 1) y = rand(top, Math.max(top, bottom));
       const affix = def.id !== "swarm" && Math.random() < eliteChance ? pick(AFFIX_IDS) : undefined;
-      spawnEnemy(g, def.id, x + rand(-30, 30), clamp(y, 40, VIEW_H - 40), { affix });
+      spawnEnemy(g, def.id, x + rand(-30, 30), clamp(y, top, Math.max(top, bottom)), { affix });
     }
     g.hints.enemy(def.id);
   }
@@ -226,14 +259,20 @@ export class CampaignMode implements GameMode {
   hud(g: GameScene): HudInfo {
     const maxScroll = g.arena.width - VIEW_W;
     const ratio = maxScroll > 0 ? this.scroll / maxScroll : 1;
-    let detail = `${Math.floor(ratio * 100)}% del percorso`;
+    const segment = segmentAt(this.segments, this.scroll + VIEW_W / 2);
+    let detail = `${SEGMENT_LABELS[segment.kind]} · ${Math.floor(ratio * 100)}%`;
     if (ratio >= 1) detail = this.mission.boss ? "abbatti il boss" : "raggiungi l'uscita";
     return {
       label: "MISSIONE",
       value: this.mission.code,
       detail,
       event: this.bossSpawned ? "BOSS" : "",
-      bar: { ratio, text: this.mission.title.toUpperCase(), kind: "route" },
+      bar: {
+        ratio,
+        text: this.mission.title.toUpperCase(),
+        kind: "route",
+        marks: this.segments.slice(1).map((sg) => Math.min(1, Math.max(0, (sg.start - VIEW_W / 2) / Math.max(1, maxScroll)))),
+      },
     };
   }
 
