@@ -4,7 +4,7 @@ import { ITEMS, RARITIES, TOMES, isEvolved, itemLevel, tomeLevel } from "../data
 import type { Meta } from "../meta";
 import type { DamageSource, Run, TomeOffer } from "../types";
 import { fmt, formatTime, hex } from "../utils";
-import { asset, el, esc, layer } from "./dom";
+import { asset, el, esc, layer, morph } from "./dom";
 
 let cleanupKeys: (() => void) | null = null;
 
@@ -108,9 +108,7 @@ export const showShop = (meta: Meta, actions: { buy: (key: string, cost: number)
     </button>`;
   };
 
-  const render = () => {
-    const root = mount(
-      `<div class="screen shop">
+  const html = () => `
         <header class="shop__head">
           <h2 class="title title--sm">HANGAR</h2>
           <span class="pill pill--big">${icon("credits")}${meta.credits} crediti</span>
@@ -120,20 +118,23 @@ export const showShop = (meta: Meta, actions: { buy: (key: string, cost: number)
         <div class="shop__grid">${TOMES.map((t) => card(`tome:${t.id}`, t.title, `+${t.increment}% ${t.stat}. Evolve in ${t.evolution.title}.`, t.color, t.icon, t.cost)).join("")}</div>
         <h3>Oggetti</h3>
         <div class="shop__grid">${ITEMS.map((i) => card(`item:${i.id}`, i.title, i.description, i.color, i.icon, i.cost)).join("")}</div>
-        <div class="shop__actions"><button class="btn" data-act="back">${icon("home")} Menu</button></div>
-      </div>`,
-      (e) => {
-        if (e.key === "Escape") actions.back();
-      },
-    );
-    on(root, "[data-key]", (node) => {
-      if (actions.buy(node.dataset.key!, Number(node.dataset.cost))) render();
-      else node.classList.add("shake");
-      window.setTimeout(() => node.classList.remove("shake"), 400);
-    });
-    on(root, "[data-act=back]", actions.back);
-  };
-  render();
+        <div class="shop__actions"><button class="btn" data-act="back">${icon("home")} Menu</button></div>`;
+
+  // Creata una volta: gli acquisti aggiornano la schermata sul posto.
+  const root = mount(`<div class="screen shop">${html()}</div>`, (e) => {
+    if (e.key === "Escape") actions.back();
+  });
+  root.addEventListener("click", (ev) => {
+    const node = (ev.target as HTMLElement).closest<HTMLElement>("[data-key], [data-act=back]");
+    if (!node || node.hasAttribute("disabled")) return;
+    if (node.dataset.act === "back") return actions.back();
+    if (actions.buy(node.dataset.key!, Number(node.dataset.cost))) {
+      morph(root, html());
+      return;
+    }
+    node.classList.add("shake");
+    window.setTimeout(() => node.classList.remove("shake"), 400);
+  });
 };
 
 // ---------- Level-up ----------

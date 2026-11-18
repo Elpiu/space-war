@@ -2,7 +2,7 @@ import { icon } from "../../art/svg";
 import type { DifficultyId } from "../../config";
 import { RARITIES } from "../../data/upgrades";
 import type { Rarity } from "../../types";
-import { asset, el, esc, layer } from "../../ui/dom";
+import { asset, el, esc, layer, morph } from "../../ui/dom";
 import { closeScreen } from "../../ui/screens";
 import { formatTime, hex } from "../../utils";
 import { SLOT_LABELS, mustGearDef, type GearItem, type GearSlot } from "./gear";
@@ -61,8 +61,6 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
     confirm: null,
     feedback: "",
   };
-  let root: HTMLElement;
-
   const header = () => {
     const freshCount = profile.inventory.filter((i) => i.fresh).length;
     const shopNew = shopCatalog(profile).filter((d) => !profile.seenShop.includes(d.id)).length;
@@ -84,9 +82,17 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
           ? shopView(profile, state)
           : workshopView(profile, state);
 
+  // La schermata si crea una volta; ogni azione poi aggiorna sul posto solo
+  // ciò che cambia, così scorrimento e animazioni non ripartono da capo.
+  let root: HTMLElement | null = null;
   const render = () => {
+    const inner = `${header()}<main class="hq-body">${body()}</main>`;
+    if (root?.isConnected) {
+      morph(root, inner);
+      return;
+    }
     closeScreen();
-    root = el(`<div class="screen hq">${header()}<main class="hq-body">${body()}</main></div>`);
+    root = el(`<div class="screen hq">${inner}</div>`);
     layer("screen").appendChild(root);
     root.addEventListener("click", onClick);
     root.addEventListener("change", onChange);
@@ -263,7 +269,7 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
     const uid = row ? Number(row.dataset.hover) : null;
     if (uid === hovered) return;
     hovered = uid;
-    const stats = root.querySelector<HTMLElement>("[data-role=stats]");
+    const stats = root?.querySelector<HTMLElement>("[data-role=stats]");
     if (stats) stats.innerHTML = hoverStats(profile, state, uid);
   }
 
