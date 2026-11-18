@@ -60,6 +60,8 @@ export interface GameMode {
   /** Ricompense per un'uccisione (il nucleo ha già gestito effetti e contatori). */
   onKill(g: GameScene, e: Enemy): void;
   onChest(g: GameScene, x: number, y: number): void;
+  /** Capsula segreta raccolta (solo campagna). */
+  onCapsule?(g: GameScene, x: number, y: number): void;
   /** Assorbe parte del danno (scudi); restituisce il danno rimasto. */
   absorbDamage?(g: GameScene, damage: number): number;
   /** Ci sono level-up in attesa (solo le modalità che danno XP). */

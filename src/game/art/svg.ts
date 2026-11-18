@@ -256,6 +256,30 @@ export const SPRITES: Record<string, string> = {
   "prop-board-2": billboard("CARBURANTE", "-90%*", "#facc15"),
   "prop-board-3": billboard("ORBITA", "PREMIUM", "#c084fc"),
   "prop-board-4": billboard("IL MERCATO", "NON DORME", "#4ade80"),
+  // Mini-boss: cannoniera pirata, muso a sinistra.
+  gunship: wide(`
+    <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">
+      <path d="M150 34h14v22h-14z" fill="#f97316"/>
+      <path d="M8 45 40 22h96l18 12v22l-18 12H40z" fill="#475569"/>
+      <path d="M40 22l14-14h52l10 14z" fill="#334155"/>
+      <path d="M40 68l14 14h52l10-14z" fill="#334155"/>
+      <path d="M28 40h-20M28 50h-20" stroke="#94a3b8" stroke-width="5" stroke-linecap="round"/>
+      <rect x="58" y="34" width="46" height="22" rx="4" fill="#7f1d1d"/>
+    </g>
+    <path d="M62 40h38M62 50h38" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="44" cy="45" r="5" fill="#fca5a5"/>
+    <path d="M70 14h28M70 76h28" stroke="#f87171" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="168" cy="45" r="6" fill="#fde68a"/>
+  `, 176, 90),
+  capsule: doc(`
+    <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">
+      <rect x="14" y="8" width="36" height="48" rx="18" fill="#e2e8f0"/>
+      <rect x="14" y="26" width="36" height="12" fill="#a855f7"/>
+    </g>
+    <circle cx="32" cy="18" r="5" fill="#c4b5fd"/>
+    <path d="M22 46h20" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M20 14a14 14 0 0 1 6-4" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".8"/>
+  `),
   // Trasporto corporate: muso a sinistra, container a destra.
   cargo: wide(`
     <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">

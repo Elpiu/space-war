@@ -23,6 +23,8 @@ export interface Level {
   arena: Arena;
   segments: Segment[];
   props: Prop[];
+  /** Capsula segreta: vicino al terreno, fuori dalla traiettoria più comoda. */
+  capsule?: { x: number; y: number };
 }
 
 /** Cosa si trova a terra in ogni tipo di segmento, con i pesi e il tier minimo. */
@@ -56,11 +58,11 @@ export const SEGMENT_LABELS: Record<SegmentKind, string> = {
 };
 
 const LENGTHS: Record<SegmentKind, [number, number]> = {
-  open: [1000, 1400],
-  debris: [1400, 1900],
-  surface: [1600, 2200],
-  cave: [1500, 2000],
-  station: [1400, 1800],
+  open: [1300, 1800],
+  debris: [1900, 2500],
+  surface: [2100, 2800],
+  cave: [1900, 2500],
+  station: [1800, 2300],
   boss: [1500, 1500],
 };
 
@@ -198,7 +200,17 @@ export const generateLevel = (mission: MissionDef, seed: number): Level => {
     }
   }
 
-  return { arena: { seed, width, height: H, asteroids, nebulas, terrain }, segments, props };
+  // Capsula segreta: in un segmento con terreno, rasoterra o contro il soffitto.
+  let capsule: Level["capsule"];
+  const hidden = segments.filter((sg) => sg.kind === "cave" || sg.kind === "surface" || sg.kind === "station");
+  if (hidden.length > 0) {
+    const seg = hidden[Math.floor(rng() * hidden.length)];
+    const x = rand(seg.start + 300, seg.end - 300, rng);
+    const low = rng() < 0.6 || seg.kind === "surface";
+    capsule = { x, y: low ? floorAt(terrain, x) - 34 : ceilAt(terrain, x) + 34 };
+  }
+
+  return { arena: { seed, width, height: H, asteroids, nebulas, terrain }, segments, props, capsule };
 };
 
 export const segmentAt = (segments: Segment[], x: number) =>

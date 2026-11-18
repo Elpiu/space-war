@@ -127,7 +127,7 @@ export class Hud {
 
     if (this.boss) {
       this.q.bossFill.style.width = `${Math.max(0, (this.boss.hp / this.boss.maxHp) * 100)}%`;
-      setText(this.q.bossPhase, `FASE ${this.boss.bossPhase}`);
+      setText(this.q.bossPhase, this.boss.def.id === "boss" ? `FASE ${this.boss.bossPhase}` : "MINI-BOSS");
     }
 
     this.renderSkills(g);

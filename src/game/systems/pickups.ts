@@ -14,6 +14,7 @@ const LOOK: Record<PickupKind, { texture: string; size: number; glow?: number }>
   venom: { texture: "ico-special-venom", size: 30, glow: 0xa3e635 },
   emp: { texture: "ico-special-emp", size: 30, glow: 0xa78bfa },
   chest: { texture: "chest", size: 46, glow: 0xfbbf24 },
+  capsule: { texture: "capsule", size: 40, glow: 0xa855f7 },
 };
 
 const gemLook = (value: number) =>
@@ -87,7 +88,7 @@ export const updatePickups = (g: GameScene, dt: number) => {
     if (!p.active) continue;
     const d2 = dist2(p.x, p.y, px, py);
 
-    if (p.kind !== "chest") {
+    if (p.kind !== "chest" && p.kind !== "capsule") {
       if (!p.pulled && (d2 < radius * radius || (vacuum && (p.kind === "xp" || p.kind === "coin")))) p.pulled = true;
       if (p.pulled) {
         const d = Math.sqrt(d2) || 1;
@@ -98,11 +99,11 @@ export const updatePickups = (g: GameScene, dt: number) => {
     }
 
     if (g.arena.terrain && !p.pulled) p.y = clampToGap(g.arena.terrain, p.x, p.y, 14);
-    const floatY = p.kind === "chest" || p.glow ? bob * 3 : 0;
+    const floatY = p.glow ? bob * 3 : 0;
     p.sprite.setPosition(p.x, p.y + floatY);
     p.glow?.setPosition(p.x, p.y + floatY).setAlpha(0.45 + bob * 0.15);
 
-    if (d2 < (PLAYER_RADIUS + (p.kind === "chest" ? 26 : 12)) ** 2) {
+    if (d2 < (PLAYER_RADIUS + (p.kind === "chest" || p.kind === "capsule" ? 26 : 12)) ** 2) {
       p.active = false;
       p.sprite.setActive(false).setVisible(false);
       p.glow?.setActive(false).setVisible(false);

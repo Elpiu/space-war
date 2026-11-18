@@ -391,6 +391,11 @@ const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer:
     else if (e.def.id === "swarm") e.sprite.rotation += dt * 1.5;
   }
 
+  if (e.def.id === "gunship") {
+    gunshipAttack(g, e, toPlayer);
+    return;
+  }
+
   // Attacco: tutte le unità armate sparano quando sono a schermo.
   const proj = e.def.projectile;
   const onScreen = e.x > camX + 20 && e.x < camX + VIEW_W - 20 && e.y > -20 && e.y < VIEW_H + 20;
@@ -398,6 +403,35 @@ const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer:
     g.fireEnemyBullet(e, toPlayer, proj);
     g.fx.burst(e.x, e.y, proj.radius > 9 ? 0xfacc15 : 0xf472b6, 4);
     e.nextAttack = now + proj.cooldown * (0.8 + Math.random() * 0.4);
+  }
+};
+
+/**
+ * Mini-boss della campagna. Tre ritmi indipendenti:
+ * raffica mirata (nextAttack), anello di colpi (stateUntil), sciami (spiral usato come timer).
+ */
+const gunshipAttack = (g: GameScene, e: Enemy, toPlayer: number) => {
+  const now = g.now;
+  const p = e.def.projectile!;
+  if (e.spiral === 0) {
+    e.stateUntil = now + 3000;
+    e.spiral = now + 5000;
+  }
+  if (now > e.nextAttack) {
+    for (const offset of [-0.18, 0, 0.18]) g.fireEnemyBullet(e, toPlayer + offset, p);
+    e.nextAttack = now + 1500;
+  }
+  if (now > e.stateUntil) {
+    for (let i = 0; i < 10; i += 1) g.fireEnemyBullet(e, (i / 10) * Math.PI * 2 + now * 0.001, p, 0.8);
+    g.fx.ring(e.x, e.y, 0xef4444, 90);
+    e.stateUntil = now + 4200;
+  }
+  if (now > e.spiral && g.enemies.length < LIMITS.maxEnemies) {
+    for (let i = 0; i < 3; i += 1) {
+      const y0 = e.y + (i - 1) * 60;
+      spawnEnemy(g, "swarm", e.x - 30, y0, { path: { kind: "sine", t: 0, x0: e.x - 30, y0, speed: 170, amp: 50, freq: 3, phase: i } });
+    }
+    e.spiral = now + 7000;
   }
 };
 

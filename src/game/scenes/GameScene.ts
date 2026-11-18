@@ -518,6 +518,11 @@ export class GameScene extends Scene {
         this.sfx("zap");
         break;
       }
+      case "capsule":
+        this.fx.explosion(p.x, p.y, 0xa855f7, 1.6);
+        this.fx.ring(p.x, p.y, 0xc084fc, 180);
+        this.mode.onCapsule?.(this, p.x, p.y);
+        break;
       case "chest":
         this.fx.explosion(p.x, p.y, 0xfbbf24, 1.4);
         this.fx.ring(p.x, p.y, 0xfbbf24, 140);
@@ -616,7 +621,7 @@ export class GameScene extends Scene {
   showCampaign() {
     if (this.state !== "menu") this.showMenu();
     openCampaignHub({
-      launch: (missionId) => this.startMode(new CampaignMode(missionId)),
+      launch: (missionId, difficulty) => this.startMode(new CampaignMode(missionId, difficulty)),
       back: () => this.showMenu(),
     });
   }

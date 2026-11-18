@@ -34,7 +34,8 @@ export type EnemyId =
   | "silo"
   | "fuelTank"
   | "billboard"
-  | "cargo";
+  | "cargo"
+  | "gunship";
 
 export type AffixId = "swift" | "armored" | "splitter";
 
@@ -183,7 +184,7 @@ export interface EnemyBullet {
   active: boolean;
 }
 
-export type PickupKind = "xp" | "coin" | "heart" | "magnet" | "venom" | "emp" | "chest";
+export type PickupKind = "xp" | "coin" | "heart" | "magnet" | "venom" | "emp" | "chest" | "capsule";
 
 export interface Pickup {
   kind: PickupKind;

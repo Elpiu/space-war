@@ -1,6 +1,6 @@
 import { BlendModes } from "phaser";
 import { icon } from "../../art/svg";
-import { DEPTH, VIEW_H, VIEW_W } from "../../config";
+import { DEPTH, DIFFICULTIES, VIEW_H, VIEW_W, type DifficultyId } from "../../config";
 import { AFFIXES } from "../../data/enemies";
 import type { GameScene } from "../../scenes/GameScene";
 import { ceilAt, floorAt } from "../../systems/terrain";
@@ -18,7 +18,18 @@ import { showMissionResult } from "./hub";
 import { pickFormation } from "./formations";
 import { SEGMENT_LABELS, generateLevel, segmentAt, type Prop, type Segment, type SegmentKind } from "./level";
 import { missionById, type MissionDef } from "./missions";
-import { addLoot, buildLoadout, itemByUid, loadProfile, saveProfile, slotKeys, type CampaignLoadout, type CampaignProfile } from "./profile";
+import {
+  DIFFICULTY_STARS,
+  addLoot,
+  buildLoadout,
+  itemByUid,
+  loadProfile,
+  recordVictory,
+  saveProfile,
+  slotKeys,
+  type CampaignLoadout,
+  type CampaignProfile,
+} from "./profile";
 
 const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
 
@@ -37,6 +48,10 @@ export class CampaignMode implements GameMode {
   private loadout: CampaignLoadout;
   private rack: WeaponRack | null = null;
   private loot: Omit<GearItem, "uid">[] = [];
+  private capsule: { x: number; y: number } | undefined;
+  private capsuleFound = false;
+  private miniBossSpawned = false;
+  private miniBoss: Enemy | null = null;
   private scroll = 0;
   private speed = BASE_SCROLL;
   private nextSpawnX = VIEW_W + 200;
@@ -50,7 +65,10 @@ export class CampaignMode implements GameMode {
   private combo = 0;
   private lastKillAt = -99999;
 
-  constructor(private readonly missionId: string) {
+  constructor(
+    private readonly missionId: string,
+    private readonly difficulty: DifficultyId = "normal",
+  ) {
     this.mission = missionById(missionId);
     this.profile = loadProfile();
     this.loadout = buildLoadout(this.profile);
@@ -58,9 +76,10 @@ export class CampaignMode implements GameMode {
 
   setup(): ModeSetup {
     const seed = Math.floor(Math.random() * 0x7fffffff);
-    const { arena, segments, props } = generateLevel(this.mission, seed);
+    const { arena, segments, props, capsule } = generateLevel(this.mission, seed);
     this.segments = segments;
     this.props = props;
+    this.capsule = capsule;
     return {
       arena,
       start: { x: 220, y: VIEW_H / 2 },
@@ -72,7 +91,7 @@ export class CampaignMode implements GameMode {
         maxMines: 0,
       },
       wave: this.mission.tier * 2 - 1,
-      difficulty: "normal",
+      difficulty: this.difficulty,
     };
   }
 
@@ -111,6 +130,8 @@ export class CampaignMode implements GameMode {
     }
 
     this.shield = this.loadout.ship.shield;
+    // La capsula segreta compare solo finché non è stata trovata.
+    if (this.capsule && !this.profile.secrets.includes(this.mission.id)) dropPickup(g, "capsule", this.capsule.x, this.capsule.y);
     banner(`MISSIONE ${this.mission.code}`, this.mission.title);
     g.hints.trigger("fire");
   }
@@ -126,7 +147,11 @@ export class CampaignMode implements GameMode {
 
     // Lo scorrimento rallenta quando lo schermo è affollato di volanti.
     const crowded = g.enemies.filter((e) => !e.dead && !e.anchor && !e.def.structure && e.x > this.scroll && e.x < this.scroll + VIEW_W).length;
-    const target = crowded > 8 ? 24 : crowded > 4 ? 50 : BASE_SCROLL;
+    // Mini-boss: a una certa distanza lo scorrimento si ferma finché non cade.
+    const maxScrollNow = g.arena.width - VIEW_W;
+    if (this.mission.miniBoss && !this.miniBossSpawned && this.scroll >= maxScrollNow * this.mission.miniBoss) this.spawnMiniBoss(g);
+    if (this.miniBoss?.dead) this.miniBoss = null;
+    const target = this.miniBoss ? 0 : crowded > 8 ? 24 : crowded > 4 ? 50 : BASE_SCROLL;
     this.speed += (target - this.speed) * Math.min(1, dt * 2);
     this.scroll = Math.min(maxScroll, this.scroll + this.speed * dt);
     cam.setScroll(this.scroll, 0);
@@ -155,7 +180,7 @@ export class CampaignMode implements GameMode {
 
     // I nemici rimasti indietro o usciti di lato escono di scena senza ricompense.
     for (const e of g.enemies) {
-      if (e.dead || e.def.id === "boss") continue;
+      if (e.dead || e.def.id === "boss" || e.def.id === "gunship") continue;
       if (e.x < this.scroll - 280 || e.y < -180 || e.y > VIEW_H + 180) g.killEnemy(e, false, true);
     }
 
@@ -177,7 +202,22 @@ export class CampaignMode implements GameMode {
     }
   }
 
+  private spawnMiniBoss(g: GameScene) {
+    this.miniBossSpawned = true;
+    const x = this.scroll + VIEW_W + 120;
+    const terrain = g.arena.terrain;
+    const y = terrain ? (Math.max(0, ceilAt(terrain, x)) + Math.min(VIEW_H, floorAt(terrain, x))) / 2 : VIEW_H / 2;
+    this.miniBoss = spawnEnemy(g, "gunship", x, y, {
+      path: { kind: "hold", t: 0, x0: x, y0: y, speed: 140, holdAt: 0.74, holdFor: 1e9 },
+    });
+    g.hud.setBoss(this.miniBoss);
+    banner("MINI-BOSS", "Cannoniera pirata: lo scorrimento si ferma finché non la abbatti", "warning");
+    g.sfx("alarm");
+    g.hints.enemy("gunship");
+  }
+
   private spawnGroup(g: GameScene) {
+    if (this.miniBoss) return;
     const alive = g.enemies.filter((e) => !e.dead && !e.anchor && !e.def.structure).length;
     if (alive >= 18 + this.mission.tier * 6) return;
 
@@ -224,12 +264,16 @@ export class CampaignMode implements GameMode {
     this.lastKillAt = g.now;
     const { x, y, def } = e;
     const elite = Boolean(e.affix);
-    const isBoss = def.id === "boss";
+    const isBoss = def.id === "boss" || def.id === "gunship";
     const tier = this.mission.tier;
+    if (def.id === "gunship") {
+      g.hud.setBoss(null);
+      banner("CANNONIERA ABBATTUTA", "Il percorso riparte", "epic");
+    }
 
     const ground = Boolean(e.anchor || def.structure || def.id === "cargo");
     if (elite || isBoss || ground || Math.random() < 0.6) {
-      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.coinMul()));
+      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.coinMul() * DIFFICULTIES[this.difficulty].reward));
     }
     if (Math.random() < (elite ? 0.15 : 0.025)) dropPickup(g, "heart", x - 10, y + 4, 2);
     if (Math.random() < (elite ? 0.06 : 0.006)) dropPickup(g, pick(["magnet", "venom", "emp"] as const), x, y - 12);
@@ -239,9 +283,24 @@ export class CampaignMode implements GameMode {
     }
   }
 
+  /** Le difficoltà più alte pescano bottino come se la missione fosse di tier superiore. */
+  private get lootTier() {
+    return this.mission.tier + DIFFICULTY_STARS[this.difficulty] - 1;
+  }
+
+  onCapsule(g: GameScene) {
+    this.capsuleFound = true;
+    const coins = 50 * this.mission.tier;
+    g.run.coins += coins;
+    const item = rollGear(this.lootTier, "rare");
+    this.loot.push(item);
+    banner("CAPSULA SEGRETA", `+${coins} monete e ${mustGearDef(item.defId).title}`, "epic");
+    g.sfx("reward");
+  }
+
   /** In campagna la chest è una cassa di bottino: un pezzo d'equipaggiamento. */
   onChest(g: GameScene) {
-    const item = rollGear(this.mission.tier);
+    const item = rollGear(this.lootTier);
     this.loot.push(item);
     const def = mustGearDef(item.defId);
     g.toast(`Bottino: ${def.title}`, def.icon, item.rarity === "legendary" || item.rarity === "rare" ? "epic" : "good");
@@ -250,14 +309,18 @@ export class CampaignMode implements GameMode {
   end(g: GameScene, outcome: RunOutcome) {
     const profile = loadProfile();
     const victory = outcome === "victory";
-    const firstClear = victory && !profile.completed.includes(this.mission.id);
-    const bonus = victory ? 40 * this.mission.tier : 0;
-    const reward = victory ? [rollGear(this.mission.tier, firstClear ? "uncommon" : "common")] : [];
+    const stars = DIFFICULTY_STARS[this.difficulty];
+    // Prima vittoria a questa difficoltà: bonus doppio e bottino migliore.
+    const firstClear = victory && (profile.stars[this.mission.id] ?? 0) < stars;
+    const bonus = victory ? Math.round(40 * this.mission.tier * DIFFICULTIES[this.difficulty].reward * (firstClear ? 2 : 1)) : 0;
+    const minRarity = stars >= 3 ? "rare" : stars === 2 || firstClear ? "uncommon" : "common";
+    const reward = victory ? [rollGear(this.lootTier, minRarity)] : [];
 
     // Non è un roguelite: monete e bottino raccolti si tengono sempre.
     profile.coins += g.run.coins + bonus;
     const added = addLoot(profile, [...this.loot, ...reward]);
-    if (victory && firstClear) profile.completed.push(this.mission.id);
+    if (victory) recordVictory(profile, this.mission.id, this.difficulty);
+    if (this.capsuleFound && !profile.secrets.includes(this.mission.id)) profile.secrets.push(this.mission.id);
     saveProfile(profile);
 
     showMissionResult(
@@ -273,7 +336,7 @@ export class CampaignMode implements GameMode {
       },
       {
         map: () => g.showCampaign(),
-        retry: () => g.startMode(new CampaignMode(this.missionId)),
+        retry: () => g.startMode(new CampaignMode(this.missionId, this.difficulty)),
       },
     );
   }
@@ -288,7 +351,7 @@ export class CampaignMode implements GameMode {
       label: "MISSIONE",
       value: this.mission.code,
       detail,
-      event: this.bossSpawned ? "BOSS" : this.combo >= 3 && g.now - this.lastKillAt < 1800 ? `COMBO x${this.combo}` : "",
+      event: this.bossSpawned ? "BOSS" : this.miniBoss ? "MINI-BOSS" : this.combo >= 3 && g.now - this.lastKillAt < 1800 ? `COMBO x${this.combo}` : "",
       shield: this.loadout.ship.shield > 0 ? { value: this.shield, max: this.loadout.ship.shield } : undefined,
       bar: {
         ratio,

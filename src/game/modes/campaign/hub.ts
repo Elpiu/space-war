@@ -1,4 +1,5 @@
 import { icon } from "../../art/svg";
+import { DIFFICULTIES, type DifficultyId } from "../../config";
 import { RARITIES } from "../../data/upgrades";
 import { asset, el, esc, layer } from "../../ui/dom";
 import { closeScreen } from "../../ui/screens";
@@ -24,6 +25,7 @@ import {
   buy,
   canUnequip,
   commonsValue,
+  difficultyUnlocked,
   equip,
   equippedOfType,
   equippedSlotOf,
@@ -58,6 +60,9 @@ const slotLabel = (key: SlotKey) => {
   return type === "front" || type === "device" ? `${SLOT_SHORT[type]} ${index + 1}` : SLOT_SHORT[type];
 };
 
+/** Tre stelle: piene per le difficoltà vinte, spente per le altre. */
+const starsHtml = (stars: number) => [1, 2, 3].map((n) => `<b class="${n <= stars ? "on" : ""}">★</b>`).join("");
+
 const rarityColor = (item: GearItem) => hex(RARITIES[item.rarity].color);
 
 const itemTile = (item: GearItem, selected: boolean, equipped: boolean) => {
@@ -68,13 +73,14 @@ const itemTile = (item: GearItem, selected: boolean, equipped: boolean) => {
 };
 
 /** Hub della campagna: mappa del settore + equipaggiamento + hangar/negozio. */
-export const openCampaignHub = (actions: { launch: (missionId: string) => void; back: () => void }) => {
+export const openCampaignHub = (actions: { launch: (missionId: string, difficulty: DifficultyId) => void; back: () => void }) => {
   const profile = loadProfile();
   let missionId = nextMission(profile).id;
   let selected: number | null = profile.equipped.front0 ?? null;
   let tab: "hangar" | "shop" = "hangar";
   let feedback = "";
   let preview: string | null = null;
+  let difficulty: DifficultyId = "normal";
   let confirmSell = false;
 
   const render = () => {
@@ -89,7 +95,7 @@ export const openCampaignHub = (actions: { launch: (missionId: string) => void; 
         </header>
         <div class="hub__top">
           <section class="hub__map panel">${renderMap(profile, missionId)}</section>
-          <aside class="hub__mission panel">${renderMission(profile, mission)}</aside>
+          <aside class="hub__mission panel">${renderMission(profile, mission, difficulty)}</aside>
         </div>
         <div class="hub__bottom">
           <section class="hub__loadout panel">${renderLoadout(profile, selected)}</section>
@@ -115,8 +121,12 @@ export const openCampaignHub = (actions: { launch: (missionId: string) => void; 
       );
 
     root.querySelector("[data-act=back]")?.addEventListener("click", actions.back);
-    root.querySelector("[data-act=launch]")?.addEventListener("click", () => actions.launch(missionId));
-    click("[data-mission]", (node) => (missionId = node.dataset.mission!));
+    root.querySelector("[data-act=launch]")?.addEventListener("click", () => actions.launch(missionId, difficulty));
+    click("[data-mission]", (node) => {
+      missionId = node.dataset.mission!;
+      difficulty = "normal";
+    });
+    click("[data-mdiff]", (node) => (difficulty = node.dataset.mdiff as DifficultyId));
     click("[data-tab]", (node) => {
       tab = node.dataset.tab as typeof tab;
       preview = null;
@@ -293,26 +303,42 @@ const renderMap = (profile: CampaignProfile, selectedId: string) => {
     const unlocked = isMissionUnlocked(profile, m);
     const done = profile.completed.includes(m.id);
     const state = done ? "is-done" : unlocked ? "is-open" : "is-locked";
+    const stars = profile.stars[m.id] ?? 0;
+    const starRow = done ? `<i class="map-stars">${starsHtml(stars)}</i>` : "";
+    const secret = profile.secrets.includes(m.id) ? `<i class="map-secret" title="Capsula trovata">${icon("star")}</i>` : "";
     return `<button class="map-node ${state} ${m.boss ? "is-boss" : ""} ${m.id === selectedId ? "is-selected" : ""}" style="left:${m.x}%;top:${m.y}%" data-mission="${m.id}" ${unlocked ? "" : "disabled"}>
-      ${icon(done ? "check" : m.boss ? "boss" : unlocked ? "flag" : "lock")}<span>${m.code}</span>
+      ${icon(done ? "check" : m.boss ? "boss" : unlocked ? "flag" : "lock")}<span>${m.code}</span>${starRow}${secret}
     </button>`;
   }).join("");
   return `<div class="map-inner"><svg class="map-edges" viewBox="0 0 100 100" preserveAspectRatio="none">${edges}</svg>${nodes}</div>`;
 };
 
-const renderMission = (profile: CampaignProfile, m: MissionDef) => {
+const DIFF_ORDER: DifficultyId[] = ["normal", "hard", "nightmare"];
+
+const renderMission = (profile: CampaignProfile, m: MissionDef, difficulty: DifficultyId) => {
   const unlocked = isMissionUnlocked(profile, m);
   const done = profile.completed.includes(m.id);
+  const stars = profile.stars[m.id] ?? 0;
+  const diffs = DIFF_ORDER.map((d) => {
+    const open = difficultyUnlocked(profile, m.id, d);
+    return `<button class="seg ${d === difficulty ? "is-on" : ""}" data-mdiff="${d}" ${open ? "" : "disabled"} title="${open ? esc(DIFFICULTIES[d].description) : "Vinci la difficoltà precedente per sbloccarla"}">${open ? "" : icon("lock")}${DIFFICULTIES[d].label}</button>`;
+  }).join("");
+  const firstAtDiff = (profile.stars[m.id] ?? 0) < DIFF_ORDER.indexOf(difficulty) + 1;
+  const bonus = Math.round(40 * m.tier * DIFFICULTIES[difficulty].reward * (firstAtDiff ? 2 : 1));
+  const secretFound = profile.secrets.includes(m.id);
   const threat = Array.from({ length: 5 }, (_, i) => `<i class="${i < m.tier ? "on" : ""}"></i>`).join("");
   return `
     <small class="muted">Missione ${m.code}${done ? " · completata" : ""}</small>
     <h3>${esc(m.title)}</h3>
     <p>${esc(m.description)}</p>
-    <div class="threat"><span>Minaccia</span><span class="pips">${threat}</span></div>
+    <div class="threat"><span>Minaccia</span><span class="pips">${threat}</span><span class="mission-stars">${starsHtml(stars)}</span></div>
+    <div class="segmented segmented--small">${diffs}</div>
     <ul class="mission-facts">
-      <li>${icon("coin")} Bonus vittoria: ${40 * m.tier} monete</li>
-      <li>${icon("crate")} ${done ? "Bottino garantito a fine missione" : "Prima vittoria: bottino non comune o migliore"}</li>
+      <li>${icon("coin")} Bonus vittoria: ${bonus} monete${firstAtDiff ? " (prima vittoria x2)" : ""}</li>
+      <li>${icon("crate")} ${difficulty === "nightmare" ? "Bottino garantito raro o migliore" : difficulty === "hard" || firstAtDiff ? "Bottino garantito non comune o migliore" : "Bottino garantito a fine missione"}</li>
+      ${m.miniBoss ? `<li>${icon("warning")} Mini-boss lungo il percorso</li>` : ""}
       ${m.boss ? `<li>${icon("boss")} Boss a fine percorso</li>` : `<li>${icon("flag")} Raggiungi l'uscita in fondo al corridoio</li>`}
+      <li>${icon("star")} Capsula segreta: ${secretFound ? "trovata" : "da trovare"}</li>
     </ul>
     <button class="btn btn--primary" data-act="launch" ${unlocked ? "" : "disabled"}>${icon("play")} Lancia missione</button>`;
 };

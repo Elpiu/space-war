@@ -1,3 +1,4 @@
+import type { DifficultyId } from "../../config";
 import type { Rarity } from "../../types";
 import {
   GEAR,
@@ -33,7 +34,13 @@ export interface CampaignProfile {
   nextUid: number;
   /** Pezzi del negozio già visti: gli altri hanno il badge "nuovo". */
   seenShop: string[];
+  /** Stelle per missione: 1 = Normale, 2 = Difficile, 3 = Incubo. */
+  stars: Record<string, number>;
+  /** Missioni di cui è stata trovata la capsula segreta. */
+  secrets: string[];
 }
+
+export const DIFFICULTY_STARS: Record<DifficultyId, number> = { normal: 1, hard: 2, nightmare: 3 };
 
 const SLOT_TYPES = ["front", "rear", "missile", "bomb", "device"] as const;
 type SlotType = (typeof SLOT_TYPES)[number];
@@ -52,6 +59,8 @@ const starter = (): CampaignProfile => ({
   completed: [],
   nextUid: 5,
   seenShop: ["blaster", "tail-gun", "cluster", "frigate"],
+  stars: {},
+  secrets: [],
 });
 
 // ---------- Salvataggio e migrazione ----------
@@ -84,6 +93,8 @@ export const loadProfile = (): CampaignProfile => {
       return profile;
     }
     const profile = { ...starter(), ...(JSON.parse(raw) as CampaignProfile) };
+    // Chi aveva già completato missioni prima delle stelle parte da una stella.
+    for (const id of profile.completed) profile.stars[id] = Math.max(1, profile.stars[id] ?? 0);
     profile.inventory = profile.inventory.filter((item) => Boolean(gearDef(item.defId)));
     sanitize(profile);
     return profile;
@@ -135,7 +146,18 @@ export const equippedSlotOf = (profile: CampaignProfile, uid: number) =>
   Object.keys(profile.equipped).find((key) => profile.equipped[key] === uid);
 
 export const isMissionUnlocked = (profile: CampaignProfile, mission: MissionDef) =>
-  mission.requires.length === 0 || mission.requires.some((id) => profile.completed.includes(id));
+  mission.requires.length === 0 ||
+  profile.completed.includes(mission.id) ||
+  mission.requires.some((id) => profile.completed.includes(id));
+
+/** Una difficoltà si sblocca vincendo la missione a quella precedente. */
+export const difficultyUnlocked = (profile: CampaignProfile, missionId: string, difficulty: DifficultyId) =>
+  DIFFICULTY_STARS[difficulty] <= (profile.stars[missionId] ?? 0) + 1;
+
+export const recordVictory = (profile: CampaignProfile, missionId: string, difficulty: DifficultyId) => {
+  if (!profile.completed.includes(missionId)) profile.completed.push(missionId);
+  profile.stars[missionId] = Math.max(profile.stars[missionId] ?? 0, DIFFICULTY_STARS[difficulty]);
+};
 
 export const equip = (profile: CampaignProfile, uid: number) => {
   const item = itemByUid(profile, uid);

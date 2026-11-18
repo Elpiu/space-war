@@ -252,5 +252,31 @@ calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
   soglia sblocca. Un pulsante vende tutti i comuni di livello 1 non montati,
   con conferma.
 
-**Prossime fasi:** contenuti del settore (E: più missioni, mini-boss,
-capsule segrete, rigiocabilità a difficoltà più alte), poi rifinitura (F).
+**Fatto (fase E):**
+- **Settore 1 a 8 missioni:**
+
+  `1-1 → 1-2 → (1-3 Nebulosa | 1-3 Asteroidi) → 1-4 → (1-5 Cantiere | 1-5 Relitto) → 1-6 Dreadnought`
+
+  I segmenti sono circa il 30% più lunghi: una missione dura 2–3 minuti.
+- **Mini-boss Cannoniera** dalla 1-3 in poi, a una distanza fissa del
+  percorso:
+  - lo scorrimento si ferma finché non viene abbattuta, e ha la sua barra
+    nell'HUD;
+  - attacca con raffiche mirate, anelli di colpi e sciami;
+  - abbattuta, lascia una cassa e monete.
+- **Capsula segreta**, una per missione, rasoterra o contro il soffitto
+  nei tratti con terreno. Vale 50 × tier monete e un pezzo raro o migliore.
+  Una volta trovata non ricompare, e la mappa la segna con un badge viola.
+- **Difficoltà per missione.** Si sceglie fra Normale, Difficile e Incubo;
+  ogni livello si sblocca vincendo il precedente.
+  - Le stelle (fino a 3) compaiono sulla mappa.
+  - Le difficoltà più alte rendono i nemici più forti, moltiplicano le
+    monete (×1,5 / ×2,2) e pescano il bottino come un tier più alto.
+  - La prima vittoria a ogni difficoltà raddoppia il bonus. Il bottino
+    garantito è non comune o migliore a Difficile, raro o migliore a Incubo.
+- **Salvataggi:** chi aveva già completato missioni riceve una stella per
+  ognuna. La boss mission resta giocabile anche con le nuove missioni 1-5
+  ancora da fare.
+
+**Prossima fase:** rifinitura (F): profili d'arma, musica e sfondi per
+segmento, bilanciamento con partite vere.

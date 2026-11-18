@@ -180,3 +180,15 @@ button.shop-row:hover, .shop-row.is-selected { border-color: var(--c); box-shado
 .compare .gear-stats { margin-top: 4px; }
 .gear-stats--muted { color: var(--muted); }
 .compare .unlock { color: var(--gold); display: flex; align-items: center; gap: 6px; }
+
+/* ---------- Fase E: difficolta, stelle, capsule ---------- */
+
+.map-stars { position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); color: var(--gold); font-size: 10px; font-style: normal; letter-spacing: 1px; white-space: nowrap; text-shadow: 0 0 6px rgba(251, 191, 36, 0.6); }
+.map-secret { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #a855f7; color: #fff; }
+.map-secret .ico { width: 11px; height: 11px; }
+.mission-stars { margin-left: auto; color: var(--gold); letter-spacing: 1px; }
+.segmented--small .seg { padding: 7px 4px; font-size: 11px; }
+.seg:disabled { opacity: 0.45; cursor: not-allowed; }
+.seg .ico { width: 11px; height: 11px; margin-right: 3px; }
+.map-stars b, .mission-stars b { color: rgba(148, 163, 184, 0.35); font-weight: 400; text-shadow: none; }
+.map-stars b.on, .mission-stars b.on { color: var(--gold); text-shadow: 0 0 6px rgba(251, 191, 36, 0.6); }
