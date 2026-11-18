@@ -292,3 +292,29 @@ calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
   dello schermo, dove le armi frontali lo raggiungono.
 - **Collaudo automatico:** tutte le 8 missioni a Normale, più la 1-4 e il
   boss a Incubo, completate senza errori. Missioni da 1,5 a 3,5 minuti.
+
+## Hub della campagna (v3)
+
+Quattro schermate a tutto spazio, con una barra in alto:
+
+- **Mappa:** il settore occupa la schermata. A lato ci sono la scheda della
+  missione (difficoltà, ricompense, capsula) e un riepilogo della nave con il
+  pulsante "Modifica nave".
+- **Hangar:**
+  - **Schema della nave:** in SVG, con una sagoma diversa per ogni scafo e
+    le prese degli slot sul disegno.
+  - **Presa selezionata:** a destra compaiono il pezzo montato e tutti i
+    pezzi compatibili, ognuno con le differenze ("+3,1 danno/s", "+6
+    calore/s") e il pulsante Monta.
+  - **Anteprima:** passando su un pezzo, la scheda statistiche a sinistra
+    mostra le variazioni. La scheda include il **bilancio termico** (calore
+    prodotto contro dissipazione) e i secondi di fuoco continuo prima del
+    surriscaldamento.
+  - **Profili di fuoco:** si attivano direttamente sulle prese delle armi.
+  - **Inventario:** filtri per tipo, rarità e novità, ordinamento, selezione
+    multipla (vendi o blocca in blocco), pezzi bloccati.
+- **Negozio:** catalogo a schede, divise per slot. L'anteprima confronta il
+  pezzo con la nave attuale. "Compra e monta" usa uno slot libero, oppure
+  sostituisce il pezzo più debole.
+- **Officina:** potenziamento con barra dei livelli e anteprima, blocco,
+  vendita (con conferma) e vendita rapida dei comuni.

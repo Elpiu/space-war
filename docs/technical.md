@@ -20,7 +20,10 @@ src/
     scenes/GameScene.ts   nucleo di combattimento: nave, nemici, armi, pickup, pausa
     modes/mode.ts         interfaccia GameMode (arena, ritmo, ricompense, fine run, HUD)
     modes/survival.ts     survival roguelite: wave, level-up con tomi, chest, crediti
-    modes/campaign/       campagna: equipaggiamento, missioni, livelli a segmenti, formazioni, profilo, hub
+    modes/campaign/       campagna: equipaggiamento, missioni, livelli a segmenti, formazioni, profilo
+    modes/campaign/hub.ts regia dell'hub (stato, eventi delegati, esito missione)
+    modes/campaign/ui/    viste dell'hub: mappa, hangar, negozio, officina, elementi comuni
+    modes/campaign/schematic.ts  sagome SVG degli scafi e posizione delle prese
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
     systems/director.ts   wave del survival, eventi orda/boss, spawn
     systems/enemies.ts    spawn e IA di tutti i nemici, boss a fasi

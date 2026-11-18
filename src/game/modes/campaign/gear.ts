@@ -109,6 +109,8 @@ export interface GearItem {
   level: number;
   /** Appena ottenuto e non ancora guardato in hangar. */
   fresh?: boolean;
+  /** Bloccato: non si vende, nemmeno con la vendita multipla. */
+  locked?: boolean;
 }
 
 export const GEAR_MAX_LEVEL = 10;

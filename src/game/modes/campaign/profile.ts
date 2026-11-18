@@ -9,6 +9,8 @@ import {
   mustGearDef,
   sellPrice,
   upgradeCost,
+  weaponDps,
+  weaponHeat,
   weaponSpec,
   type GearDef,
   type GearItem,
@@ -204,9 +206,31 @@ export const unequip = (profile: CampaignProfile, key: SlotKey) => {
 
 // ---------- Economia ----------
 
+/** Si può vendere: non montato e non bloccato. */
+export const isSellable = (profile: CampaignProfile, item: GearItem) => !item.locked && !equippedSlotOf(profile, item.uid);
+
+export const toggleLock = (profile: CampaignProfile, uid: number) => {
+  const item = itemByUid(profile, uid);
+  if (!item) return;
+  item.locked = !item.locked;
+  saveProfile(profile);
+};
+
+/** Vende in blocco i pezzi indicati (salta montati e bloccati). */
+export const sellMany = (profile: CampaignProfile, uids: number[]) => {
+  const ids = new Set(uids);
+  const sold = profile.inventory.filter((i) => ids.has(i.uid) && isSellable(profile, i));
+  const total = sold.reduce((sum, i) => sum + sellPrice(i), 0);
+  const soldIds = new Set(sold.map((i) => i.uid));
+  profile.inventory = profile.inventory.filter((i) => !soldIds.has(i.uid));
+  profile.coins += total;
+  saveProfile(profile);
+  return { count: sold.length, total };
+};
+
 export const sell = (profile: CampaignProfile, uid: number) => {
   const item = itemByUid(profile, uid);
-  if (!item || equippedSlotOf(profile, uid)) return 0;
+  if (!item || !isSellable(profile, item)) return 0;
   const price = sellPrice(item);
   profile.coins += price;
   profile.inventory = profile.inventory.filter((i) => i.uid !== uid);
@@ -243,19 +267,69 @@ export const buy = (profile: CampaignProfile, defId: string) => {
 };
 
 /** Vende tutti i pezzi comuni di livello 1 non montati. */
-export const sellCommons = (profile: CampaignProfile) => {
-  const junk = profile.inventory.filter((i) => i.rarity === "common" && i.level === 1 && !equippedSlotOf(profile, i.uid));
-  const total = junk.reduce((sum, i) => sum + sellPrice(i), 0);
-  const ids = new Set(junk.map((i) => i.uid));
-  profile.inventory = profile.inventory.filter((i) => !ids.has(i.uid));
-  profile.coins += total;
-  saveProfile(profile);
-  return { count: junk.length, total };
-};
+export const sellCommons = (profile: CampaignProfile) =>
+  sellMany(
+    profile,
+    profile.inventory.filter((i) => i.rarity === "common" && i.level === 1).map((i) => i.uid),
+  );
 
 export const commonsValue = (profile: CampaignProfile) => {
-  const junk = profile.inventory.filter((i) => i.rarity === "common" && i.level === 1 && !equippedSlotOf(profile, i.uid));
+  const junk = profile.inventory.filter((i) => i.rarity === "common" && i.level === 1 && isSellable(profile, i));
   return { count: junk.length, total: junk.reduce((sum, i) => sum + sellPrice(i), 0) };
+};
+
+/** Monta un pezzo in uno slot preciso (lo toglie da dov'era). */
+export const equipTo = (profile: CampaignProfile, uid: number, key: SlotKey) => {
+  const item = itemByUid(profile, uid);
+  if (!item) return "";
+  const type = mustGearDef(item.defId).slot;
+  if (type !== slotType(key)) return "Pezzo non compatibile con questo slot";
+  const previous = equippedSlotOf(profile, uid);
+  if (previous) delete profile.equipped[previous];
+  profile.equipped[key] = uid;
+  if (key === "hull") sanitize(profile);
+  saveProfile(profile);
+  return "";
+};
+
+/** Copia del profilo con uno slot cambiato: serve per l'anteprima delle differenze. */
+export const simulateEquip = (profile: CampaignProfile, key: SlotKey, uid: number | null): CampaignProfile => {
+  const equipped = { ...profile.equipped };
+  for (const k of Object.keys(equipped)) if (uid !== null && equipped[k] === uid) delete equipped[k];
+  if (uid === null) delete equipped[key];
+  else equipped[key] = uid;
+  return { ...profile, equipped };
+};
+
+/** Numeri chiave della nave, per le schede statistiche e i confronti. */
+export interface ShipSummary {
+  hp: number;
+  shield: number;
+  dps: number;
+  heat: number;
+  sink: number;
+  cap: number;
+  speed: number;
+  pickup: number;
+  regen: number;
+}
+
+export const summarize = (profile: CampaignProfile): ShipSummary => {
+  const { ship, rack, mounts } = buildLoadout(profile);
+  const guns = mounts.filter((m) => m.slot === "front" || m.slot === "rear");
+  const missiles = mounts.filter((m) => m.slot === "missile");
+  const mul = rack.damageMul * rack.rateMul;
+  return {
+    hp: ship.maxHp,
+    shield: ship.shield,
+    dps: [...guns, ...missiles].reduce((sum, m) => sum + weaponDps(m.spec) * mul, 0),
+    heat: guns.reduce((sum, m) => sum + weaponHeat(m.spec) * rack.rateMul, 0),
+    sink: rack.heatSink,
+    cap: rack.heatCap,
+    speed: ship.speed,
+    pickup: ship.pickupRadius,
+    regen: ship.regen,
+  };
 };
 
 /** Primo pezzo montato in uno slot di questo tipo (per i confronti). */
