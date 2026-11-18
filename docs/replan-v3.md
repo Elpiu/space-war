@@ -151,7 +151,7 @@ con un'icona nel bestiario.
 | Fase | Contenuto | Fatto quando |
 | --- | --- | --- |
 | **G1. Hangar nuovo** ✅ | Schermate separate, schema della nave, anteprima delle differenze, filtri, selezione multipla, blocco | Equipaggiare è veloce e si vede la nave |
-| **G2. Bestiario 1** | Linguaggio dei segnali, 12 nemici nuovi, affissi élite nuovi, sprite SVG al posto dei PNG | Ogni segmento ha nemici con ruoli distinti |
+| **G2. Bestiario 1** ✅ | Linguaggio dei segnali, 12 nemici nuovi, affissi élite nuovi, sprite SVG al posto dei PNG | Ogni segmento ha nemici con ruoli distinti |
 | **G3. Campagna infinita** | Generatore di settori (DAG, Markov, fBm), curve di minaccia, biomi, mutatori, item level | Dopo il settore 1 si gioca senza fine, con difficoltà sensata |
 | **G4. Bottino e Officina** | Affissi, fusione, ricalibrazione, offerte del settore | Le monete hanno sempre un uso, il bottino sorprende |
 | **G5. Bestiario 2 e boss** | Altri 12 nemici, 3 boss e 2 mini-boss nuovi | Circa 40 nemici, boss a rotazione |

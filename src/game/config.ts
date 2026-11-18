@@ -114,6 +114,20 @@ export const COLORS = {
   shield: 0x7dd3fc,
 };
 
+/**
+ * Linguaggio dei segnali: ogni avviso ha un colore fisso.
+ * Giallo = carica in corso, rosso = danno in arrivo, azzurro = scudo,
+ * viola = controllo (attrazione, EMP), verde = cura, magenta = teletrasporto.
+ */
+export const SIGNAL = {
+  charge: 0xfacc15,
+  danger: 0xef4444,
+  shield: 0x22d3ee,
+  control: 0xa855f7,
+  heal: 0x4ade80,
+  warp: 0xe879f9,
+};
+
 export const DEPTH = {
   background: -10,
   hazard: 0,

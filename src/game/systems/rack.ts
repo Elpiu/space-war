@@ -78,6 +78,8 @@ export class WeaponRack implements Armament {
     const firing = g.controls.firing && !this.overheated;
     this.beamGfx.clear();
 
+    // Disturbo EMP: le armi scaldano anche da ferme.
+    if (g.now < g.jammedUntil) this.heat = Math.min(rack.heatCap, this.heat + 22 * dt);
     // Il calore scende sempre, più in fretta quando non si spara.
     this.heat = Math.max(0, this.heat - rack.heatSink * (firing ? 1 : 1.7) * dt);
     if (this.overheated && this.heat <= rack.heatCap * OVERHEAT_RESUME) {

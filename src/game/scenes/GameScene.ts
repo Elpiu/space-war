@@ -64,6 +64,8 @@ export class GameScene extends Scene {
   hints!: Hints;
   hud!: Hud;
   pendingLevels = 0;
+  /** Disturbo EMP attivo fino a questo istante: nave più lenta, armi più calde. */
+  jammedUntil = 0;
   /** Input di combattimento letto a ogni frame (usato dal sistema d'arma della campagna). */
   controls = { firing: false, bomb: false, profile: 0 };
   armament: Armament | null = null;
@@ -203,6 +205,10 @@ export class GameScene extends Scene {
       this.hints.trigger("dash");
     }
 
+    if (this.now < this.jammedUntil) {
+      mx *= 0.7;
+      my *= 0.7;
+    }
     let vx = mx * run.stats.speed;
     let vy = my * run.stats.speed;
     if (this.now < run.dashUntil) {
@@ -385,8 +391,29 @@ export class GameScene extends Scene {
 
   // ---------- Combattimento (API usata dai sistemi) ----------
 
+  /** Chiamato dai Droni EMP vicini alla nave. */
+  jamPlayer() {
+    this.jammedUntil = this.now + 150;
+  }
+
   damageEnemy(e: Enemy, damage: number, source: DamageSource, angle = 0, knockback = 0) {
     if (e.dead) return;
+    // Fantasmi intangibili: il colpo li attraversa.
+    if (e.intangible) return;
+    // Protetto da uno Scudiero: danno dimezzato.
+    if (this.now < e.protectedUntil) {
+      damage *= 0.5;
+      if (Math.random() < 0.3) this.fx.burst(e.x, e.y, 0x22d3ee, 3);
+    }
+    // Barriera (affisso Schermato): si consuma prima degli HP.
+    if (e.barrier > 0) {
+      const absorbed = Math.min(e.barrier, damage);
+      e.barrier -= absorbed;
+      damage -= absorbed;
+      this.fx.burst(e.x, e.y, 0x7dd3fc, 3);
+      if (e.barrier <= 0) this.fx.ring(e.x, e.y, 0x7dd3fc, e.radius * 2.5);
+      if (damage <= 0) return;
+    }
     const dealt = Math.min(damage, e.hp);
     e.hp -= damage;
     this.run.damageBySource[source] = (this.run.damageBySource[source] ?? 0) + dealt;
@@ -419,6 +446,12 @@ export class GameScene extends Scene {
 
     if (def.id === "kamikaze") this.blast(x, y, 90, 6, false);
     if (def.id === "fuelTank") this.blast(x, y, 140, 10, false);
+    // Affisso Esplosivo: alla morte esplode, e colpisce anche la nave se è vicina.
+    if (e.affix === "explosive") this.blast(x, y, 110, e.damage * 1.5, true);
+    // Scissionista: si divide in due, per due generazioni.
+    if (def.id === "splitter" && e.gen < 2) {
+      for (const side of [-1, 1]) spawnEnemy(this, "splitter", x + side * 18, y + side * 10, { gen: e.gen + 1 });
+    }
     if (def.id === "brute") for (let i = 0; i < 2; i += 1) spawnEnemy(this, "swarm", x + (i ? 20 : -20), y);
     if (e.affix === "splitter" && !isBoss) {
       for (let i = 0; i < 3; i += 1) spawnEnemy(this, def.id, x + Math.cos(i * 2.1) * 26, y + Math.sin(i * 2.1) * 26, { small: true });

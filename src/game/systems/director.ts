@@ -1,12 +1,11 @@
 import { DIFFICULTIES, LIMITS, WAVE } from "../config";
-import { SPAWNABLE } from "../data/enemies";
+import { AFFIX_IDS, SPAWNABLE } from "../data/enemies";
 import type { GameScene } from "../scenes/GameScene";
-import type { AffixId, EnemyId } from "../types";
+import type { EnemyId } from "../types";
 import { clamp, pick, pickWeighted, rand, randInt } from "../utils";
 import { hitsAsteroid } from "./arena";
 import { spawnEnemy } from "./enemies";
 
-const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
 
 /** Regia delle wave del survival: ritmo degli spawn, eventi orda e boss. */
 export class Director {

@@ -7,13 +7,14 @@ src/
   main.ts                 bootstrap (in dev espone window.game)
   style.css               tutta l'interfaccia DOM
   game/
-    main.ts               config Phaser (1280×720, Scale.FIT)
+    main.ts               config Phaser (palco fisso 1280×720, Scale.NONE)
     config.ts             costanti e bilanciamento
     types.ts              tipi condivisi
     utils.ts              RNG con seed, pick pesato, SpatialHash
     meta.ts               salvataggio, sblocchi, crediti
     audio.ts              musica in streaming + effetti sintetizzati (WebAudio)
     art/svg.ts            icone (24×24, currentColor) e sprite SVG (64×64)
+    art/enemySprites.ts   sprite SVG di tutti i nemici e dei boss
     art/textures.ts       caricamento PNG/SVG + texture procedurali (glow, stelle...)
     data/enemies.ts       definizioni nemici, affissi elite, scala per wave
     data/upgrades.ts      tomi, oggetti, rarità, computeStats()
@@ -26,7 +27,8 @@ src/
     modes/campaign/schematic.ts  sagome SVG degli scafi e posizione delle prese
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
     systems/director.ts   wave del survival, eventi orda/boss, spawn
-    systems/enemies.ts    spawn e IA di tutti i nemici, boss a fasi
+    systems/enemies.ts    spawn e IA di base dei nemici, boss a fasi
+    systems/enemyAI.ts    comportamenti del bestiario v3: laser, supporto, gravità, EMP, teletrasporto, affissi continui
     systems/weapons.ts    proiettili in pool (anche a ricerca, a gravità, esplosivi), arsenale del survival
     systems/rack.ts       armi a slot della campagna: fuoco tenuto, calore, missili, bombe
     systems/terrain.ts    pavimento e soffitto: campionamento, collisioni, disegno
@@ -100,8 +102,9 @@ src/
   (`systems/terrain.ts`).
 
 - **Nemico**: una voce in `data/enemies.ts`. Se ha un comportamento nuovo, un
-  `case` in `updateEnemies` (`systems/enemies.ts`). Sprite in
-  `art/textures.ts` (PNG) oppure in `art/svg.ts` (`SPRITES`).
+  `case` in `extraBehavior` (`systems/enemyAI.ts`). Sprite SVG in
+  `ENEMY_SPRITES` (`art/enemySprites.ts`). I telegrafi usano i colori di
+  `SIGNAL` (`config.ts`): non introdurre colori nuovi per un attacco.
 - **Tomo**: una voce in `TOMES` più l'effetto in `computeStats`; l'eventuale
   evoluzione si controlla con `isEvolved(run, id)` dove serve.
 - **Oggetto**: una voce in `ITEMS`, l'effetto in `computeStats` o nel sistema
@@ -122,8 +125,8 @@ Il deploy avviene anche in automatico a ogni push su `main`
 
 ## Asset
 
-- Sprite PNG dei nemici e della nave in `public/assets/images/`.
-- Nuovi nemici, pickup, difese e icone sono SVG generati da codice: niente file
+- Solo lo sprite PNG della nave resta in `public/assets/images/`.
+- Nemici, boss, pickup, difese e icone sono SVG generati da codice: niente file
   da scaricare.
 - Musica in `public/sounds/music/` (circa 9 MB per traccia): va in streaming
   con `<audio>` e non blocca il caricamento. Ricomprimerla in OGG o MP3 a

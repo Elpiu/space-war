@@ -50,13 +50,11 @@
 - Bilanciamento con partite vere: curva XP, densità degli spawn dopo la wave
   15, danno del boss nelle tier alte.
 - Ricomprimere la musica (circa 17 MB complessivi).
-- Supporto touch o gamepad (oggi solo tastiera).
+- Supporto gamepad (oggi tastiera e touch).
 - Seconda arma attiva o "ultimate" a ricarica.
 - Altri boss con meccaniche legate all'arena (asteroidi che si muovono,
   nebulose tossiche).
 - Sfide giornaliere con seed condiviso (il generatore dell'arena è già
   deterministico).
-- Sprite dei nemici PNG in stile più uniforme, o rifatti in SVG come i
-  nuovi.
 - Pool di sprite anche per i nemici, se servisse più performance dopo la
   wave 20.

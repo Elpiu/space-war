@@ -44,7 +44,7 @@ dalle chest. Alla morte restano solo i crediti per sbloccare contenuti nuovi.
 - **Ogni 5 wave un boss**: la wave finisce solo quando muore.
 - **Wave 3, 8, 13...: orda**, un anello di sciami attorno alla nave.
 - Gli spawn arrivano da fuori schermo e scelgono il tipo da una tabella pesata
-  per wave. Dalla wave 4 compaiono gli **elite** (Rapido, Blindato, Scissile),
+  per wave. Dalla wave 4 compaiono gli **elite** (Rapido, Blindato, Scissile, Rigenerante, Esplosivo, Schermato, Fantasma),
   riconoscibili dall'aura e segnalati da frecce ai bordi dello schermo.
 - **Chest** ogni ~55 uccisioni (più rare col tempo) e sempre dal boss: una
   freccia dorata indica dove si trova.
@@ -68,10 +68,31 @@ campo stellare in parallasse su quattro livelli.
 | Scudato | 7 | Scudo frontale che si gira lentamente | Aggirarlo; lame, mine e archi lo ignorano |
 | Cecchino | 8 | Laser di mira, poi colpo veloce | Muoversi quando lampeggia |
 | Portaerei | 10 | Resta a distanza e lancia sciami | Priorità alta |
+| Intercettore | 2 | Velocissimo, vira male | Schivare di lato |
+| Zigzag | 3 | Avanza a zigzag e spara | Colpi ad area |
+| Scissionista | 4 | Alla morte si divide in 2, poi in 4 più piccoli | Danno ad area, non in mezzo al gruppo |
+| Bombardiere | 6 | Lancia bombe a parabola (arancioni) che esplodono | Non stare sotto la traiettoria |
+| Batteria a ricerca | 7 | Missili viola che inseguono | Virate strette, abbatterla presto |
+| Riparatore | 8 | Resta dietro agli alleati e li cura (anello verde) | Priorità alta |
+| Drone laser | 9 | Linea gialla di carica, poi raggio rosso | Uscire dalla linea |
+| Scudiero | 9 | Collega gli alleati vicini (linee ciano): danno dimezzato | Abbatterlo per primo |
+| Drone EMP | 10 | Vicino disturba la nave: più lenta e calore in salita | Tenerlo a distanza |
+| Pozzo gravitazionale | 11 | Attira la nave verso di sé (anelli viola) | Allontanarsi, ucciderlo da lontano |
+| Fantasma | 12 | A tratti diventa intangibile e trasparente | Sparare quando è opaco |
+| Teletrasporto | 12 | Cerchio magenta dove riappare, poi anello di colpi | Uscire dal cerchio |
 | Dreadnought | ogni 5 | 3 fasi: raffiche radiali, spirale con evocazioni, cariche con raffica all'impatto | Leggere le fasi |
 
 Il kamikaze esplode anche quando viene distrutto, e quell'esplosione colpisce
 solo gli altri nemici: ucciderlo in mezzo a un gruppo conviene.
+
+**Linguaggio dei segnali.** Ogni colore ha un solo significato: giallo =
+carica in corso, rosso = pericolo/colpo, ciano = scudo, viola = controllo
+(gravità, EMP, missili), verde = cura, magenta = teletrasporto. Boss, mini-boss
+e strutture non ricevono cure né scudi.
+
+**Affissi élite.** Rapido, Blindato, Scissile, più Rigenerante (recupera il 3%
+di HP al secondo), Esplosivo (esplode alla morte), Schermato (barriera pari al
+60% degli HP da consumare prima) e Fantasma (fasi intangibili).
 
 ## Tomi (level-up)
 

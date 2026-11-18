@@ -184,6 +184,162 @@ export const FORMATIONS: Formation[] = [
       return "carrier";
     },
   },
+
+  // ---------- Bestiario v3 ----------
+  {
+    id: "interceptor-wing",
+    segments: ["open", "debris", "surface"],
+    minTier: 1,
+    weight: 2.5,
+    spawn: (c) => {
+      const y0 = midY(c);
+      for (let i = 0; i < 3; i += 1) {
+        const y = clamp(y0 + (i - 1) * 60, c.top + 20, c.bottom - 20);
+        spawnEnemy(c.g, "interceptor", c.x + i * 120, y, { path: { kind: "straight", t: 0, x0: c.x + i * 120, y0: y, speed: 340 } });
+      }
+      return "interceptor";
+    },
+  },
+  {
+    id: "zigzag-line",
+    segments: ["open", "cave", "surface"],
+    minTier: 2,
+    weight: 2.5,
+    spawn: (c) => {
+      const y0 = midY(c);
+      for (let i = 0; i < 4; i += 1) {
+        spawnEnemy(c.g, "zigzag", c.x + i * 70, y0, {
+          affix: i === 0 ? c.elite() : undefined,
+          path: { kind: "sine", t: 0, x0: c.x + i * 70, y0, speed: 150, amp: clamp((c.bottom - c.top) / 3, 30, 90), freq: 6, phase: i * 1.5 },
+        });
+      }
+      return "zigzag";
+    },
+  },
+  {
+    id: "splitters",
+    segments: ["open", "debris", "cave"],
+    minTier: 2,
+    weight: 2,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) spawnEnemy(c.g, "splitter", c.x + i * 60, midY(c), { affix: i === 0 ? c.elite() : undefined });
+      return "splitter";
+    },
+  },
+  {
+    id: "bomber-run",
+    segments: ["surface", "open"],
+    minTier: 2,
+    weight: 2,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) {
+        const y = c.top + 30 + i * 30;
+        spawnEnemy(c.g, "bomber", c.x + i * 160, y, { path: { kind: "straight", t: 0, x0: c.x + i * 160, y0: y, speed: 115 } });
+      }
+      return "bomber";
+    },
+  },
+  {
+    id: "missile-battery",
+    segments: ["surface", "open", "station"],
+    minTier: 3,
+    weight: 1.8,
+    spawn: (c) => {
+      const y0 = midY(c);
+      spawnEnemy(c.g, "missilePod", c.x, y0, {
+        affix: c.elite(),
+        path: { kind: "hold", t: 0, x0: c.x, y0, speed: 130, holdAt: 0.86, holdFor: 7000, exitY: y0 < 360 ? -1 : 1 },
+      });
+      return "missilePod";
+    },
+  },
+  {
+    id: "laser-post",
+    segments: ["station", "cave", "open"],
+    minTier: 3,
+    weight: 2,
+    spawn: (c) => {
+      const count = c.tier >= 4 ? 2 : 1;
+      for (let i = 0; i < count; i += 1) {
+        const y0 = c.top + ((i + 1) / (count + 1)) * (c.bottom - c.top);
+        spawnEnemy(c.g, "laserDrone", c.x + i * 50, y0, {
+          path: { kind: "hold", t: 0, x0: c.x, y0, speed: 150, holdAt: 0.8 + i * 0.06, holdFor: 7500, exitY: y0 < 360 ? -1 : 1 },
+        });
+      }
+      return "laserDrone";
+    },
+  },
+  {
+    id: "repair-squad",
+    segments: ["open", "surface", "station"],
+    minTier: 3,
+    weight: 1.6,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) {
+        const y0 = c.top + ((i + 1) / 3) * (c.bottom - c.top);
+        spawnEnemy(c.g, "shooter", c.x, y0, { path: { kind: "hold", t: 0, x0: c.x, y0, speed: 160, holdAt: 0.66, holdFor: 6000, exitY: i ? 1 : -1 } });
+      }
+      const ry = (c.top + c.bottom) / 2;
+      spawnEnemy(c.g, "repairer", c.x + 80, ry, { path: { kind: "hold", t: 0, x0: c.x + 80, y0: ry, speed: 150, holdAt: 0.84, holdFor: 6500, exitY: 1 } });
+      return "repairer";
+    },
+  },
+  {
+    id: "shield-escort",
+    segments: ["station", "debris", "surface"],
+    minTier: 4,
+    weight: 1.6,
+    spawn: (c) => {
+      const y0 = clamp(midY(c), c.top + 90, c.bottom - 90);
+      spawnEnemy(c.g, "shieldBearer", c.x + 110, y0, { path: { kind: "straight", t: 0, x0: c.x + 110, y0, speed: 95 } });
+      for (let i = 0; i < 4; i += 1) {
+        const y = y0 + (i - 1.5) * 50;
+        spawnEnemy(c.g, "chaser", c.x, y, { path: { kind: "straight", t: 0, x0: c.x, y0: y, speed: 95 } });
+      }
+      return "shieldBearer";
+    },
+  },
+  {
+    id: "gravity-trap",
+    segments: ["cave", "open", "debris"],
+    minTier: 4,
+    weight: 1.3,
+    spawn: (c) => {
+      spawnEnemy(c.g, "gravityWell", c.x + 40, midY(c), { affix: c.elite() });
+      for (let i = 0; i < 2; i += 1) spawnEnemy(c.g, "kamikaze", c.x + 120 + i * 50, midY(c));
+      return "gravityWell";
+    },
+  },
+  {
+    id: "emp-raid",
+    segments: ["open", "station", "surface"],
+    minTier: 4,
+    weight: 1.4,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) spawnEnemy(c.g, "empDrone", c.x + i * 70, midY(c));
+      return "empDrone";
+    },
+  },
+  {
+    id: "phantoms",
+    segments: ["cave", "station", "open"],
+    minTier: 5,
+    weight: 1.4,
+    spawn: (c) => {
+      for (let i = 0; i < 3; i += 1) spawnEnemy(c.g, "phantom", c.x + i * 60, midY(c), { affix: i === 0 ? c.elite() : undefined });
+      return "phantom";
+    },
+  },
+  {
+    id: "blinkers",
+    segments: ["open", "debris", "surface"],
+    minTier: 5,
+    weight: 1.2,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) spawnEnemy(c.g, "teleporter", c.x + i * 80, midY(c));
+      return "teleporter";
+    },
+  },
 ];
 
 export const pickFormation = (segment: SegmentKind, tier: number) => {

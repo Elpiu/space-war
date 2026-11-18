@@ -1,10 +1,11 @@
 import { BlendModes, TintModes } from "phaser";
-import { DEPTH, DIFFICULTIES, LIMITS, PLAYER_RADIUS, VIEW_H, VIEW_W } from "../config";
+import { DEPTH, DIFFICULTIES, LIMITS, PLAYER_RADIUS, SIGNAL, VIEW_H, VIEW_W } from "../config";
 import { AFFIXES, ENEMIES, waveScale } from "../data/enemies";
 import type { GameScene } from "../scenes/GameScene";
 import type { AffixId, Enemy, EnemyId, FlightPath } from "../types";
 import { angleDiff, clamp, pick } from "../utils";
 import { clampToArena, inNebula, pushOutOfAsteroids } from "./arena";
+import { affixTick, extraBehavior, laserAttack, supportTick } from "./enemyAI";
 import { ceilAt, clampToGap, floorAt } from "./terrain";
 
 let nextUid = 1;
@@ -15,7 +16,7 @@ export const spawnEnemy = (
   id: EnemyId,
   x: number,
   y: number,
-  opts: { affix?: AffixId; small?: boolean; path?: FlightPath; anchor?: "floor" | "ceil" } = {},
+  opts: { affix?: AffixId; small?: boolean; path?: FlightPath; anchor?: "floor" | "ceil"; gen?: number } = {},
 ): Enemy => {
   const def = ENEMIES[id];
   const run = g.run;
@@ -24,7 +25,8 @@ export const spawnEnemy = (
   const elite = Boolean(opts.affix);
   const isBoss = id === "boss";
   const bossTier = Math.floor(run.wave / 5);
-  const scale = (elite ? 1.3 : 1) * (opts.small ? 0.7 : 1);
+  const gen = opts.gen ?? 0;
+  const scale = (elite ? 1.3 : 1) * (opts.small ? 0.7 : 1) * 0.72 ** gen;
 
   const sprite = g.add.image(x, y, pick(def.textures)).setDepth(isBoss ? DEPTH.enemy + 2 : DEPTH.enemy);
   const baseScale = (def.size * scale) / Math.max(1, sprite.width, sprite.height);
@@ -33,6 +35,7 @@ export const spawnEnemy = (
 
   let hp = def.hp * ws.hp * diff.hp;
   if (isBoss) hp = def.hp * diff.hp * (1 + (bossTier - 1) * 0.9);
+  hp *= 0.5 ** gen;
   if (opts.affix === "armored") hp *= 3;
   else if (elite) hp *= 2.2;
   if (opts.small) hp *= 0.5;
@@ -67,6 +70,12 @@ export const spawnEnemy = (
     anchor: opts.anchor,
     homeX: x,
     dir: Math.random() < 0.5 ? -1 : 1,
+    intangible: false,
+    protectedUntil: 0,
+    barrier: opts.affix === "barrier" ? hp * 0.6 : 0,
+    gen,
+    auxX: 0,
+    auxY: 0,
   };
   // Sul soffitto: la torretta si capovolge ruotando, le strutture specchiandosi.
   if (opts.anchor === "ceil") {
@@ -117,6 +126,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
 
   for (const e of g.enemies) {
     if (e.dead) continue;
+    affixTick(g, e, dt);
     const dx = player.x - e.x;
     const dy = player.y - e.y;
     const d = Math.hypot(dx, dy) || 0.001;
@@ -127,7 +137,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     if (e.path || e.anchor) {
       updateScripted(g, e, dt, d, toPlayer);
       renderEnemy(g, e, null, dx);
-      if (e.damage > 0 && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
+      if (e.damage > 0 && !e.intangible && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
       continue;
     }
 
@@ -164,7 +174,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
         if (e.state === "arming") {
           speedMul = 0.3;
           const progress = 1 - (e.stateUntil - now) / 650;
-          t.fillStyle(0xef4444, 0.12 + progress * 0.18);
+          t.fillStyle(SIGNAL.danger, 0.12 + progress * 0.18);
           t.fillCircle(e.x, e.y, 115 * progress);
           t.lineStyle(3, 0xfca5a5, 0.9);
           t.strokeCircle(e.x, e.y, 115);
@@ -185,7 +195,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
         if (e.state === "windup") {
           speedMul = 0;
           const progress = 1 - (e.stateUntil - now) / 650;
-          t.lineStyle(14 * e.scale * 1.5 + 6, 0xef4444, 0.1 + progress * 0.25);
+          t.lineStyle(14 * e.scale * 1.5 + 6, SIGNAL.charge, 0.12 + progress * 0.3);
           t.lineBetween(e.x, e.y, e.x + Math.cos(e.lockAngle) * 420, e.y + Math.sin(e.lockAngle) * 420);
           if (now >= e.stateUntil) {
             e.state = "dash";
@@ -231,7 +241,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
           const left = e.stateUntil - now;
           if (left > 260) e.lockAngle = toPlayer;
           const blink = left < 260 && Math.floor(now / 60) % 2 === 0;
-          t.lineStyle(blink ? 3 : 1.5, 0xf472b6, blink ? 1 : 0.55);
+          t.lineStyle(blink ? 3 : 1.5, blink ? SIGNAL.danger : SIGNAL.charge, blink ? 1 : 0.55);
           t.lineBetween(e.x, e.y, e.x + Math.cos(e.lockAngle) * 900, e.y + Math.sin(e.lockAngle) * 900);
           if (left <= 0) {
             g.fireEnemyBullet(e, e.lockAngle, p);
@@ -265,8 +275,15 @@ export const updateEnemies = (g: GameScene, dt: number) => {
           speedMul = mul;
         });
         break;
-      default:
+      default: {
+        const steer = extraBehavior(g, e, { d, ux, uy, toPlayer, dt });
+        if (steer) {
+          mx = steer.mx;
+          my = steer.my;
+          speedMul = steer.mul;
+        }
         break;
+      }
     }
 
     if (inNebula(g.arena, e.x, e.y)) speedMul *= 0.6;
@@ -299,10 +316,10 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     if (g.arena.terrain) e.y = clampToGap(g.arena.terrain, e.x, e.y, e.radius);
     clampToArena(g.arena, e, e.radius);
 
-    const lean = e.def.id !== "boss" && e.def.id !== "kamikaze" ? clamp((mx / len) * speedMul, -1, 1) * 0.22 : null;
+    const lean = e.def.id !== "boss" && e.def.id !== "kamikaze" && e.def.id !== "interceptor" ? clamp((mx / len) * speedMul, -1, 1) * 0.22 : null;
     renderEnemy(g, e, lean, dx);
 
-    if (e.damage > 0 && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
+    if (e.damage > 0 && !e.intangible && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
   }
 };
 
@@ -395,6 +412,11 @@ const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer:
     gunshipAttack(g, e, toPlayer);
     return;
   }
+  if (e.def.id === "laserDrone") {
+    laserAttack(g, e, toPlayer);
+    return;
+  }
+  if (e.def.id === "repairer" || e.def.id === "shieldBearer") supportTick(g, e);
 
   // Attacco: tutte le unità armate sparano quando sono a schermo.
   const proj = e.def.projectile;
@@ -504,7 +526,7 @@ const updateBoss = (
   } else if (e.state === "windup") {
     move(0, 0, 0);
     const progress = 1 - (e.stateUntil - now) / 750;
-    g.telegraph.lineStyle(e.radius * 2, 0xef4444, 0.08 + progress * 0.22);
+    g.telegraph.lineStyle(e.radius * 2, SIGNAL.charge, 0.1 + progress * 0.25);
     g.telegraph.lineBetween(e.x, e.y, e.x + Math.cos(e.lockAngle) * 600, e.y + Math.sin(e.lockAngle) * 600);
     if (now >= e.stateUntil) {
       e.state = "dash";

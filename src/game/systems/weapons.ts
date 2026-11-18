@@ -189,18 +189,24 @@ export const fireEnemyBullet = (g: GameScene, x: number, y: number, angle: numbe
   let b = g.enemyBullets.find((entry) => !entry.active);
   if (!b) {
     const sprite = g.add.image(0, 0, "orb").setBlendMode(BlendModes.ADD).setDepth(DEPTH.enemyBullet);
-    b = { sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, radius: 6, life: 0, active: false };
+    b = { sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, radius: 6, life: 0, gravity: 0, homing: 0, active: false };
     g.enemyBullets.push(b);
   }
   b.x = x;
   b.y = y;
+  // Le bombe a parabola partono verso l'alto per ricadere sul bersaglio.
+  const lob = p.gravity ? -0.35 : 0;
   b.vx = Math.cos(angle) * p.speed * speedMul;
-  b.vy = Math.sin(angle) * p.speed * speedMul;
+  b.vy = (Math.sin(angle) + lob) * p.speed * speedMul;
   b.damage = damage;
   b.radius = p.radius;
   b.life = p.range;
+  b.gravity = p.gravity ?? 0;
+  b.homing = p.homing ?? 0;
   b.active = true;
-  b.sprite.setActive(true).setVisible(true).setPosition(x, y).setTint(COLORS.enemyBullet).setDisplaySize(p.radius * 3.4, p.radius * 3.4);
+  // Colori dei proiettili: rosa normali, arancio bombe, viola missili a ricerca.
+  const tint = p.gravity ? 0xfb923c : p.homing ? 0xc084fc : COLORS.enemyBullet;
+  b.sprite.setActive(true).setVisible(true).setPosition(x, y).setTint(tint).setDisplaySize(p.radius * 3.4, p.radius * 3.4);
 };
 
 export const updateEnemyBullets = (g: GameScene, dt: number) => {
@@ -208,16 +214,30 @@ export const updateEnemyBullets = (g: GameScene, dt: number) => {
   const py = g.player.y;
   for (const b of g.enemyBullets) {
     if (!b.active) continue;
+    if (b.gravity) b.vy += b.gravity * dt;
+    if (b.homing) {
+      const speed = Math.hypot(b.vx, b.vy);
+      const current = Math.atan2(b.vy, b.vx);
+      let diff = Math.atan2(py - b.y, px - b.x) - current;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const a = current + Math.max(-b.homing * dt, Math.min(b.homing * dt, diff));
+      b.vx = Math.cos(a) * speed;
+      b.vy = Math.sin(a) * speed;
+      if (Math.random() < 0.4) g.fx.trailDot(b.x, b.y, 0xc084fc);
+    }
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.life -= Math.hypot(b.vx, b.vy) * dt;
     b.sprite.setPosition(b.x, b.y);
-    const dead = b.life <= 0 || !insideArena(g.arena, b.x, b.y) || g.solidAt(b.x, b.y, b.radius);
+    const dead = b.life <= 0 || !insideArena(g.arena, b.x, b.y, 200) || g.solidAt(b.x, b.y, b.radius);
     if (!dead && dist2(b.x, b.y, px, py) < (b.radius + PLAYER_RADIUS - 3) ** 2) {
       g.hurtPlayer(b.damage);
       g.fx.burst(b.x, b.y, COLORS.enemyBullet, 6);
     } else if (!dead) {
       continue;
+    } else if (b.gravity) {
+      g.fx.explosion(b.x, b.y, 0xfb923c, 0.8);
     }
     b.active = false;
     b.sprite.setActive(false).setVisible(false);

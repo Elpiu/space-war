@@ -1,12 +1,12 @@
 import { BlendModes } from "phaser";
 import { icon } from "../../art/svg";
 import { DEPTH, DIFFICULTIES, VIEW_H, VIEW_W, type DifficultyId } from "../../config";
-import { AFFIXES } from "../../data/enemies";
+import { AFFIXES, AFFIX_IDS } from "../../data/enemies";
 import type { GameScene } from "../../scenes/GameScene";
 import { ceilAt, floorAt } from "../../systems/terrain";
 import { spawnEnemy } from "../../systems/enemies";
 import { dropPickup } from "../../systems/pickups";
-import type { AffixId, Enemy } from "../../types";
+import type { Enemy } from "../../types";
 import { esc } from "../../ui/dom";
 import { banner } from "../../ui/hud";
 import { clamp, hex, pick, rand } from "../../utils";
@@ -32,7 +32,6 @@ import {
   type CampaignProfile,
 } from "./profile";
 
-const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
 
 const BASE_SCROLL = 78;
 

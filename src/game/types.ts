@@ -35,9 +35,22 @@ export type EnemyId =
   | "fuelTank"
   | "billboard"
   | "cargo"
-  | "gunship";
+  | "gunship"
+  // Bestiario v3
+  | "interceptor"
+  | "zigzag"
+  | "bomber"
+  | "laserDrone"
+  | "missilePod"
+  | "repairer"
+  | "shieldBearer"
+  | "gravityWell"
+  | "empDrone"
+  | "phantom"
+  | "teleporter"
+  | "splitter";
 
-export type AffixId = "swift" | "armored" | "splitter";
+export type AffixId = "swift" | "armored" | "splitter" | "regen" | "explosive" | "barrier" | "phantom";
 
 export interface ProjectileDef {
   speed: number;
@@ -45,6 +58,9 @@ export interface ProjectileDef {
   radius: number;
   cooldown: number;
   range: number;
+  /** Colpi a parabola (bombe) e a ricerca (missili). */
+  gravity?: number;
+  homing?: number;
 }
 
 export interface EnemyDef {
@@ -130,6 +146,16 @@ export interface Enemy {
   anchor?: "floor" | "ceil";
   homeX: number;
   dir: number;
+  /** Fantasmi: in questa fase i colpi passano attraverso. */
+  intangible: boolean;
+  /** Protetto da uno Scudiero fino a questo istante (danno dimezzato). */
+  protectedUntil: number;
+  /** Punti barriera (affisso Schermato): si consumano prima degli HP. */
+  barrier: number;
+  /** Generazione degli Scissionisti (0 = originale). */
+  gen: number;
+  auxX: number;
+  auxY: number;
 }
 
 // ---------- Combattimento ----------
@@ -181,6 +207,8 @@ export interface EnemyBullet {
   damage: number;
   radius: number;
   life: number;
+  gravity: number;
+  homing: number;
   active: boolean;
 }
 

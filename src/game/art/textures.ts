@@ -1,4 +1,5 @@
 import type { Scene } from "phaser";
+import { ENEMY_SPRITES } from "./enemySprites";
 import { SPRITES, badgeDocument, type IconId } from "./svg";
 
 // Il loader di Phaser decodifica i data URI con atob: servono in base64.
@@ -17,22 +18,14 @@ const ICON_TEXTURES: { id: IconId; color: string }[] = [
   { id: "boss", color: "#f87171" },
 ];
 
+// Unico PNG rimasto: la nave del pilota. Tutti i nemici sono SVG (enemySprites.ts).
 const PNG_IMAGES: Record<string, string> = {
   player: "assets/images/starship.png",
-  "enemy-chaser": "assets/images/enemy/chaser.png",
-  "enemy-swarm": "assets/images/enemy/swarm.png",
-  "enemy-brute": "assets/images/enemy/brute.png",
-  "enemy-charger": "assets/images/enemy/charger.png",
-  "enemy-shooter": "assets/images/enemy/shooter.png",
-  "enemy-sniper": "assets/images/enemy/sniper.png",
-  "enemy-carrier": "assets/images/enemy/carrier.png",
-  "enemy-boss1": "assets/images/enemy/boss1.png",
-  "enemy-boss2": "assets/images/enemy/boss2.png",
 };
 
 export const preloadArt = (scene: Scene) => {
   Object.entries(PNG_IMAGES).forEach(([key, path]) => scene.load.image(key, path));
-  Object.entries(SPRITES).forEach(([key, svg]) => scene.load.svg(key, svgUrl(svg)));
+  Object.entries({ ...SPRITES, ...ENEMY_SPRITES }).forEach(([key, svg]) => scene.load.svg(key, svgUrl(svg)));
   ICON_TEXTURES.forEach(({ id, color }) =>
     scene.load.svg(`ico-${id}`, svgUrl(badgeDocument(id, color, 64))),
   );
