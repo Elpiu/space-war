@@ -27,7 +27,14 @@ export type EnemyId =
   | "kamikaze"
   | "shielded"
   | "carrier"
-  | "boss";
+  | "boss"
+  // Solo campagna: unità di terra, strutture e trasporti.
+  | "aaTurret"
+  | "tank"
+  | "silo"
+  | "fuelTank"
+  | "billboard"
+  | "cargo";
 
 export type AffixId = "swift" | "armored" | "splitter";
 
@@ -62,6 +69,29 @@ export interface EnemyDef {
   faces?: "left" | "right";
   preferredDistance?: number;
   projectile?: ProjectileDef;
+  /** Solo in campagna: mai negli spawn del survival. */
+  campaignOnly?: boolean;
+  /** Struttura: non si muove e non attacca, vale monete. */
+  structure?: boolean;
+}
+
+/** Traiettoria prestabilita dei volanti in formazione (campagna). */
+export interface FlightPath {
+  kind: "straight" | "sine" | "dive" | "hold";
+  t: number;
+  x0: number;
+  y0: number;
+  speed: number;
+  amp?: number;
+  freq?: number;
+  phase?: number;
+  targetY?: number;
+  /** Per "hold": frazione dello schermo dove fermarsi, e per quanto. */
+  holdAt?: number;
+  holdFor?: number;
+  stage?: number;
+  holdUntil?: number;
+  exitY?: number;
 }
 
 export type EnemyState = "move" | "windup" | "dash" | "recover" | "aim" | "arming";
@@ -94,6 +124,11 @@ export interface Enemy {
   bossPhase: number;
   spiral: number;
   dead: boolean;
+  path?: FlightPath;
+  /** Unità ancorata al pavimento o al soffitto. */
+  anchor?: "floor" | "ceil";
+  homeX: number;
+  dir: number;
 }
 
 // ---------- Combattimento ----------

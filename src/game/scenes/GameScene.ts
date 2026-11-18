@@ -403,6 +403,7 @@ export class GameScene extends Scene {
     if (silent) return;
 
     if (def.id === "kamikaze") this.blast(x, y, 90, 6, false);
+    if (def.id === "fuelTank") this.blast(x, y, 140, 10, false);
     if (def.id === "brute") for (let i = 0; i < 2; i += 1) spawnEnemy(this, "swarm", x + (i ? 20 : -20), y);
     if (e.affix === "splitter" && !isBoss) {
       for (let i = 0; i < 3; i += 1) spawnEnemy(this, def.id, x + Math.cos(i * 2.1) * 26, y + Math.sin(i * 2.1) * 26, { small: true });

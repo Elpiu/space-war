@@ -197,5 +197,33 @@ calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
 - **Salvataggio:** `space-war-campaign-v2`, migrato in automatico dal v1.
   Torrette e posamine vengono rimborsati in monete.
 
-**Prossime fasi:** nemici in formazione, unità di terra, strutture distruttibili
-e trasporti (C), poi negozio completo, contenuti e rifinitura.
+**Fatto (fase C):**
+- **Ondate a formazione.** Ogni ondata è scelta da una tabella per tipo di
+  segmento e tier.
+
+  | Ondata | Composizione | Tier |
+  | --- | --- | --- |
+  | Onda di sciami | Sciami in sinusoide | 1+ |
+  | V | Inseguitori in V, capofila a volte elite | 1+ |
+  | Picchiata | Assaltatori che piombano verso la tua quota | 2+ |
+  | Linea di tiro | Tiratori che si fermano sullo schermo, sparano ed escono di lato | 2+ |
+  | Postazione | Cecchino fermo all'ultimo quarto dello schermo | 3+ |
+  | Convoglio | Cargo scortato da due inseguitori | 1+ |
+
+  Restano anche ondate con l'IA del survival: kamikaze, scudati, corazzati,
+  portaerei e gruppi di inseguitori.
+- **Unità di terra** piazzate dal generatore su pavimento e soffitto:
+  - **Antiaerea:** la canna segue la nave; anche capovolta sul soffitto.
+  - **Carro:** pattuglia il pavimento.
+  - **Silo:** colpi lenti e pesanti.
+- **Strutture distruttibili:**
+  - **Serbatoio:** esplode e danneggia i nemici vicini.
+  - **Cartelloni satirici:** "IPO SPAZIALE", "CARBURANTE -90%*",
+    "ORBITA PREMIUM", "IL MERCATO NON DORME".
+- **Cargo:** attraversa lo schermo lentamente; distrutto, lascia sempre una
+  cassa di bottino e monete.
+- **Ricompense:** unità di terra, strutture e cargo lasciano sempre monete.
+  Il raggio di raccolta di base in campagna è più ampio.
+
+**Prossime fasi:** negozio completo e contenuti del settore (D, E), poi
+rifinitura.

@@ -99,6 +99,23 @@ const gem = (light: string, mid: string, dark: string) =>
     <path d="M24 14l5-6" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/>
   `);
 
+const wide = (body: string, w: number, h: number) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w * 2}" height="${h * 2}" viewBox="0 0 ${w} ${h}">${body}</svg>`;
+
+/** Cartellone satirico su due gambe. */
+const billboard = (line1: string, line2: string, accent: string) =>
+  wide(
+    `<path d="M30 70v24M98 70v24" stroke="#334155" stroke-width="6"/>
+     <path d="M22 94h20M90 94h20" stroke="#1e293b" stroke-width="5"/>
+     <rect x="6" y="6" width="116" height="64" rx="6" fill="#0b1020" stroke="${accent}" stroke-width="4"/>
+     <rect x="12" y="12" width="104" height="52" rx="3" fill="#111a33"/>
+     <text x="64" y="34" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="14" fill="#f8fafc">${line1}</text>
+     <text x="64" y="54" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="15" fill="${accent}">${line2}</text>
+     <circle cx="16" cy="10" r="2.5" fill="${accent}"/><circle cx="112" cy="10" r="2.5" fill="${accent}"/>`,
+    128,
+    96,
+  );
+
 /** Sprite a colori: ognuno diventa una texture con la stessa chiave. */
 export const SPRITES: Record<string, string> = {
   "gem-s": gem("#a5f3fc", "#22d3ee", "#0e7490"),
@@ -193,6 +210,64 @@ export const SPRITES: Record<string, string> = {
     <path d="M46 26l12 6-12 6z" fill="#ef4444"/>
     <path d="M26 30h16" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
   `),
+  // ---------- Campagna: unità di terra, strutture, trasporti ----------
+  "ground-turret": doc(`
+    <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">
+      <rect x="27" y="4" width="10" height="30" rx="2" fill="#94a3b8"/>
+      <rect x="25" y="2" width="14" height="7" rx="2" fill="#f87171"/>
+      <path d="M12 46a20 20 0 0 1 40 0z" fill="#475569"/>
+      <path d="M4 62l6-16h44l6 16z" fill="#1e293b"/>
+    </g>
+    <circle cx="32" cy="40" r="5" fill="#f87171"/>
+    <path d="M14 56h36" stroke="#f59e0b" stroke-width="3" stroke-dasharray="5 4"/>
+  `),
+  "ground-tank": wide(`
+    <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">
+      <path d="M20 22 4 10" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
+      <rect x="6" y="40" width="84" height="18" rx="9" fill="#1e293b"/>
+      <path d="M12 40l8-14h52l10 14z" fill="#64748b"/>
+      <path d="M30 26a16 12 0 0 1 32 0z" fill="#475569"/>
+    </g>
+    <g fill="#0b1020"><circle cx="18" cy="49" r="4"/><circle cx="34" cy="49" r="4"/><circle cx="50" cy="49" r="4"/><circle cx="66" cy="49" r="4"/><circle cx="80" cy="49" r="4"/></g>
+    <rect x="40" y="30" width="16" height="5" rx="2" fill="#f87171"/>
+  `, 96, 64),
+  "ground-silo": doc(`
+    <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">
+      <path d="M8 62V34a24 18 0 0 1 48 0v28z" fill="#334155"/>
+      <path d="M22 26l10-20 10 20z" fill="#e2e8f0"/>
+      <path d="M20 28h24v8H20z" fill="#0f172a"/>
+    </g>
+    <path d="M10 48h44" stroke="#facc15" stroke-width="6" stroke-dasharray="6 6"/>
+    <circle cx="32" cy="18" r="3" fill="#ef4444"/>
+  `),
+  "prop-fuel": doc(`
+    <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">
+      <path d="M14 62l4-10M50 62l-4-10" stroke="#334155" stroke-width="5"/>
+      <rect x="8" y="10" width="48" height="44" rx="12" fill="#b91c1c"/>
+      <rect x="8" y="24" width="48" height="10" fill="#fbbf24"/>
+      <rect x="26" y="4" width="12" height="8" rx="2" fill="#64748b"/>
+    </g>
+    <path d="M32 38c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9z" fill="#fde68a"/>
+    <path d="M16 16a10 10 0 0 1 8-4" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".5"/>
+  `),
+  "prop-board-1": billboard("IPO SPAZIALE", "COMPRA ORA!", "#38bdf8"),
+  "prop-board-2": billboard("CARBURANTE", "-90%*", "#facc15"),
+  "prop-board-3": billboard("ORBITA", "PREMIUM", "#c084fc"),
+  "prop-board-4": billboard("IL MERCATO", "NON DORME", "#4ade80"),
+  // Trasporto corporate: muso a sinistra, container a destra.
+  cargo: wide(`
+    <g stroke="#0b1020" stroke-width="3" stroke-linejoin="round">
+      <path d="M150 30h8v20h-8z" fill="#f97316"/>
+      <rect x="40" y="16" width="112" height="48" rx="6" fill="#334155"/>
+      <rect x="50" y="22" width="30" height="36" rx="3" fill="#0ea5e9"/>
+      <rect x="84" y="22" width="30" height="36" rx="3" fill="#f59e0b"/>
+      <rect x="118" y="22" width="28" height="36" rx="3" fill="#10b981"/>
+      <path d="M40 22 6 34v12l34 12z" fill="#64748b"/>
+    </g>
+    <path d="M14 38h16" stroke="#7dd3fc" stroke-width="5" stroke-linecap="round"/>
+    <path d="M58 30v20M92 30v20M126 30v20" stroke="#0b1020" stroke-width="2" opacity=".4"/>
+    <circle cx="160" cy="40" r="5" fill="#fde68a"/>
+  `, 166, 80),
   "shield-arc": doc(
     `<path d="M10 52A34 34 0 0 1 54 52" fill="none" stroke="#7dd3fc" stroke-width="7" stroke-linecap="round"/>
      <path d="M14 50A30 30 0 0 1 50 50" fill="none" stroke="#e0f2fe" stroke-width="2.5" stroke-linecap="round"/>`,

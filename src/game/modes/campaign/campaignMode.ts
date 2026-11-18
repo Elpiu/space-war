@@ -1,36 +1,27 @@
 import { BlendModes } from "phaser";
 import { icon } from "../../art/svg";
-import { DEPTH, LIMITS, VIEW_H, VIEW_W } from "../../config";
-import { AFFIXES, SPAWNABLE } from "../../data/enemies";
+import { DEPTH, VIEW_H, VIEW_W } from "../../config";
+import { AFFIXES } from "../../data/enemies";
 import type { GameScene } from "../../scenes/GameScene";
-import { hitsAsteroid } from "../../systems/arena";
 import { ceilAt, floorAt } from "../../systems/terrain";
 import { spawnEnemy } from "../../systems/enemies";
 import { dropPickup } from "../../systems/pickups";
-import type { AffixId, Enemy, EnemyId } from "../../types";
+import type { AffixId, Enemy } from "../../types";
 import { esc } from "../../ui/dom";
 import { banner } from "../../ui/hud";
-import { clamp, hex, pick, pickWeighted, rand, randInt } from "../../utils";
+import { clamp, hex, pick, rand } from "../../utils";
 import { defaultLoadout } from "../../data/upgrades";
 import { WeaponRack } from "../../systems/rack";
 import type { GameMode, HudInfo, ModeSetup, RunOutcome, SkillInfo } from "../mode";
 import { mustGearDef, rollGear, type GearItem } from "./gear";
 import { showMissionResult } from "./hub";
-import { SEGMENT_LABELS, generateLevel, segmentAt, type Segment, type SegmentKind } from "./level";
+import { pickFormation } from "./formations";
+import { SEGMENT_LABELS, generateLevel, segmentAt, type Prop, type Segment, type SegmentKind } from "./level";
 import { missionById, type MissionDef } from "./missions";
 import { addLoot, buildLoadout, itemByUid, loadProfile, saveProfile, slotKeys, type CampaignLoadout, type CampaignProfile } from "./profile";
 
 const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
 
-/** Ogni segmento favorisce certi nemici (fase C: copioni di ondate dedicati). */
-const SEGMENT_WEIGHTS: Record<SegmentKind, Partial<Record<EnemyId, number>>> = {
-  open: { carrier: 1.5, swarm: 1.2 },
-  debris: { kamikaze: 2, shielded: 1.5, swarm: 1.4 },
-  surface: { shooter: 1.6, charger: 1.3, sniper: 1.2 },
-  cave: { swarm: 1.6, chaser: 1.4, brute: 0.4, carrier: 0, sniper: 0.3, charger: 0.6 },
-  station: { shooter: 1.6, sniper: 1.6, shielded: 1.3, carrier: 0.5 },
-  boss: {},
-};
 const BASE_SCROLL = 78;
 
 /**
@@ -52,6 +43,7 @@ export class CampaignMode implements GameMode {
   private bossSpawned = false;
   private exitX = 0;
   private segments: Segment[] = [];
+  private props: Prop[] = [];
   private currentSegment: SegmentKind | null = null;
 
   constructor(private readonly missionId: string) {
@@ -62,8 +54,9 @@ export class CampaignMode implements GameMode {
 
   setup(): ModeSetup {
     const seed = Math.floor(Math.random() * 0x7fffffff);
-    const { arena, segments } = generateLevel(this.mission, seed);
+    const { arena, segments, props } = generateLevel(this.mission, seed);
     this.segments = segments;
+    this.props = props;
     return {
       arena,
       start: { x: 220, y: VIEW_H / 2 },
@@ -121,8 +114,8 @@ export class CampaignMode implements GameMode {
     const cam = g.cameras.main;
     const maxScroll = g.arena.width - VIEW_W;
 
-    // Lo scorrimento rallenta quando lo schermo è affollato.
-    const crowded = g.enemies.filter((e) => !e.dead && e.x > this.scroll && e.x < this.scroll + VIEW_W).length;
+    // Lo scorrimento rallenta quando lo schermo è affollato di volanti.
+    const crowded = g.enemies.filter((e) => !e.dead && !e.anchor && !e.def.structure && e.x > this.scroll && e.x < this.scroll + VIEW_W).length;
     const target = crowded > 8 ? 24 : crowded > 4 ? 50 : BASE_SCROLL;
     this.speed += (target - this.speed) * Math.min(1, dt * 2);
     this.scroll = Math.min(maxScroll, this.scroll + this.speed * dt);
@@ -143,9 +136,17 @@ export class CampaignMode implements GameMode {
       this.nextSpawnX += rand(190, 330) * (1 - this.mission.tier * 0.05);
     }
 
-    // I nemici rimasti molto indietro escono di scena senza ricompense.
+    // Unità di terra e strutture compaiono appena prima del bordo destro.
+    while (this.props.length > 0 && this.props[0].x < this.scroll + VIEW_W + 120) {
+      const prop = this.props.shift()!;
+      spawnEnemy(g, prop.id, prop.x, prop.anchor === "floor" ? VIEW_H - 40 : 40, { anchor: prop.anchor });
+      g.hints.enemy(prop.id);
+    }
+
+    // I nemici rimasti indietro o usciti di lato escono di scena senza ricompense.
     for (const e of g.enemies) {
-      if (!e.dead && e.def.id !== "boss" && e.x < this.scroll - 280) g.killEnemy(e, false, true);
+      if (e.dead || e.def.id === "boss") continue;
+      if (e.x < this.scroll - 280 || e.y < -180 || e.y > VIEW_H + 180) g.killEnemy(e, false, true);
     }
 
     if (this.scroll >= maxScroll) {
@@ -167,33 +168,28 @@ export class CampaignMode implements GameMode {
   }
 
   private spawnGroup(g: GameScene) {
-    const wave = g.run.wave;
-    const alive = g.enemies.filter((e) => !e.dead).length;
-    if (alive >= Math.min(LIMITS.maxEnemies, 30 + this.mission.tier * 10)) return;
+    const alive = g.enemies.filter((e) => !e.dead && !e.anchor && !e.def.structure).length;
+    if (alive >= 18 + this.mission.tier * 6) return;
 
-    const x = this.scroll + VIEW_W + rand(60, 160);
+    const x = this.scroll + VIEW_W + rand(60, 140);
     const segment = segmentAt(this.segments, x);
-    const bias = SEGMENT_WEIGHTS[segment.kind];
-    const def = pickWeighted(
-      SPAWNABLE.filter((d) => d.minWave <= wave),
-      (d) => d.weight(wave) * (bias[d.id] ?? 1),
-    );
-    if (!def) return;
-    const crampedMul = segment.kind === "cave" || segment.kind === "station" ? 0.7 : 1;
-    const count = Math.max(1, Math.round((def.group ? randInt(def.group[0], def.group[1]) : randInt(1, 2 + Math.floor(this.mission.tier / 2))) * crampedMul));
-    const eliteChance = Math.min(0.2, 0.03 * this.mission.tier);
+    const formation = pickFormation(segment.kind, this.mission.tier);
+    if (!formation) return;
 
-    // Lo spawn cade nello spazio libero fra soffitto e pavimento.
+    // L'ondata entra nello spazio libero fra soffitto e pavimento.
     const terrain = g.arena.terrain;
-    const top = (terrain ? Math.max(0, ceilAt(terrain, x)) : 0) + def.radius + 20;
-    const bottom = (terrain ? Math.min(VIEW_H, floorAt(terrain, x)) : VIEW_H) - def.radius - 20;
-    for (let i = 0; i < count; i += 1) {
-      let y = rand(top, Math.max(top, bottom));
-      for (let tries = 0; tries < 6 && hitsAsteroid(g.arena, x, y, def.radius + 10); tries += 1) y = rand(top, Math.max(top, bottom));
-      const affix = def.id !== "swarm" && Math.random() < eliteChance ? pick(AFFIX_IDS) : undefined;
-      spawnEnemy(g, def.id, x + rand(-30, 30), clamp(y, top, Math.max(top, bottom)), { affix });
-    }
-    g.hints.enemy(def.id);
+    const top = (terrain ? Math.max(0, ceilAt(terrain, x)) : 0) + 40;
+    const bottom = (terrain ? Math.min(VIEW_H, floorAt(terrain, x)) : VIEW_H) - 40;
+    const eliteChance = Math.min(0.25, 0.04 * this.mission.tier);
+    const id = formation.spawn({
+      g,
+      x,
+      top,
+      bottom: Math.max(top + 40, bottom),
+      tier: this.mission.tier,
+      elite: () => (Math.random() < eliteChance ? pick(AFFIX_IDS) : undefined),
+    });
+    g.hints.enemy(id);
   }
 
   constrainPlayer(_g: GameScene, pos: { x: number; y: number }) {
@@ -206,12 +202,13 @@ export class CampaignMode implements GameMode {
     const isBoss = def.id === "boss";
     const tier = this.mission.tier;
 
-    if (elite || isBoss || Math.random() < 0.6) {
+    const ground = Boolean(e.anchor || def.structure || def.id === "cargo");
+    if (elite || isBoss || ground || Math.random() < 0.6) {
       dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.loadout.rack.coinMul));
     }
     if (Math.random() < (elite ? 0.15 : 0.025)) dropPickup(g, "heart", x - 10, y + 4, 2);
     if (Math.random() < (elite ? 0.06 : 0.006)) dropPickup(g, pick(["magnet", "venom", "emp"] as const), x, y - 12);
-    if (isBoss || (elite && Math.random() < 0.35) || Math.random() < 0.006) dropPickup(g, "chest", x, y);
+    if (isBoss || def.id === "cargo" || (elite && Math.random() < 0.35) || Math.random() < 0.006) dropPickup(g, "chest", x, y);
     if (isBoss) {
       for (let i = 0; i < 10; i += 1) dropPickup(g, "coin", x + Math.cos(i) * 60, y + Math.sin(i) * 60, 5 * tier);
     }

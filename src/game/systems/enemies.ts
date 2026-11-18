@@ -1,11 +1,11 @@
 import { BlendModes, TintModes } from "phaser";
-import { DEPTH, DIFFICULTIES, LIMITS, PLAYER_RADIUS } from "../config";
+import { DEPTH, DIFFICULTIES, LIMITS, PLAYER_RADIUS, VIEW_H, VIEW_W } from "../config";
 import { AFFIXES, ENEMIES, waveScale } from "../data/enemies";
 import type { GameScene } from "../scenes/GameScene";
-import type { AffixId, Enemy, EnemyId } from "../types";
+import type { AffixId, Enemy, EnemyId, FlightPath } from "../types";
 import { angleDiff, clamp, pick } from "../utils";
 import { clampToArena, inNebula, pushOutOfAsteroids } from "./arena";
-import { clampToGap } from "./terrain";
+import { ceilAt, clampToGap, floorAt } from "./terrain";
 
 let nextUid = 1;
 const neighbors: Enemy[] = [];
@@ -15,7 +15,7 @@ export const spawnEnemy = (
   id: EnemyId,
   x: number,
   y: number,
-  opts: { affix?: AffixId; small?: boolean } = {},
+  opts: { affix?: AffixId; small?: boolean; path?: FlightPath; anchor?: "floor" | "ceil" } = {},
 ): Enemy => {
   const def = ENEMIES[id];
   const run = g.run;
@@ -63,7 +63,16 @@ export const spawnEnemy = (
     bossPhase: 1,
     spiral: 0,
     dead: false,
+    path: opts.path,
+    anchor: opts.anchor,
+    homeX: x,
+    dir: Math.random() < 0.5 ? -1 : 1,
   };
+  // Sul soffitto: la torretta si capovolge ruotando, le strutture specchiandosi.
+  if (opts.anchor === "ceil") {
+    if (id === "aaTurret") sprite.setRotation(Math.PI);
+    else sprite.setFlipY(true);
+  }
 
   if (opts.affix) {
     enemy.aura = g.add
@@ -114,6 +123,14 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     const ux = dx / d;
     const uy = dy / d;
     const toPlayer = Math.atan2(dy, dx);
+
+    if (e.path || e.anchor) {
+      updateScripted(g, e, dt, d, toPlayer);
+      renderEnemy(g, e, null, dx);
+      if (e.damage > 0 && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
+      continue;
+    }
+
     let mx = ux;
     let my = uy;
     let speedMul = 1;
@@ -282,32 +299,105 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     if (g.arena.terrain) e.y = clampToGap(g.arena.terrain, e.x, e.y, e.radius);
     clampToArena(g.arena, e, e.radius);
 
-    // Rendering.
-    const s = e.sprite;
-    s.setPosition(e.x, e.y);
-    if (e.def.id !== "boss" && e.def.id !== "kamikaze") s.rotation = clamp((mx / len) * speedMul, -1, 1) * 0.22;
-    if (e.def.faces) s.setFlipX(e.def.faces === "left" ? dx > 0 : dx < 0);
+    const lean = e.def.id !== "boss" && e.def.id !== "kamikaze" ? clamp((mx / len) * speedMul, -1, 1) * 0.22 : null;
+    renderEnemy(g, e, lean, dx);
 
-    if (now < e.flashUntil) {
-      if (!e.flashing) {
-        s.setTint(0xffffff).setTintMode(TintModes.FILL);
-        e.flashing = true;
+    if (e.damage > 0 && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
+  }
+};
+
+/** Posizione dello sprite, lampo al colpo, aura e scudo. */
+const renderEnemy = (g: GameScene, e: Enemy, lean: number | null, dx: number) => {
+  const now = g.now;
+  const s = e.sprite;
+  s.setPosition(e.x, e.y);
+  if (lean !== null) s.rotation = lean;
+  if (e.def.faces) s.setFlipX(e.def.faces === "left" ? dx > 0 : dx < 0);
+
+  if (now < e.flashUntil) {
+    if (!e.flashing) {
+      s.setTint(0xffffff).setTintMode(TintModes.FILL);
+      e.flashing = true;
+    }
+  } else if (e.flashing) {
+    s.clearTint().setTintMode(TintModes.MULTIPLY);
+    e.flashing = false;
+  }
+
+  if (e.aura) e.aura.setPosition(e.x, e.y).setAlpha(0.45 + Math.sin(now * 0.006 + e.seed) * 0.2);
+  if (e.shield) {
+    e.shield
+      .setPosition(e.x + Math.cos(e.facing) * e.radius * 0.5, e.y + Math.sin(e.facing) * e.radius * 0.5)
+      .setRotation(e.facing + Math.PI / 2);
+  }
+};
+
+/** Volanti in formazione e unità di terra: movimento scritto, niente inseguimento. */
+const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer: number) => {
+  const now = g.now;
+  const camX = g.cameras.main.scrollX;
+  const terrain = g.arena.terrain;
+  const prevX = e.x;
+  const prevY = e.y;
+
+  if (e.anchor) {
+    if (e.def.id === "tank") {
+      e.x += e.dir * e.speed * dt;
+      if (Math.abs(e.x - e.homeX) > 150) e.dir = Math.sign(e.homeX - e.x);
+    }
+    if (terrain) e.y = e.anchor === "floor" ? floorAt(terrain, e.x) - e.radius * 0.8 : ceilAt(terrain, e.x) + e.radius * 0.8;
+    if (e.def.id === "aaTurret") {
+      // La canna punta verso la nave, entro un arco attorno alla verticale.
+      const base = e.anchor === "floor" ? 0 : Math.PI;
+      e.sprite.rotation = base + clamp(angleDiff(base, toPlayer + Math.PI / 2), -1.25, 1.25);
+    }
+  } else if (e.path) {
+    const p = e.path;
+    p.t += dt;
+    if (p.kind === "straight") {
+      e.x = p.x0 - p.speed * p.t;
+      e.y = p.y0;
+    } else if (p.kind === "sine") {
+      e.x = p.x0 - p.speed * p.t;
+      e.y = p.y0 + (p.amp ?? 80) * Math.sin((p.freq ?? 2.5) * p.t + (p.phase ?? 0));
+    } else if (p.kind === "dive") {
+      const k = Math.min(1, p.t / 1.4);
+      e.x = p.x0 - p.speed * p.t;
+      e.y = p.y0 + ((p.targetY ?? p.y0) - p.y0) * k * k * (3 - 2 * k);
+    } else {
+      // "hold": entra, si ferma a una frazione dello schermo, poi esce di lato.
+      const stop = camX + VIEW_W * (p.holdAt ?? 0.75);
+      if (!p.stage) {
+        e.x -= p.speed * dt;
+        if (e.x <= stop) {
+          p.stage = 1;
+          p.holdUntil = now + (p.holdFor ?? 4000);
+        }
+      } else if (p.stage === 1) {
+        e.x = stop + Math.sin(now * 0.002 + e.seed) * 12;
+        e.y = p.y0 + Math.sin(now * 0.0015 + e.seed) * 24;
+        if (now > (p.holdUntil ?? 0)) p.stage = 2;
+      } else {
+        e.x -= p.speed * 0.5 * dt;
+        e.y += (p.exitY ?? 1) * p.speed * dt;
       }
-    } else if (e.flashing) {
-      s.clearTint().setTintMode(TintModes.MULTIPLY);
-      e.flashing = false;
     }
+    if (terrain && (!p.stage || p.stage < 2)) e.y = clampToGap(terrain, e.x, e.y, e.radius);
 
-    if (e.aura) {
-      e.aura.setPosition(e.x, e.y).setAlpha(0.45 + Math.sin(now * 0.006 + e.seed) * 0.2);
-    }
-    if (e.shield) {
-      e.shield
-        .setPosition(e.x + Math.cos(e.facing) * e.radius * 0.5, e.y + Math.sin(e.facing) * e.radius * 0.5)
-        .setRotation(e.facing + Math.PI / 2);
-    }
+    // Muso nella direzione di volo per i razzi; i satelliti ruotano piano.
+    const vx = e.x - prevX;
+    const vy = e.y - prevY;
+    if (e.def.id === "chaser" || e.def.id === "charger") e.sprite.rotation = Math.atan2(vy, vx) + Math.PI / 2;
+    else if (e.def.id === "swarm") e.sprite.rotation += dt * 1.5;
+  }
 
-    if (d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
+  // Attacco: tutte le unità armate sparano quando sono a schermo.
+  const proj = e.def.projectile;
+  const onScreen = e.x > camX + 20 && e.x < camX + VIEW_W - 20 && e.y > -20 && e.y < VIEW_H + 20;
+  if (proj && onScreen && d < proj.range && now > e.nextAttack) {
+    g.fireEnemyBullet(e, toPlayer, proj);
+    g.fx.burst(e.x, e.y, proj.radius > 9 ? 0xfacc15 : 0xf472b6, 4);
+    e.nextAttack = now + proj.cooldown * (0.8 + Math.random() * 0.4);
   }
 };
 

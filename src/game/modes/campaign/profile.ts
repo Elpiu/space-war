@@ -231,7 +231,7 @@ export interface CampaignLoadout {
 export const buildLoadout = (profile: CampaignProfile): CampaignLoadout => {
   const hullItem = equippedHull(profile);
   const hull = hullItem ? hullSpec(hullItem) : { hp: 10, speed: 250, heatCap: 100, heatSink: 30 };
-  const ship: ShipStats = { maxHp: hull.hp, speed: hull.speed, pickupRadius: 110, drones: 0, blades: 0 };
+  const ship: ShipStats = { maxHp: hull.hp, speed: hull.speed, pickupRadius: 160, drones: 0, blades: 0 };
   const rack: RackStats = { damageMul: 1, rateMul: 1, heatCap: hull.heatCap, heatSink: hull.heatSink, bombRate: 1, coinMul: 1 };
   const mounts: Mount[] = [];
 

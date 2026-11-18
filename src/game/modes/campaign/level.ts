@@ -1,6 +1,6 @@
 import { VIEW_H } from "../../config";
 import { OFFSCREEN, ceilAt, floorAt } from "../../systems/terrain";
-import type { Arena, Terrain } from "../../types";
+import type { Arena, EnemyId, Terrain } from "../../types";
 import { createRng, dist2, rand, type Rng } from "../../utils";
 import type { MissionDef } from "./missions";
 
@@ -12,10 +12,39 @@ export interface Segment {
   end: number;
 }
 
+/** Unità di terra o struttura piazzata sul terreno, creata quando entra in scena. */
+export interface Prop {
+  id: EnemyId;
+  x: number;
+  anchor: "floor" | "ceil";
+}
+
 export interface Level {
   arena: Arena;
   segments: Segment[];
+  props: Prop[];
 }
+
+/** Cosa si trova a terra in ogni tipo di segmento, con i pesi e il tier minimo. */
+const GROUND: Partial<Record<SegmentKind, { id: EnemyId; weight: number; minTier: number; anchor?: "floor" | "ceil" | "both" }[]>> = {
+  surface: [
+    { id: "aaTurret", weight: 3, minTier: 1 },
+    { id: "fuelTank", weight: 2, minTier: 1 },
+    { id: "billboard", weight: 1.5, minTier: 1 },
+    { id: "tank", weight: 2, minTier: 2 },
+    { id: "silo", weight: 1.5, minTier: 3 },
+  ],
+  cave: [
+    { id: "aaTurret", weight: 4, minTier: 1, anchor: "both" },
+    { id: "fuelTank", weight: 1.5, minTier: 1 },
+    { id: "silo", weight: 1, minTier: 3 },
+  ],
+  station: [
+    { id: "aaTurret", weight: 4, minTier: 1, anchor: "both" },
+    { id: "billboard", weight: 1, minTier: 1 },
+    { id: "fuelTank", weight: 1.5, minTier: 1 },
+  ],
+};
 
 export const SEGMENT_LABELS: Record<SegmentKind, string> = {
   open: "Spazio aperto",
@@ -153,7 +182,23 @@ export const generateLevel = (mission: MissionDef, seed: number): Level => {
     }
   }
 
-  return { arena: { seed, width, height: H, asteroids, nebulas, terrain }, segments };
+  // Unità di terra e strutture lungo i segmenti con pavimento o soffitto.
+  const props: Prop[] = [];
+  for (const seg of segments) {
+    const table = GROUND[seg.kind]?.filter((entry) => entry.minTier <= mission.tier);
+    if (!table || table.length === 0) continue;
+    const total = table.reduce((sum, entry) => sum + entry.weight, 0);
+    let x = seg.start + rand(250, 400, rng);
+    while (x < seg.end - 150) {
+      let roll = rng() * total;
+      const entry = table.find((item) => (roll -= item.weight) <= 0) ?? table[0];
+      const anchor = entry.anchor === "both" ? (rng() < 0.5 ? "ceil" : "floor") : (entry.anchor ?? "floor");
+      props.push({ id: entry.id, x, anchor });
+      x += rand(260, 440, rng) * (1.15 - mission.tier * 0.06);
+    }
+  }
+
+  return { arena: { seed, width, height: H, asteroids, nebulas, terrain }, segments, props };
 };
 
 export const segmentAt = (segments: Segment[], x: number) =>
