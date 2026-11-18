@@ -1,564 +1,232 @@
-import type {
-  ChestItemDefinition,
-  ChestItemId,
-  Rarity,
-  RunDifficultyState,
-  RunItemState,
-  RunTomeState,
-  RunUpgradeState,
-  TomeDefinition,
-  TomeId,
-} from "../types/gameplay";
+import { BASE_STATS, DEPLOY, LIMITS } from "../config";
+import type { ItemDef, ItemId, Rarity, Run, Stats, TomeDef, TomeId, TomeOffer } from "../types";
+import { pickUnique, pickWeighted } from "../utils";
 
-export const MAX_RUN_TOMES = 4;
-export const MIN_ACTIVE_POOL_SIZE = 8;
-
-export const RARITY_MULTIPLIERS: Record<Rarity, number> = {
-  common: 1,
-  uncommon: 1.5,
-  rare: 2.25,
-  legendary: 3.5,
+export const RARITIES: Record<Rarity, { label: string; multiplier: number; weight: number; color: number }> = {
+  common: { label: "Comune", multiplier: 1, weight: 62, color: 0x94a3b8 },
+  uncommon: { label: "Non comune", multiplier: 1.5, weight: 26, color: 0x4ade80 },
+  rare: { label: "Raro", multiplier: 2.25, weight: 9, color: 0x38bdf8 },
+  legendary: { label: "Leggendario", multiplier: 3.5, weight: 3, color: 0xfbbf24 },
 };
 
-export const RARITY_LABELS: Record<Rarity, string> = {
-  common: "COMUNE",
-  uncommon: "NON COMUNE",
-  rare: "RARO",
-  legendary: "LEGGENDARIO",
-};
-
-export const createInitialRunUpgradeState = (): RunUpgradeState => ({
-  stacks: {},
-  turretDamageBonus: 0,
-  turretRangeBonus: 0,
-  turretFireRateMultiplier: 1,
-  turretHpBonus: 0,
-  maxTurretBonus: 0,
-  mineDamageBonus: 0,
-  mineRadiusBonus: 0,
-  mineCostReduction: 0,
-  maxMineBonus: 0,
-  barricadeUnlocked: true,
-  barricadeHpBonus: 0,
-  barricadeCostReduction: 0,
-  maxBarricades: 1,
-  droneLimit: 0,
-  droneDamageBonus: 0,
-  droneFireRateMultiplier: 1,
-  xpMultiplierBonus: 0,
-  shipSlotBonus: 0,
-  engineeringMultiplier: 1,
-  swarmMultiplier: 1,
-  maxHpPer100Kills: 0,
-});
-
-export const createInitialRunTomeState = (): RunTomeState => ({
-  levels: {},
-  totalBonuses: {},
-});
-
-export const createInitialRunItemState = (): RunItemState => ({
-  levels: {},
-});
-
-export const createInitialDifficultyState = (): RunDifficultyState => ({
-  enemyHpMultiplier: 1,
-  enemyDamageMultiplier: 1,
-  spawnDensityMultiplier: 1,
-  rewardMultiplier: 1,
-  chestFrequencyMultiplier: 1,
-});
-
-const increasePercent = (value: number, percent: number) =>
-  value * (1 + percent / 100);
-
-export const TOMES: TomeDefinition[] = [
+export const TOMES: TomeDef[] = [
   {
     id: "power",
-    title: "Tomo della Potenza",
-    description: "Aumenta percentualmente il danno della nave.",
-    shortEffect: "Danno",
-    accentColor: 0xfb923c,
-    baseIncrement: 10,
-    maxLevel: 10,
+    title: "Potenza",
+    stat: "danno",
+    increment: 12,
+    color: 0xfb923c,
+    icon: "tome-power",
     cost: 0,
-    isDefault: true,
-    apply: ({ stats }, value) => {
-      stats.damage = increasePercent(stats.damage, value);
-    },
+    evolution: { title: "Nucleo Perforante", description: "I colpi della nave trapassano 2 nemici." },
   },
   {
     id: "cadence",
-    title: "Tomo della Cadenza",
-    description: "Riduce l'intervallo tra i colpi automatici.",
-    shortEffect: "Velocita attacco",
-    accentColor: 0xfacc15,
-    baseIncrement: 8,
-    maxLevel: 10,
+    title: "Cadenza",
+    stat: "velocità di fuoco",
+    increment: 10,
+    color: 0xfacc15,
+    icon: "tome-cadence",
     cost: 0,
-    isDefault: true,
-    apply: ({ stats }, value) => {
-      stats.fireRate = Math.max(70, stats.fireRate / (1 + value / 100));
-    },
+    evolution: { title: "Raffica Stellare", description: "Ogni 5 salve spari un anello di 12 colpi." },
   },
   {
     id: "vitality",
-    title: "Tomo della Vitalita",
-    description: "Aumenta gli HP massimi e cura dello stesso valore.",
-    shortEffect: "HP massimi",
-    accentColor: 0xfb7185,
-    baseIncrement: 12,
-    maxLevel: 10,
+    title: "Vitalità",
+    stat: "HP massimi",
+    increment: 15,
+    color: 0xfb7185,
+    icon: "tome-vitality",
     cost: 0,
-    isDefault: true,
-    apply: ({ stats }, value) => {
-      const oldMax = stats.maxHp;
-      stats.maxHp = increasePercent(stats.maxHp, value);
-      stats.hp = Math.min(stats.maxHp, stats.hp + stats.maxHp - oldMax);
-    },
+    evolution: { title: "Scudo Rigenerante", description: "Uno scudo assorbe un colpo ogni 12 secondi." },
   },
   {
     id: "mobility",
-    title: "Tomo della Mobilita",
-    description: "Aumenta la velocita di movimento.",
-    shortEffect: "Movimento",
-    accentColor: 0x34d399,
-    baseIncrement: 8,
-    maxLevel: 10,
+    title: "Mobilità",
+    stat: "velocità e scatto",
+    increment: 8,
+    color: 0x34d399,
+    icon: "tome-mobility",
     cost: 0,
-    isDefault: true,
-    apply: ({ stats }, value) => {
-      stats.speed = increasePercent(stats.speed, value);
-    },
-  },
-  {
-    id: "wisdom",
-    title: "Tomo della Sapienza",
-    description: "Aumenta l'esperienza ottenuta dai pickup.",
-    shortEffect: "Esperienza",
-    accentColor: 0x22d3ee,
-    baseIncrement: 10,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ stats }, value) => {
-      stats.xpMultiplier = increasePercent(stats.xpMultiplier, value);
-    },
+    evolution: { title: "Scia al Plasma", description: "Lo scatto lascia una scia che brucia i nemici." },
   },
   {
     id: "magnetism",
-    title: "Tomo del Magnetismo",
-    description: "Estende il raggio di raccolta dei pickup.",
-    shortEffect: "Raggio raccolta",
-    accentColor: 0x38bdf8,
-    baseIncrement: 15,
-    maxLevel: 10,
+    title: "Magnetismo",
+    stat: "raggio di raccolta",
+    increment: 20,
+    color: 0x38bdf8,
+    icon: "tome-magnetism",
     cost: 0,
-    isDefault: true,
-    apply: ({ stats }, value) => {
-      stats.pickupRadius = increasePercent(stats.pickupRadius, value);
-    },
+    evolution: { title: "Campo Repulsore", description: "Ogni 6 secondi un'onda respinge e danneggia i nemici vicini." },
   },
   {
-    id: "fortune",
-    title: "Tomo della Fortuna",
-    description: "Migliora rarita e frequenza dei drop speciali.",
-    shortEffect: "Fortuna",
-    accentColor: 0xfbbf24,
-    baseIncrement: 10,
-    maxLevel: 10,
+    id: "wisdom",
+    title: "Sapienza",
+    stat: "esperienza",
+    increment: 12,
+    color: 0x22d3ee,
+    icon: "tome-wisdom",
     cost: 0,
-    isDefault: true,
-    apply: ({ stats }, value) => {
-      stats.luck += value;
-    },
-  },
-  {
-    id: "difficulty",
-    title: "Tomo della Difficolta",
-    description: "Rende le wave piu dure, ma accelera tutte le ricompense.",
-    shortEffect: "Rischio e ricompensa",
-    accentColor: 0xef4444,
-    baseIncrement: 10,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ difficulty }, value) => {
-      difficulty.enemyHpMultiplier = increasePercent(
-        difficulty.enemyHpMultiplier,
-        value,
-      );
-      difficulty.enemyDamageMultiplier = increasePercent(
-        difficulty.enemyDamageMultiplier,
-        value * 0.7,
-      );
-      difficulty.spawnDensityMultiplier = increasePercent(
-        difficulty.spawnDensityMultiplier,
-        value * 0.65,
-      );
-      difficulty.rewardMultiplier = increasePercent(
-        difficulty.rewardMultiplier,
-        value,
-      );
-      difficulty.chestFrequencyMultiplier = increasePercent(
-        difficulty.chestFrequencyMultiplier,
-        value * 0.8,
-      );
-    },
+    evolution: { title: "Illuminazione", description: "4 scelte a ogni livello e un reroll gratis in più." },
   },
   {
     id: "vampirism",
-    title: "Tomo del Vampirismo",
-    description: "Cura una parte del danno effettivamente inflitto.",
-    shortEffect: "Vampirismo",
-    accentColor: 0xbe123c,
-    baseIncrement: 1.5,
-    maxLevel: 10,
-    cost: 45,
-    isDefault: false,
-    apply: ({ stats }, value) => {
-      stats.lifeStealPercent = Math.min(18, stats.lifeStealPercent + value);
-    },
-  },
-  {
-    id: "ballistics",
-    title: "Tomo della Balistica",
-    description: "Aumenta velocita e gittata dei proiettili.",
-    shortEffect: "Proiettili",
-    accentColor: 0xa78bfa,
-    baseIncrement: 10,
-    maxLevel: 10,
-    cost: 35,
-    isDefault: false,
-    apply: ({ stats }, value) => {
-      stats.bulletSpeed = increasePercent(stats.bulletSpeed, value);
-      stats.bulletRange = increasePercent(stats.bulletRange, value);
-    },
+    title: "Vampirismo",
+    stat: "rubavita dei colpi",
+    increment: 1.5,
+    color: 0xe11d48,
+    icon: "tome-vampirism",
+    cost: 60,
+    evolution: { title: "Sete di Sangue", description: "Ogni uccisione cura 0.2 HP." },
   },
   {
     id: "engineering",
-    title: "Tomo dell'Ingegneria",
-    description: "Migliora danno, resistenza e portata dei piazzabili.",
-    shortEffect: "Piazzabili",
-    accentColor: 0x2dd4bf,
-    baseIncrement: 10,
-    maxLevel: 10,
-    cost: 55,
-    isDefault: false,
-    apply: ({ runUpgrades }, value) => {
-      runUpgrades.engineeringMultiplier = increasePercent(
-        runUpgrades.engineeringMultiplier,
-        value,
-      );
-    },
-  },
-  {
-    id: "swarm",
-    title: "Tomo dello Sciame",
-    description: "Migliora danno e cadenza dei droni presenti e futuri.",
-    shortEffect: "Droni",
-    accentColor: 0xc084fc,
-    baseIncrement: 10,
-    maxLevel: 10,
-    cost: 60,
-    isDefault: false,
-    apply: ({ runUpgrades }, value) => {
-      runUpgrades.swarmMultiplier = increasePercent(
-        runUpgrades.swarmMultiplier,
-        value,
-      );
-    },
+    title: "Ingegneria",
+    stat: "potenza di torrette e mine",
+    increment: 15,
+    color: 0x2dd4bf,
+    icon: "tome-engineering",
+    cost: 80,
+    evolution: { title: "Fabbrica Orbitale", description: "+1 torretta e le torrette sparano colpi doppi." },
   },
 ];
 
-const discreteByRarity = (
-  rarity: Rarity,
-  values: Record<Rarity, number>,
-) => values[rarity];
-
-export const CHEST_ITEMS: ChestItemDefinition[] = [
+export const ITEMS: ItemDef[] = [
   {
-    id: "splitter-camera",
+    id: "splitter",
     title: "Camera Splitter",
-    description: "Aggiunge proiettili laterali al fuoco automatico.",
-    shortEffect: "Proiettili +",
-    category: "weapon",
-    accentColor: 0xfef08a,
-    maxLevel: 10,
+    description: "Spari un proiettile in più a ventaglio.",
+    perLevel: "+1 proiettile",
+    color: 0xfacc15,
+    icon: "item-splitter",
     cost: 0,
-    isDefault: true,
-    apply: ({ stats }, rarity) => {
-      stats.multiShot = Math.min(
-        12,
-        stats.multiShot +
-          discreteByRarity(rarity, {
-            common: 1,
-            uncommon: 1,
-            rare: 2,
-            legendary: 3,
-          }),
-      );
-    },
   },
   {
-    id: "sentinel-beacon",
-    title: "Faro Sentinella",
-    description: "Richiama mini navicelle automatiche.",
-    shortEffect: "Droni +",
-    category: "drone",
-    accentColor: 0xa78bfa,
-    maxLevel: 10,
+    id: "drone",
+    title: "Drone Sentinella",
+    description: "Un drone ti segue e spara al nemico più vicino.",
+    perLevel: "+1 drone",
+    color: 0xa78bfa,
+    icon: "item-drone",
     cost: 0,
-    isDefault: true,
-    apply: ({ runUpgrades }, rarity) => {
-      runUpgrades.droneLimit += discreteByRarity(rarity, {
-        common: 1,
-        uncommon: 1,
-        rare: 2,
-        legendary: 3,
-      });
-    },
   },
   {
-    id: "turret-optics",
-    title: "Ottiche Torretta",
-    description: "Aumenta portata e precisione delle torrette.",
-    shortEffect: "Range torretta +",
-    category: "turret",
-    accentColor: 0x38bdf8,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ runUpgrades }, rarity) => {
-      runUpgrades.turretRangeBonus += 24 * RARITY_MULTIPLIERS[rarity];
-    },
-  },
-  {
-    id: "turret-slot",
-    title: "Slot Torretta",
-    description: "Aumenta il numero massimo di torrette.",
-    shortEffect: "Slot torretta +",
-    category: "turret",
-    accentColor: 0x60a5fa,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ runUpgrades }, rarity) => {
-      runUpgrades.maxTurretBonus += discreteByRarity(rarity, {
-        common: 1,
-        uncommon: 1,
-        rare: 2,
-        legendary: 3,
-      });
-    },
-  },
-  {
-    id: "mine-supply",
-    title: "Scorta Mine",
-    description: "Riduce il costo e aumenta il limite delle mine.",
-    shortEffect: "Mine costo -",
-    category: "mine",
-    accentColor: 0xfacc15,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ runUpgrades }, rarity) => {
-      const amount = discreteByRarity(rarity, {
-        common: 1,
-        uncommon: 1,
-        rare: 2,
-        legendary: 3,
-      });
-      runUpgrades.mineCostReduction += amount;
-      runUpgrades.maxMineBonus += amount;
-    },
-  },
-  {
-    id: "blast-charge",
-    title: "Carica Esplosiva",
-    description: "Aumenta danno e raggio delle mine.",
-    shortEffect: "Mine potenza +",
-    category: "mine",
-    accentColor: 0xfb923c,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ runUpgrades }, rarity) => {
-      const multiplier = RARITY_MULTIPLIERS[rarity];
-      runUpgrades.mineDamageBonus += 1.2 * multiplier;
-      runUpgrades.mineRadiusBonus += 12 * multiplier;
-    },
-  },
-  {
-    id: "barricade-kit",
-    title: "Kit Barricata",
-    description: "Sblocca e aumenta le barricate piazzabili.",
-    shortEffect: "Barricate +",
-    category: "barricade",
-    accentColor: 0xe2e8f0,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ runUpgrades }, rarity) => {
-      runUpgrades.barricadeUnlocked = true;
-      runUpgrades.maxBarricades += discreteByRarity(rarity, {
-        common: 2,
-        uncommon: 2,
-        rare: 3,
-        legendary: 5,
-      });
-    },
-  },
-  {
-    id: "reactive-plating",
-    title: "Piastre Reattive",
-    description: "Rinforza torrette e barricate.",
-    shortEffect: "HP difese +",
-    category: "barricade",
-    accentColor: 0x94a3b8,
-    maxLevel: 10,
-    cost: 0,
-    isDefault: true,
-    apply: ({ runUpgrades }, rarity) => {
-      const multiplier = RARITY_MULTIPLIERS[rarity];
-      runUpgrades.barricadeUnlocked = true;
-      runUpgrades.maxBarricades = Math.max(2, runUpgrades.maxBarricades);
-      runUpgrades.barricadeHpBonus += 5 * multiplier;
-      runUpgrades.turretHpBonus += 4 * multiplier;
-    },
-  },
-  {
-    id: "heavy-core",
-    title: "Nucleo Pesante",
-    description: "Aumenta molto il danno, ma rallenta la cadenza.",
-    shortEffect: "Danno alto",
-    category: "weapon",
-    accentColor: 0xf97316,
-    maxLevel: 10,
-    cost: 35,
-    isDefault: false,
-    apply: ({ stats }, rarity) => {
-      const multiplier = RARITY_MULTIPLIERS[rarity];
-      stats.damage = increasePercent(stats.damage, 12 * multiplier);
-      stats.fireRate = increasePercent(stats.fireRate, 4);
-    },
-  },
-  {
-    id: "rapid-loader",
-    title: "Caricatore Rapido",
-    description: "Accelera il fuoco, riducendo leggermente il danno.",
-    shortEffect: "Cadenza alta",
-    category: "weapon",
-    accentColor: 0x67e8f9,
-    maxLevel: 10,
-    cost: 35,
-    isDefault: false,
-    apply: ({ stats }, rarity) => {
-      stats.fireRate = Math.max(
-        70,
-        stats.fireRate / (1 + (10 * RARITY_MULTIPLIERS[rarity]) / 100),
-      );
-      stats.damage = Math.max(0.5, stats.damage * 0.98);
-    },
-  },
-  {
-    id: "drone-arsenal",
-    title: "Arsenale Drone",
-    description: "Potenziamento offensivo per tutte le sentinelle.",
-    shortEffect: "Armi drone +",
-    category: "drone",
-    accentColor: 0xc084fc,
-    maxLevel: 10,
-    cost: 45,
-    isDefault: false,
-    apply: ({ runUpgrades }, rarity) => {
-      const multiplier = RARITY_MULTIPLIERS[rarity];
-      runUpgrades.droneDamageBonus += multiplier;
-      runUpgrades.droneFireRateMultiplier = Math.max(
-        0.35,
-        runUpgrades.droneFireRateMultiplier / (1 + 0.08 * multiplier),
-      );
-    },
-  },
-  {
-    id: "overdrive-reactor",
-    title: "Reattore Overdrive",
-    description: "Potenzia danno e cadenza sacrificando scafo massimo.",
-    shortEffect: "Potenza instabile",
-    category: "ship",
-    accentColor: 0xef4444,
-    maxLevel: 10,
-    cost: 60,
-    isDefault: false,
-    apply: ({ stats }, rarity) => {
-      const multiplier = RARITY_MULTIPLIERS[rarity];
-      stats.damage = increasePercent(stats.damage, 7 * multiplier);
-      stats.fireRate = Math.max(
-        70,
-        stats.fireRate / (1 + (6 * multiplier) / 100),
-      );
-      const hpLoss = Math.min(stats.maxHp - 1, 0.4 * multiplier);
-      stats.maxHp -= hpLoss;
-      stats.hp = Math.min(stats.hp, stats.maxHp);
-    },
-  },
-  {
-    id: "reinforced-bulkhead",
+    id: "bulkhead",
     title: "Paratia Rinforzata",
-    description: "Aumenta immediatamente gli HP massimi e cura dello stesso valore.",
-    shortEffect: "HP flat +",
-    category: "ship",
-    accentColor: 0x4ade80,
-    maxLevel: 10,
-    cost: 40,
-    isDefault: false,
-    apply: ({ stats }, rarity) => {
-      const hp = discreteByRarity(rarity, {
-        common: 1,
-        uncommon: 2,
-        rare: 3,
-        legendary: 5,
-      });
-      stats.maxHp += hp;
-      stats.hp += hp;
-    },
+    description: "Piastre extra sullo scafo. Cura subito.",
+    perLevel: "+3 HP massimi",
+    color: 0x2dd4bf,
+    icon: "item-bulkhead",
+    cost: 0,
   },
   {
-    id: "adaptive-hull",
-    title: "Scafo Adattivo",
-    description: "Ogni 100 kill aumenta permanentemente gli HP massimi per la run.",
-    shortEffect: "HP ogni 100 kill",
-    category: "ship",
-    accentColor: 0x2dd4bf,
-    maxLevel: 10,
-    cost: 55,
-    isDefault: false,
-    apply: ({ runUpgrades }, rarity) => {
-      runUpgrades.maxHpPer100Kills += discreteByRarity(rarity, {
-        common: 1,
-        uncommon: 1,
-        rare: 2,
-        legendary: 3,
-      });
-    },
+    id: "turretSlot",
+    title: "Hangar Torrette",
+    description: "Puoi tenere attiva una torretta in più.",
+    perLevel: "+1 torretta, +20% danno torrette",
+    color: 0x38bdf8,
+    icon: "item-turret",
+    cost: 0,
+  },
+  {
+    id: "mineSupply",
+    title: "Scorta Mine",
+    description: "Una mina in più e un'esplosione più ampia.",
+    perLevel: "+1 mina, +15% raggio",
+    color: 0xfb923c,
+    icon: "item-mine",
+    cost: 0,
+  },
+  {
+    id: "bounce",
+    title: "Proiettili Rimbalzanti",
+    description: "I colpi rimbalzano sul nemico successivo.",
+    perLevel: "+1 rimbalzo",
+    color: 0x4ade80,
+    icon: "item-bounce",
+    cost: 70,
+  },
+  {
+    id: "blades",
+    title: "Lame Orbitanti",
+    description: "Lame che ruotano attorno alla nave.",
+    perLevel: "+1 lama, +danno",
+    color: 0x7dd3fc,
+    icon: "item-blades",
+    cost: 90,
+  },
+  {
+    id: "arc",
+    title: "Arco Elettrico",
+    description: "Un fulmine periodico che salta tra i nemici.",
+    perLevel: "+1 salto, più frequente",
+    color: 0xc4b5fd,
+    icon: "item-arc",
+    cost: 110,
   },
 ];
 
-export const DEFAULT_TOME_IDS = TOMES.filter((entry) => entry.isDefault).map(
-  (entry) => entry.id,
-);
-export const DEFAULT_CHEST_ITEM_IDS = CHEST_ITEMS.filter(
-  (entry) => entry.isDefault,
-).map((entry) => entry.id);
+export const tomeById = (id: TomeId) => TOMES.find((tome) => tome.id === id)!;
+export const itemById = (id: ItemId) => ITEMS.find((item) => item.id === id)!;
 
-export const getTomeById = (id: TomeId) =>
-  TOMES.find((entry) => entry.id === id);
+export const tomeLevel = (run: Run, id: TomeId) => run.tomes[id]?.level ?? 0;
+export const tomeBonus = (run: Run, id: TomeId) => (run.tomes[id]?.bonus ?? 0) / 100;
+export const itemLevel = (run: Run, id: ItemId) => run.items[id] ?? 0;
+export const isEvolved = (run: Run, id: TomeId) => tomeLevel(run, id) >= LIMITS.tomeMaxLevel;
 
-export const getChestItemById = (id: ChestItemId) =>
-  CHEST_ITEMS.find((entry) => entry.id === id);
+/** Statistiche derivate: si ricalcolano dopo ogni scelta, niente stato duplicato. */
+export const computeStats = (run: Run): Stats => {
+  const b = (id: TomeId) => tomeBonus(run, id);
+  const i = (id: ItemId) => itemLevel(run, id);
 
-export const getTomeLevel = (state: RunTomeState, id: TomeId) =>
-  state.levels[id] ?? 0;
+  return {
+    maxHp: BASE_STATS.maxHp * (1 + b("vitality")) + i("bulkhead") * 3,
+    speed: BASE_STATS.speed * (1 + b("mobility")),
+    damage: BASE_STATS.damage * (1 + b("power")),
+    fireInterval: Math.max(90, BASE_STATS.fireInterval / (1 + b("cadence"))),
+    bulletSpeed: BASE_STATS.bulletSpeed,
+    range: BASE_STATS.range,
+    pickupRadius: BASE_STATS.pickupRadius * (1 + b("magnetism")),
+    projectiles: BASE_STATS.projectiles + i("splitter"),
+    xpMult: BASE_STATS.xpMult * (1 + b("wisdom")),
+    lifeSteal: b("vampirism"),
+    dashCooldown: BASE_STATS.dashCooldown / (1 + b("mobility")),
+    deployPower: BASE_STATS.deployPower * (1 + b("engineering")) * (1 + i("turretSlot") * 0.2),
+    pierce: isEvolved(run, "power") ? 2 : 0,
+    bounce: i("bounce"),
+    maxTurrets: DEPLOY.baseTurrets + i("turretSlot") + (isEvolved(run, "engineering") ? 1 : 0),
+    maxMines: DEPLOY.baseMines + i("mineSupply"),
+  };
+};
 
-export const getItemLevel = (state: RunItemState, id: ChestItemId) =>
-  state.levels[id] ?? 0;
+const rollRarity = (): Rarity =>
+  pickWeighted(Object.keys(RARITIES) as Rarity[], (r) => RARITIES[r].weight) ?? "common";
+
+/** Offerte di level-up: rispettano il limite di 4 tomi diversi per run. */
+export const rollTomeOffers = (run: Run, unlocked: TomeId[]): TomeOffer[] => {
+  const owned = Object.keys(run.tomes) as TomeId[];
+  const canAddNew = owned.length < LIMITS.maxRunTomes;
+  const pool = TOMES.filter((tome) => {
+    if (!unlocked.includes(tome.id)) return false;
+    if (tomeLevel(run, tome.id) >= LIMITS.tomeMaxLevel) return false;
+    return owned.includes(tome.id) || canAddNew;
+  });
+  const count = isEvolved(run, "wisdom") ? 4 : 3;
+
+  return pickUnique(pool, count).map((tome) => {
+    const rarity = rollRarity();
+    return { tome, rarity, value: tome.increment * RARITIES[rarity].multiplier };
+  });
+};
+
+export const rollItem = (run: Run, unlocked: ItemId[]): ItemDef | undefined =>
+  pickWeighted(
+    ITEMS.filter((item) => unlocked.includes(item.id) && itemLevel(run, item.id) < LIMITS.itemMaxLevel),
+    (item) => (item.id === "bulkhead" ? 0.7 : 1),
+  );
+
+export const DEFAULT_UNLOCKS: string[] = [
+  ...TOMES.filter((tome) => tome.cost === 0).map((tome) => `tome:${tome.id}`),
+  ...ITEMS.filter((item) => item.cost === 0).map((item) => `item:${item.id}`),
+];

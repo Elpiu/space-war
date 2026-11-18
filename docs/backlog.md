@@ -1,60 +1,44 @@
 # Backlog
 
-## Vertical slice completata
+## v2.0: rifondazione (fatto)
 
-- [x] Movimento e shooting automatico.
-- [x] Nemici, wave, pickup, HP, morte e restart.
-- [x] Mappa continua S/M/L con generazione e reveal progressivo.
-- [x] Hazard, ostacoli, camera follow e mini-mappa.
-- [x] Capacita' base di 1 torretta, 2 mine e 1 barricata.
-- [x] Dodici tomi con limite di quattro per run.
-- [x] Rarita' comune, non comune, rara e leggendaria.
-- [x] Fortuna applicata a rarita', drop e chest.
-- [x] Difficolta' con rischio e ricompensa.
-- [x] Quattordici oggetti chest con duplicati a livelli.
-- [x] Oggetti per HP flat e crescita ogni 100 kill.
-- [x] Drop temporanei rari Magnet Overload e Munizioni Venom.
-- [x] Vampirismo limitato ai proiettili della nave.
-- [x] Shop di sblocchi e gestione pool.
-- [x] Migrazione salvataggio che conserva i crediti.
-- [x] HUD separato per tomi e oggetti.
-- [x] Musica per menu e run.
-- [x] Pausa con `P` e timer congelati.
-- [x] Sound effect per level-up e chest.
-- [x] Due reroll gratuiti e reroll a costo crescente.
-- [x] Protezione anti-missclick nella scelta tomi.
-- [x] Runtime gameplay condiviso tra scene specializzate.
-- [x] Tutorial guidato interattivo senza ricompense persistenti.
-- [x] Staging dev-only con console completa e preset di test.
+- [x] Codice riscritto da circa 10.700 a circa 4.400 righe TypeScript, con una
+      scena sola.
+- [x] Arena unica con asteroidi e nebulose al posto della mappa a settori.
+- [x] Torrette e mine piazzate con un tasto sulla posizione della nave (niente
+      griglia, spostamento, riparazione). Barricate rimosse.
+- [x] Pausa e level-up congelano il tempo di gioco senza spostare i timer a mano.
+- [x] Statistiche derivate da tomi e oggetti (`computeStats`).
+- [x] Interfaccia interamente in DOM con un set di icone SVG originali.
+- [x] Scatto con invulnerabilità.
+- [x] Nove nemici con comportamenti distinti e attacchi annunciati, elite con
+      affissi, boss a tre fasi.
+- [x] Spawn da tabella pesata, eventi orda e boss.
+- [x] 8 tomi con evoluzione al livello 5, 8 oggetti con effetti visibili.
+- [x] Arma: perforazione, rimbalzi, lame orbitanti, arco elettrico, droni.
+- [x] Gemme a tre tagli che si fondono oltre il limite; pool di proiettili.
+- [x] Feedback: lampo bianco al colpo, numeri di danno, particelle, scia,
+      vignetta rossa quando si viene colpiti, frecce fuori schermo.
+- [x] Sfondo stellare in parallasse, menu animato.
+- [x] Effetti sonori sintetizzati, musica in streaming, tasto per l'audio.
+- [x] Riepilogo di fine run con danni per fonte e build.
+- [x] Tutorial sostituito da suggerimenti contestuali.
+- [x] Difficoltà scelta a inizio run.
+- [x] Pulizia: telemetria del template, Tailwind e file inutilizzati rimossi;
+      nessuna richiesta a file inesistenti.
 
-## Priorita' v1
+## Prossimi passi
 
-- Bilanciare incrementi, rarita', Fortuna e Difficolta'.
-- Bilanciare costi, frequenza chest e crediti post-run.
-- Aggiungere elite con pattern riconoscibili.
-- Aggiungere boss periodici.
-- Migliorare varieta' e leggibilita' dei settori.
-- Aggiungere sinergie tra tomi e oggetti.
-- Ampliare il catalogo degli effetti di campo temporanei.
-- Aggiungere evoluzioni al raggiungimento di soglie.
-- Rifinire feedback visivi e audio delle rarita'.
-- Rendere piu' leggibili statistiche e bonus totali della run.
-
-## Contenuti futuri
-
-- Laser, missili, rimbalzi ed elettricita'.
-- Droni avanzati e oggetti dedicati.
-- Oggetti che modificano hazard o settori.
-- Eventi speciali e settori instabili.
-- Boss che interagiscono con la mappa.
-- Sfide giornaliere e seed condivisi.
-- Modalita' endless raffinata.
-- Personalizzazione estetica senza bonus funzionali.
-
-## Decisioni da validare
-
-- Evoluzione automatica o scelta al livello massimo di un tomo.
-- Possibili sinergie esplicite tra due tomi.
-- Reroll limitati per level-up o chest.
-- Ricompense speciali per settori ad alto rischio.
-- Numero ottimale di tomi e oggetti attivi quando il catalogo crescera'.
+- Bilanciamento con partite vere: curva XP, densità degli spawn dopo la wave
+  15, danno del boss nelle tier alte.
+- Ricomprimere la musica (circa 17 MB complessivi).
+- Supporto touch o gamepad (oggi solo tastiera).
+- Seconda arma attiva o "ultimate" a ricarica.
+- Altri boss con meccaniche legate all'arena (asteroidi che si muovono,
+  nebulose tossiche).
+- Sfide giornaliere con seed condiviso (il generatore dell'arena è già
+  deterministico).
+- Sprite dei nemici PNG in stile più uniforme, o rifatti in SVG come i
+  nuovi.
+- Pool di sprite anche per i nemici, se servisse più performance dopo la
+  wave 20.
