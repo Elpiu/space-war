@@ -1,6 +1,14 @@
 # Design
 
-Space War è un roguelite arcade di sopravvivenza: una nave, un'arena di
+Space War ha due modalità che condividono lo stesso motore di combattimento:
+**Survival**, roguelite a wave infinite, e **Campagna**, missioni a
+scorrimento con equipaggiamento che si conserva. Le due economie sono
+separate: crediti e sblocchi del survival non toccano la campagna, e
+viceversa.
+
+## Survival
+
+Il survival è un roguelite arcade di sopravvivenza: una nave, un'arena di
 detriti, wave sempre più dense. Il pilota si muove e schiva; il cannone spara da
 solo. La run si costruisce scegliendo tomi al level-up e raccogliendo oggetti
 dalle chest. Alla morte restano solo i crediti per sbloccare contenuti nuovi.
@@ -121,3 +129,29 @@ Non esiste una modalità tutorial separata. Alla prima occorrenza di ogni
 situazione (movimento, scatto, gemme, monete, chest, evoluzioni, ogni nuovo
 tipo di nemico) compare un suggerimento contestuale, una volta sola per
 profilo.
+
+## Campagna (MVP)
+
+- **Hub**: in alto la mappa del settore con le missioni collegate, in basso
+  equipaggiamento, inventario e scheda dell'oggetto selezionato.
+- **Missioni**: corridoio orizzontale generato da un seed. La camera scorre da
+  sola verso destra e rallenta quando lo schermo è affollato. I nemici
+  arrivano da destra, innescati dalla distanza percorsa. Si vince
+  raggiungendo il portale d'uscita oppure, nella 1-5, abbattendo il
+  Dreadnought.
+- **Settore 1, "Fascia dei Rottami"**: 1-1 → 1-2 → (1-3 Nebulosa oppure 1-3
+  Asteroidi) → 1-4 → 1-5 boss. La minaccia (tier 1-5) scala nemici e
+  bottino.
+- **Equipaggiamento**: arma principale (Blaster, Spargitore, Railgun,
+  Mitragliera), secondario (Torretta, Posamine, Drone Gregario, Anello di
+  Lame), due moduli (Piastre, Propulsore, Mirino, Caricatore, Bobina) e uno
+  scafo (Ricognitore, Fregata, Bastione). L'arma principale spara in avanti,
+  con un aiuto alla mira entro ~30 gradi.
+- **Bottino**: gli elite (35%) e il boss lasciano casse; ogni vittoria dà un
+  pezzo garantito, non comune o migliore alla prima vittoria. Rarità:
+  potenza ×1 / ×1.15 / ×1.35 / ×1.6.
+- **Hangar**: ogni pezzo si potenzia fino al livello 10 (+8% per livello) con
+  le monete, oppure si vende. Arma e scafo sono obbligatori e si possono solo
+  sostituire.
+- **Non è un roguelite**: monete e bottino raccolti si tengono anche quando la
+  missione fallisce.

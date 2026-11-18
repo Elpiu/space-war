@@ -1,4 +1,4 @@
-import { ARENA_H, ARENA_W, DIFFICULTIES, LIMITS, WAVE } from "../config";
+import { DIFFICULTIES, LIMITS, WAVE } from "../config";
 import { SPAWNABLE } from "../data/enemies";
 import type { GameScene } from "../scenes/GameScene";
 import type { AffixId, EnemyId } from "../types";
@@ -8,7 +8,7 @@ import { spawnEnemy } from "./enemies";
 
 const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
 
-/** Regia delle wave: ritmo degli spawn, eventi orda e boss. */
+/** Regia delle wave del survival: ritmo degli spawn, eventi orda e boss. */
 export class Director {
   private nextSpawn = 0;
 
@@ -51,8 +51,8 @@ export class Director {
       const count = 14 + run.wave;
       for (let i = 0; i < count; i += 1) {
         const a = (i / count) * Math.PI * 2;
-        const x = clamp(g.player.x + Math.cos(a) * 560, 40, ARENA_W - 40);
-        const y = clamp(g.player.y + Math.sin(a) * 560, 40, ARENA_H - 40);
+        const x = clamp(g.player.x + Math.cos(a) * 560, 40, g.arena.width - 40);
+        const y = clamp(g.player.y + Math.sin(a) * 560, 40, g.arena.height - 40);
         spawnEnemy(g, "swarm", x, y);
       }
     } else {
@@ -104,10 +104,11 @@ export class Director {
       const a = rand(0, Math.PI * 2);
       const x = g.player.x + Math.cos(a) * radius;
       const y = g.player.y + Math.sin(a) * radius;
-      const inside = x > 60 && y > 60 && x < ARENA_W - 60 && y < ARENA_H - 60;
+      const { width, height } = g.arena;
+      const inside = x > 60 && y > 60 && x < width - 60 && y < height - 60;
       if (inside && !hitsAsteroid(g.arena, x, y, 50)) return { x, y };
       if (inside) best = { x, y };
     }
-    return { x: clamp(best.x, 60, ARENA_W - 60), y: clamp(best.y, 60, ARENA_H - 60) };
+    return { x: clamp(best.x, 60, g.arena.width - 60), y: clamp(best.y, 60, g.arena.height - 60) };
   }
 }

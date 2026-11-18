@@ -1,5 +1,5 @@
 import { BlendModes } from "phaser";
-import { ARENA_H, ARENA_W, COLORS, DEPTH, LIMITS, PLAYER_RADIUS } from "../config";
+import { COLORS, DEPTH, LIMITS, PLAYER_RADIUS } from "../config";
 import type { GameScene } from "../scenes/GameScene";
 import type { Pickup, PickupKind } from "../types";
 import { dist2, rand } from "../utils";
@@ -67,7 +67,7 @@ export const dropChestNearby = (g: GameScene) => {
     const d = rand(450, 800);
     const x = g.player.x + Math.cos(a) * d;
     const y = g.player.y + Math.sin(a) * d;
-    if (x < 80 || y < 80 || x > ARENA_W - 80 || y > ARENA_H - 80) continue;
+    if (x < 80 || y < 80 || x > g.arena.width - 80 || y > g.arena.height - 80) continue;
     if (hitsAsteroid(g.arena, x, y, 40)) continue;
     dropPickup(g, "chest", x, y);
     return;

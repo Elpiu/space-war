@@ -1,5 +1,5 @@
 import { DEPLOY, DEPTH } from "../config";
-import { isEvolved, itemLevel, tomeBonus } from "../data/upgrades";
+import { isEvolved, tomeBonus } from "../data/upgrades";
 import type { GameScene } from "../scenes/GameScene";
 import type { Enemy, Mine, Turret } from "../types";
 import { dist2 } from "../utils";
@@ -95,7 +95,7 @@ export class Deployables {
       return true;
     });
 
-    const blastRadius = DEPLOY.mineBlastRadius * (1 + itemLevel(g.run, "mineSupply") * 0.15);
+    const blastRadius = DEPLOY.mineBlastRadius * g.run.stats.mineRadius;
     this.mines = this.mines.filter((m) => {
       if (now < m.armedAt) return true;
       m.sprite.setAlpha(1);

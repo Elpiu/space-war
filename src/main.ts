@@ -1,5 +1,6 @@
 import { startGame } from "./game/main";
 import "./style.css";
+import "./campaign.css";
 
 document.addEventListener("DOMContentLoaded", () => {
   const game = startGame("game-container");

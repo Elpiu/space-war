@@ -1,6 +1,6 @@
 import { BlendModes, type GameObjects } from "phaser";
 import { COLORS, DEPTH, PLAYER_RADIUS } from "../config";
-import { isEvolved, itemLevel } from "../data/upgrades";
+import { isEvolved } from "../data/upgrades";
 import type { GameScene } from "../scenes/GameScene";
 import type { Bullet, DamageSource, Enemy, ProjectileDef } from "../types";
 import { dist2 } from "../utils";
@@ -73,7 +73,7 @@ export const updateBullets = (g: GameScene, dt: number) => {
     b.life -= Math.hypot(b.vx, b.vy) * dt;
     b.sprite.setPosition(b.x, b.y);
 
-    if (b.life <= 0 || !insideArena(b.x, b.y)) {
+    if (b.life <= 0 || !insideArena(g.arena, b.x, b.y)) {
       killBullet(b);
       continue;
     }
@@ -151,7 +151,7 @@ export const updateEnemyBullets = (g: GameScene, dt: number) => {
     b.y += b.vy * dt;
     b.life -= Math.hypot(b.vx, b.vy) * dt;
     b.sprite.setPosition(b.x, b.y);
-    const dead = b.life <= 0 || !insideArena(b.x, b.y) || hitsAsteroid(g.arena, b.x, b.y, b.radius);
+    const dead = b.life <= 0 || !insideArena(g.arena, b.x, b.y) || hitsAsteroid(g.arena, b.x, b.y, b.radius);
     if (!dead && dist2(b.x, b.y, px, py) < (b.radius + PLAYER_RADIUS - 3) ** 2) {
       g.hurtPlayer(b.damage);
       g.fx.burst(b.x, b.y, COLORS.enemyBullet, 6);
@@ -220,15 +220,14 @@ export class Arsenal {
     const run = g.run;
     const stats = run.stats;
     if (g.now < this.nextShot) return;
-    const target = nearestEnemy(g, g.player.x, g.player.y, stats.range);
-    if (!target) return;
+    const base = stats.aim === "forward" ? this.forwardAim(stats.range) : this.autoAim(stats.range);
+    if (base === null) return;
 
     const venom = g.now < run.venomUntil;
     const damage = stats.damage * (venom ? 1.25 : 1);
     const color = venom ? COLORS.bulletVenom : COLORS.bullet;
-    const base = Math.atan2(target.y - g.player.y, target.x - g.player.x);
     const n = stats.projectiles;
-    const spread = 0.15;
+    const spread = stats.spread;
 
     for (let i = 0; i < n; i += 1) {
       const a = base + (i - (n - 1) / 2) * spread;
@@ -264,9 +263,35 @@ export class Arsenal {
     this.nextShot = g.now + stats.fireInterval;
   }
 
+  private autoAim(range: number): number | null {
+    const { player } = this.g;
+    const target = nearestEnemy(this.g, player.x, player.y, range);
+    return target ? Math.atan2(target.y - player.y, target.x - player.x) : null;
+  }
+
+  /** Fuoco in avanti (verso destra) con aiuto alla mira entro un cono di ~30 gradi. */
+  private forwardAim(range: number): number | null {
+    const { player, enemies } = this.g;
+    let best: number | null = null;
+    let bestD = range * range;
+    let anyAhead = false;
+    for (const e of enemies) {
+      if (e.dead || e.x < player.x) continue;
+      const d = dist2(player.x, player.y, e.x, e.y);
+      if (d > range * range) continue;
+      anyAhead = true;
+      const a = Math.atan2(e.y - player.y, e.x - player.x);
+      if (Math.abs(a) < 0.52 && d < bestD) {
+        bestD = d;
+        best = a;
+      }
+    }
+    return best ?? (anyAhead ? 0 : null);
+  }
+
   private updateDrones(dt: number) {
     const g = this.g;
-    const count = itemLevel(g.run, "drone");
+    const count = g.run.stats.drones;
     while (this.drones.length < count) {
       const sprite = g.add.image(g.player.x, g.player.y, "drone").setDisplaySize(30, 30).setDepth(DEPTH.player - 1);
       this.drones.push({ sprite, x: g.player.x, y: g.player.y, nextShot: g.now + 400 });
@@ -297,7 +322,7 @@ export class Arsenal {
 
   private updateBlades() {
     const g = this.g;
-    const level = itemLevel(g.run, "blades");
+    const level = g.run.stats.blades;
     while (this.blades.length < level) {
       this.blades.push(g.add.image(g.player.x, g.player.y, "blade").setDisplaySize(26, 26).setDepth(DEPTH.player - 1));
     }
@@ -322,7 +347,7 @@ export class Arsenal {
 
   private updateArc() {
     const g = this.g;
-    const level = itemLevel(g.run, "arc");
+    const level = g.run.stats.arc;
     if (level === 0 || g.now < this.nextArc) return;
     const first = nearestEnemy(g, g.player.x, g.player.y, 360);
     if (!first) return;

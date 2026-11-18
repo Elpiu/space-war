@@ -1,0 +1,232 @@
+import { BlendModes } from "phaser";
+import { icon } from "../../art/svg";
+import { DEPTH, LIMITS, VIEW_H, VIEW_W } from "../../config";
+import { AFFIXES, SPAWNABLE } from "../../data/enemies";
+import type { GameScene } from "../../scenes/GameScene";
+import { generateCorridor, hitsAsteroid } from "../../systems/arena";
+import { spawnEnemy } from "../../systems/enemies";
+import { dropPickup } from "../../systems/pickups";
+import type { AffixId, Enemy } from "../../types";
+import { esc } from "../../ui/dom";
+import { banner } from "../../ui/hud";
+import { clamp, hex, pick, pickWeighted, rand, randInt } from "../../utils";
+import type { GameMode, HudInfo, ModeSetup, RunOutcome } from "../mode";
+import { gearDef, rollGear, type GearItem } from "./gear";
+import { showMissionResult } from "./hub";
+import { missionById, type MissionDef } from "./missions";
+import { EQUIP_ORDER, addLoot, itemByUid, loadProfile, loadoutStats, saveProfile, type CampaignProfile } from "./profile";
+
+const AFFIX_IDS: AffixId[] = ["swift", "armored", "splitter"];
+const BASE_SCROLL = 78;
+
+/**
+ * Missione di campagna: corridoio orizzontale che scorre da solo verso destra.
+ * Si vince raggiungendo il portale d'uscita (o abbattendo il boss).
+ */
+export class CampaignMode implements GameMode {
+  readonly id = "campaign" as const;
+  readonly heading = 0;
+  private mission: MissionDef;
+  private profile: CampaignProfile;
+  private loot: Omit<GearItem, "uid">[] = [];
+  private scroll = 0;
+  private speed = BASE_SCROLL;
+  private nextSpawnX = VIEW_W + 200;
+  private bossSpawned = false;
+  private exitX = 0;
+
+  constructor(private readonly missionId: string) {
+    this.mission = missionById(missionId);
+    this.profile = loadProfile();
+  }
+
+  setup(): ModeSetup {
+    const seed = Math.floor(Math.random() * 0x7fffffff);
+    const arena = generateCorridor(seed, this.mission.length, this.mission.density);
+    return {
+      arena,
+      start: { x: 220, y: VIEW_H / 2 },
+      base: loadoutStats(this.profile),
+      wave: this.mission.tier * 2 - 1,
+      difficulty: "normal",
+    };
+  }
+
+  begin(g: GameScene) {
+    const cam = g.cameras.main;
+    cam.stopFollow();
+    cam.setBounds(0, 0, g.arena.width, g.arena.height);
+    cam.setScroll(0, 0);
+    this.exitX = g.arena.width - 170;
+
+    if (!this.mission.boss) {
+      // Portale d'uscita: una colonna di luce in fondo al corridoio.
+      const gate = g.add.graphics().setDepth(DEPTH.hazard + 2);
+      gate.fillStyle(0x4ade80, 0.08);
+      gate.fillRect(this.exitX, 0, 170, VIEW_H);
+      gate.lineStyle(6, 0x4ade80, 0.8);
+      gate.lineBetween(this.exitX, 0, this.exitX, VIEW_H);
+      g.trackRunObject(gate);
+      for (let y = 60; y < VIEW_H; y += 150) {
+        g.trackRunObject(
+          g.add.image(this.exitX, y, "glow").setTint(0x4ade80).setBlendMode(BlendModes.ADD).setDisplaySize(140, 140).setDepth(DEPTH.hazard + 2),
+        );
+      }
+      g.trackRunObject(
+        g.add
+          .text(this.exitX + 85, VIEW_H / 2, "USCITA", { fontFamily: "Orbitron, Arial Black", fontSize: "26px", color: "#bbf7d0" })
+          .setOrigin(0.5)
+          .setRotation(Math.PI / 2)
+          .setDepth(DEPTH.hazard + 3),
+      );
+    }
+
+    banner(`MISSIONE ${this.mission.code}`, this.mission.title);
+  }
+
+  update(g: GameScene, dt: number) {
+    const cam = g.cameras.main;
+    const maxScroll = g.arena.width - VIEW_W;
+
+    // Lo scorrimento rallenta quando lo schermo è affollato.
+    const crowded = g.enemies.filter((e) => !e.dead && e.x > this.scroll && e.x < this.scroll + VIEW_W).length;
+    const target = crowded > 8 ? 24 : crowded > 4 ? 50 : BASE_SCROLL;
+    this.speed += (target - this.speed) * Math.min(1, dt * 2);
+    this.scroll = Math.min(maxScroll, this.scroll + this.speed * dt);
+    cam.setScroll(this.scroll, 0);
+
+    // Spawn innescati dalla distanza percorsa.
+    const spawnLimit = g.arena.width - (this.mission.boss ? 300 : 700);
+    while (this.scroll + VIEW_W >= this.nextSpawnX && this.nextSpawnX < spawnLimit) {
+      this.spawnGroup(g);
+      this.nextSpawnX += rand(190, 330) * (1 - this.mission.tier * 0.05);
+    }
+
+    // I nemici rimasti molto indietro escono di scena senza ricompense.
+    for (const e of g.enemies) {
+      if (!e.dead && e.def.id !== "boss" && e.x < this.scroll - 280) g.killEnemy(e, false, true);
+    }
+
+    if (this.scroll >= maxScroll) {
+      if (this.mission.boss) {
+        if (!this.bossSpawned) {
+          this.bossSpawned = true;
+          const boss = spawnEnemy(g, "boss", this.scroll + VIEW_W - 220, VIEW_H / 2);
+          g.onBossSpawned(boss);
+        } else if (!g.enemies.some((e) => e.def.id === "boss" && !e.dead)) {
+          g.endRun("victory");
+        }
+      } else if (g.player.x > this.exitX) {
+        g.endRun("victory");
+      }
+    }
+  }
+
+  private spawnGroup(g: GameScene) {
+    const wave = g.run.wave;
+    const alive = g.enemies.filter((e) => !e.dead).length;
+    if (alive >= Math.min(LIMITS.maxEnemies, 30 + this.mission.tier * 10)) return;
+
+    const def = pickWeighted(
+      SPAWNABLE.filter((d) => d.minWave <= wave),
+      (d) => d.weight(wave),
+    );
+    if (!def) return;
+    const count = def.group ? randInt(def.group[0], def.group[1]) : randInt(1, 2 + Math.floor(this.mission.tier / 2));
+    const eliteChance = Math.min(0.2, 0.03 * this.mission.tier);
+    const x = this.scroll + VIEW_W + rand(60, 160);
+
+    for (let i = 0; i < count; i += 1) {
+      let y = rand(50, VIEW_H - 50);
+      for (let tries = 0; tries < 6 && hitsAsteroid(g.arena, x, y, def.radius + 10); tries += 1) y = rand(50, VIEW_H - 50);
+      const affix = def.id !== "swarm" && Math.random() < eliteChance ? pick(AFFIX_IDS) : undefined;
+      spawnEnemy(g, def.id, x + rand(-30, 30), clamp(y, 40, VIEW_H - 40), { affix });
+    }
+    g.hints.enemy(def.id);
+  }
+
+  constrainPlayer(_g: GameScene, pos: { x: number; y: number }) {
+    pos.x = clamp(pos.x, this.scroll + 30, this.scroll + VIEW_W - 30);
+  }
+
+  onKill(g: GameScene, e: Enemy) {
+    const { x, y, def } = e;
+    const elite = Boolean(e.affix);
+    const isBoss = def.id === "boss";
+    const tier = this.mission.tier;
+
+    if (elite || isBoss || Math.random() < 0.6) {
+      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1)));
+    }
+    if (Math.random() < (elite ? 0.15 : 0.025)) dropPickup(g, "heart", x - 10, y + 4, 2);
+    if (Math.random() < (elite ? 0.06 : 0.006)) dropPickup(g, pick(["magnet", "venom", "emp"] as const), x, y - 12);
+    if (isBoss || (elite && Math.random() < 0.35) || Math.random() < 0.006) dropPickup(g, "chest", x, y);
+    if (isBoss) {
+      for (let i = 0; i < 10; i += 1) dropPickup(g, "coin", x + Math.cos(i) * 60, y + Math.sin(i) * 60, 5 * tier);
+    }
+  }
+
+  /** In campagna la chest è una cassa di bottino: un pezzo d'equipaggiamento. */
+  onChest(g: GameScene) {
+    const item = rollGear(this.mission.tier);
+    this.loot.push(item);
+    const def = gearDef(item.defId);
+    g.toast(`Bottino: ${def.title}`, def.icon, item.rarity === "legendary" || item.rarity === "rare" ? "epic" : "good");
+  }
+
+  end(g: GameScene, outcome: RunOutcome) {
+    const profile = loadProfile();
+    const victory = outcome === "victory";
+    const firstClear = victory && !profile.completed.includes(this.mission.id);
+    const bonus = victory ? 40 * this.mission.tier : 0;
+    const reward = victory ? [rollGear(this.mission.tier, firstClear ? "uncommon" : "common")] : [];
+
+    // Non è un roguelite: monete e bottino raccolti si tengono sempre.
+    profile.coins += g.run.coins + bonus;
+    const added = addLoot(profile, [...this.loot, ...reward]);
+    if (victory && firstClear) profile.completed.push(this.mission.id);
+    saveProfile(profile);
+
+    showMissionResult(
+      {
+        mission: this.mission,
+        victory,
+        coins: g.run.coins,
+        bonus,
+        items: added,
+        firstClear,
+        kills: g.run.kills,
+        time: g.run.time,
+      },
+      {
+        map: () => g.showCampaign(),
+        retry: () => g.startMode(new CampaignMode(this.missionId)),
+      },
+    );
+  }
+
+  hud(g: GameScene): HudInfo {
+    const maxScroll = g.arena.width - VIEW_W;
+    const ratio = maxScroll > 0 ? this.scroll / maxScroll : 1;
+    let detail = `${Math.floor(ratio * 100)}% del percorso`;
+    if (ratio >= 1) detail = this.mission.boss ? "abbatti il boss" : "raggiungi l'uscita";
+    return {
+      label: "MISSIONE",
+      value: this.mission.code,
+      detail,
+      event: this.bossSpawned ? "BOSS" : "",
+      bar: { ratio, text: this.mission.title.toUpperCase(), kind: "route" },
+    };
+  }
+
+  build() {
+    const gear = EQUIP_ORDER.map((slot) => itemByUid(this.profile, this.profile.equipped[slot]))
+      .filter((item): item is GearItem => Boolean(item))
+      .map((item) => {
+        const def = gearDef(item.defId);
+        return `<div class="build-chip build-chip--item rarity-${item.rarity}" style="--c:${hex(def.color)}" title="${esc(def.title)}">${icon(def.icon)}<b>${item.level}</b></div>`;
+      });
+    const loot = `<div class="build-chip build-chip--loot" style="--c:${hex(AFFIXES.splitter.color)}" title="Bottino raccolto">${icon("crate")}<b>${this.loot.length}</b></div>`;
+    return `<div class="build-row">${gear.join("")}${loot}</div>`;
+  }
+}

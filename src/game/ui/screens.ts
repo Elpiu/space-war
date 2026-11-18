@@ -33,7 +33,7 @@ const on = (root: HTMLElement, selector: string, fn: (node: HTMLElement) => void
 
 export const showMenu = (
   meta: Meta,
-  actions: { play: (difficulty: DifficultyId) => void; shop: () => void; toggleSound: () => boolean },
+  actions: { play: (difficulty: DifficultyId) => void; campaign: () => void; shop: () => void; toggleSound: () => boolean },
 ) => {
   let difficulty = meta.difficulty;
   const segs = (Object.keys(DIFFICULTIES) as DifficultyId[])
@@ -47,17 +47,29 @@ export const showMenu = (
         <h1 class="title">SPACE<span>WAR</span></h1>
         <p class="menu__tag">Orbital Survivor</p>
       </div>
-      <div class="menu__panel panel">
-        <button class="btn btn--primary" data-act="play">${icon("play")} Gioca</button>
-        <div class="segmented">${segs}</div>
-        <p class="menu__diff" data-diff-desc>${esc(DIFFICULTIES[difficulty].description)}</p>
-        <button class="btn" data-act="shop">${icon("wrench")} Hangar <span class="pill">${icon("credits")}${meta.credits}</span></button>
-        <div class="menu__stats">
-          <span>${icon("trophy")} Record: wave <b>${meta.bestWave}</b></span>
-          <span>${icon("clock")} Run: <b>${meta.runs}</b></span>
-          <button class="icon-btn" data-act="sound" title="Audio">${icon(meta.muted ? "soundOff" : "soundOn")}</button>
-        </div>
+      <div class="menu__modes">
+        <section class="menu__panel panel mode-card mode-card--survival">
+          <header>${icon("wave")}<div><b>Survival</b><small>Roguelite a wave infinite: tomi, oggetti, boss.</small></div></header>
+          <button class="btn btn--primary" data-act="play">${icon("play")} Gioca</button>
+          <div class="segmented">${segs}</div>
+          <p class="menu__diff" data-diff-desc>${esc(DIFFICULTIES[difficulty].description)}</p>
+          <button class="btn" data-act="shop">${icon("wrench")} Hangar <span class="pill">${icon("credits")}${meta.credits}</span></button>
+          <div class="menu__stats">
+            <span>${icon("trophy")} Record: wave <b>${meta.bestWave}</b></span>
+            <span>${icon("clock")} Run: <b>${meta.runs}</b></span>
+          </div>
+        </section>
+        <section class="menu__panel panel mode-card mode-card--campaign">
+          <header>${icon("map")}<div><b>Campagna</b><small>Attraversa il settore, raccogli equipaggiamento e potenzialo.</small></div></header>
+          <button class="btn btn--primary btn--campaign" data-act="campaign">${icon("flag")} Apri la mappa</button>
+          <ul class="mode-card__list">
+            <li>${icon("gear-blaster")} Armi, secondari, moduli e scafi</li>
+            <li>${icon("arrow-up")} Potenzia o vendi il bottino</li>
+            <li>${icon("boss")} Il Dreadnought ti aspetta in fondo</li>
+          </ul>
+        </section>
       </div>
+      <button class="icon-btn menu__sound" data-act="sound" title="Audio">${icon(meta.muted ? "soundOff" : "soundOn")}</button>
       <div class="menu__keys">
         <span><kbd>WASD</kbd> muovi</span>
         <span><kbd>SPAZIO</kbd> scatto</span>
@@ -79,6 +91,7 @@ export const showMenu = (
   });
   on(root, "[data-act=play]", () => actions.play(difficulty));
   on(root, "[data-act=shop]", actions.shop);
+  on(root, "[data-act=campaign]", actions.campaign);
   on(root, "[data-act=sound]", (node) => (node.innerHTML = icon(actions.toggleSound() ? "soundOff" : "soundOn")));
 };
 

@@ -17,9 +17,12 @@ src/
     art/textures.ts       caricamento PNG/SVG + texture procedurali (glow, stelle...)
     data/enemies.ts       definizioni nemici, affissi elite, scala per wave
     data/upgrades.ts      tomi, oggetti, rarità, computeStats()
-    scenes/GameScene.ts   unica scena: stato, modalità, API per i sistemi
-    systems/arena.ts      generazione arena, disegno, collisioni, parallasse
-    systems/director.ts   wave, eventi orda/boss, spawn
+    scenes/GameScene.ts   nucleo di combattimento: nave, nemici, armi, pickup, pausa
+    modes/mode.ts         interfaccia GameMode (arena, ritmo, ricompense, fine run, HUD)
+    modes/survival.ts     survival roguelite: wave, level-up con tomi, chest, crediti
+    modes/campaign/       campagna: equipaggiamento, missioni, profilo, hub, corridoio
+    systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
+    systems/director.ts   wave del survival, eventi orda/boss, spawn
     systems/enemies.ts    spawn e IA di tutti i nemici, boss a fasi
     systems/weapons.ts    proiettili in pool, cannone, droni, lame, arco, evoluzioni
     systems/deployables.ts torrette e mine
@@ -30,12 +33,25 @@ src/
 
 ## Principi
 
-- **Una scena sola.** `GameScene` tiene lo stato e le modalità (`menu`,
-  `playing`, `levelup`, `paused`, `over`). I sistemi sono funzioni o piccole
-  classi che ricevono la scena e leggono `g.run`, `g.enemies`, `g.player`.
-- **Statistiche derivate.** `computeStats(run)` ricalcola tutto a partire da
-  tomi e oggetti. Nessun valore viene "cotto" dentro le entità, quindi un
-  upgrade non deve aggiornare a mano torrette o droni già esistenti.
+- **Nucleo + modalità.** `GameScene` è il nucleo comune: nave, nemici, armi,
+  pickup, effetti, pausa e stati (`menu`, `playing`, `levelup`, `paused`,
+  `over`). Tutto ciò che distingue le modalità passa da `GameMode`
+  (`modes/mode.ts`):
+  - `setup`: arena, punto di partenza, loadout base, livello di minaccia;
+  - `update`: ritmo e regia (wave nel survival, scorrimento nella campagna);
+  - `onKill` e `onChest`: ricompense;
+  - `end`: assegna le ricompense e mostra il riepilogo;
+  - `hud` e `build`: cosa mostra l'HUD.
+
+  I sistemi ricevono la scena e leggono `g.run`, `g.enemies`, `g.player`, `g.arena`.
+- **Statistiche derivate.** `run.base` è il loadout di partenza: fisso nel
+  survival, calcolato dall'equipaggiamento in campagna (`loadoutStats`).
+  `computeStats(run)` ci applica sopra tomi e oggetti. Nessun valore viene
+  "cotto" dentro le entità, quindi un upgrade non deve aggiornare a mano
+  torrette o droni già esistenti.
+- **Salvataggi separati.** `space-war-meta-v4` contiene crediti e sblocchi del
+  survival; `space-war-campaign-v1` contiene monete, inventario,
+  equipaggiamento e missioni completate.
 - **Tempo di gioco proprio.** `g.now` avanza solo in modalità `playing`:
   pausa e level-up congelano automaticamente timer, cooldown e buff. Al
   congelamento vengono messi in pausa anche tween e particelle.
@@ -48,6 +64,12 @@ src/
   cambia.
 
 ## Aggiungere contenuti
+
+- **Pezzo d'equipaggiamento**: una voce in `GEAR` (`modes/campaign/gear.ts`),
+  con effetti dichiarativi `set`/`add`/`mul` sulle statistiche. Scheda,
+  prezzi e upgrade si derivano da soli.
+- **Missione**: una voce in `MISSIONS` (`modes/campaign/missions.ts`), con
+  posizione sulla mappa e missioni richieste.
 
 - **Nemico**: una voce in `data/enemies.ts`. Se ha un comportamento nuovo, un
   `case` in `updateEnemies` (`systems/enemies.ts`). Sprite in

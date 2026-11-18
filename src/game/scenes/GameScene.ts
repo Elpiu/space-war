@@ -1,38 +1,29 @@
 import { BlendModes, Input, Scene, type GameObjects } from "phaser";
+import type { IconId } from "../art/svg";
 import { createProceduralTextures, preloadArt } from "../art/textures";
 import { audio, type Sfx } from "../audio";
-import {
-  ARENA_H,
-  ARENA_W,
-  CHEST_KILL_STEP,
-  COLORS,
-  DASH,
-  DEPTH,
-  DIFFICULTIES,
-  LIMITS,
-  PLAYER_HIT_IFRAMES,
-  PLAYER_RADIUS,
-  type DifficultyId,
-} from "../config";
+import { CHEST_KILL_STEP, COLORS, DASH, DEPTH, LIMITS, PLAYER_HIT_IFRAMES, PLAYER_RADIUS, type DifficultyId } from "../config";
 import { AFFIXES } from "../data/enemies";
-import { RARITIES, computeStats, isEvolved, rollItem, rollTomeOffers, tomeById, tomeLevel } from "../data/upgrades";
-import { buyUnlock, loadMeta, runCredits, saveMeta, unlockedItems, unlockedTomes, type Meta } from "../meta";
-import { Starfield, arenaCenter, clampToArena, drawArena, generateArena, inNebula, pushOutOfAsteroids } from "../systems/arena";
+import { computeStats, isEvolved } from "../data/upgrades";
+import { buyUnlock, loadMeta, saveMeta, type Meta } from "../meta";
+import { CampaignMode } from "../modes/campaign/campaignMode";
+import { openCampaignHub } from "../modes/campaign/hub";
+import type { GameMode, RunOutcome } from "../modes/mode";
+import { SurvivalMode } from "../modes/survival";
+import { Starfield, clampToArena, drawArena, inNebula, pushOutOfAsteroids } from "../systems/arena";
 import { Deployables } from "../systems/deployables";
-import { Director } from "../systems/director";
 import { destroyEnemy, spawnEnemy, updateEnemies } from "../systems/enemies";
 import { Fx } from "../systems/fx";
-import { activeChests, dropChestNearby, dropPickup, updatePickups } from "../systems/pickups";
+import { activeChests, dropPickup, updatePickups } from "../systems/pickups";
 import { Arsenal, clearEnemyBullets, fireEnemyBullet, updateBullets, updateEnemyBullets } from "../systems/weapons";
-import type { Arena, Bullet, DamageSource, Enemy, EnemyBullet, EnemyId, ItemId, Pickup, ProjectileDef, Run, TomeOffer } from "../types";
+import type { Arena, Bullet, DamageSource, Enemy, EnemyBullet, EnemyId, ItemId, Pickup, ProjectileDef, Run, Stats } from "../types";
+import { mountDevPanel } from "../ui/devPanel";
 import { Hints } from "../ui/hints";
 import { Hud, banner, toast, type ToastTone } from "../ui/hud";
-import { mountDevPanel } from "../ui/devPanel";
-import { closeScreen, showGameOver, showLevelUp, showMenu, showPause, showShop } from "../ui/screens";
-import type { IconId } from "../art/svg";
-import { SpatialHash, dist2, pick } from "../utils";
+import { closeScreen, showMenu, showPause, showShop } from "../ui/screens";
+import { SpatialHash, dist2 } from "../utils";
 
-type Mode = "menu" | "playing" | "levelup" | "paused" | "over";
+export type SceneState = "menu" | "playing" | "levelup" | "paused" | "over";
 
 const SOURCE_COLORS: Partial<Record<DamageSource, number>> = {
   drone: 0xc4b5fd,
@@ -44,11 +35,17 @@ const SOURCE_COLORS: Partial<Record<DamageSource, number>> = {
   emp: 0xc4b5fd,
 };
 
+/**
+ * Nucleo di combattimento condiviso dalle modalità: nave, nemici, armi,
+ * pickup, effetti, pausa. Arena, ritmo e ricompense li decide `mode`.
+ */
 export class GameScene extends Scene {
   // Stato condiviso letto dai sistemi.
   run!: Run;
   meta!: Meta;
   arena!: Arena;
+  mode!: GameMode;
+  state: SceneState = "menu";
   now = 0;
   player!: GameObjects.Image;
   playerScale = 1;
@@ -61,18 +58,15 @@ export class GameScene extends Scene {
   telegraph!: GameObjects.Graphics;
   deployables!: Deployables;
   hints!: Hints;
+  hud!: Hud;
+  pendingLevels = 0;
 
-  private mode: Mode = "menu";
-  private hud!: Hud;
   private starfield!: Starfield;
   private arsenal: Arsenal | null = null;
-  private director: Director | null = null;
   private arenaObjects: GameObjects.GameObject[] = [];
   private engine!: GameObjects.Image;
   private keys!: Record<string, Input.Keyboard.Key>;
   private menuDrift = 0;
-  private pendingLevels = 0;
-  private offers: TomeOffer[] = [];
   private god = false;
 
   constructor() {
@@ -111,7 +105,7 @@ export class GameScene extends Scene {
     this.mountDev();
     this.showMenu();
 
-    this.game.events.on("blur", () => this.mode === "playing" && this.pause());
+    this.game.events.on("blur", () => this.state === "playing" && this.pause());
   }
 
   // ---------- Loop ----------
@@ -119,25 +113,26 @@ export class GameScene extends Scene {
   update(_time: number, rawDelta: number) {
     if (Input.Keyboard.JustDown(this.keys.mute)) this.toggleSound();
 
-    if (this.mode === "menu") {
+    if (this.state === "menu") {
       this.menuDrift += rawDelta * 0.04;
       this.starfield.update(this.menuDrift);
       return;
     }
 
     if (Input.Keyboard.JustDown(this.keys.pause) || Input.Keyboard.JustDown(this.keys.esc)) {
-      if (this.mode === "playing" || this.mode === "paused") this.togglePause();
+      if (this.state === "playing" || this.state === "paused") this.togglePause();
     }
     this.starfield.update();
-    if (this.mode !== "playing") return;
+    if (this.state !== "playing") return;
 
     const delta = Math.min(rawDelta, 50);
     const dt = delta / 1000;
     this.now += delta;
     this.run.time += delta;
 
+    this.mode.update(this, dt);
+    if (this.state !== "playing") return;
     this.updatePlayer(dt);
-    this.director!.update();
     updateEnemies(this, dt);
     this.arsenal!.update(dt);
     this.deployables.update();
@@ -156,7 +151,7 @@ export class GameScene extends Scene {
     this.fx.drawArrows(arrows);
     this.hud.update(this);
 
-    if (this.pendingLevels > 0 && this.mode === "playing") this.openLevelUp();
+    if (this.pendingLevels > 0 && this.state === "playing") this.mode.onLevelUp?.(this);
   }
 
   private updatePlayer(dt: number) {
@@ -172,8 +167,8 @@ export class GameScene extends Scene {
 
     const wantsDash = Input.Keyboard.JustDown(k.dash) || Input.Keyboard.JustDown(k.shift);
     if (wantsDash && this.now >= run.dashReadyAt) {
-      const dir = len > 0 ? { x: mx, y: my } : { x: Math.cos(this.player.rotation - Math.PI / 2), y: Math.sin(this.player.rotation - Math.PI / 2) };
-      run.dashDir = dir;
+      const facing = this.player.rotation - Math.PI / 2;
+      run.dashDir = len > 0 ? { x: mx, y: my } : { x: Math.cos(facing), y: Math.sin(facing) };
       run.dashUntil = this.now + DASH.duration;
       run.dashReadyAt = this.now + run.stats.dashCooldown;
       run.invulnUntil = Math.max(run.invulnUntil, this.now + DASH.iframes);
@@ -196,22 +191,23 @@ export class GameScene extends Scene {
 
     const pos = { x: this.player.x + vx * dt, y: this.player.y + vy * dt };
     pushOutOfAsteroids(this.arena, pos, PLAYER_RADIUS);
-    clampToArena(pos, PLAYER_RADIUS);
+    this.mode.constrainPlayer?.(this, pos);
+    clampToArena(this.arena, pos, PLAYER_RADIUS);
     this.player.setPosition(pos.x, pos.y);
 
-    if (len > 0) {
-      const target = Math.atan2(my, mx) + Math.PI / 2;
+    // Muso: segue il movimento, oppure resta fisso (campagna) con una leggera inclinazione.
+    const heading = this.mode.heading;
+    const target = heading !== null ? heading + Math.PI / 2 + my * 0.25 : len > 0 ? Math.atan2(my, mx) + Math.PI / 2 : null;
+    if (target !== null) {
       let diff = target - this.player.rotation;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
       this.player.rotation += diff * Math.min(1, dt * 14);
-      if (Math.random() < 0.5) {
-        const back = this.player.rotation + Math.PI / 2;
-        this.fx.trailDot(pos.x + Math.cos(back) * 18, pos.y + Math.sin(back) * 18, 0xfb923c);
-      }
     }
-
     const back = this.player.rotation + Math.PI / 2;
+    if (len > 0 && Math.random() < 0.5) {
+      this.fx.trailDot(pos.x + Math.cos(back) * 18, pos.y + Math.sin(back) * 18, 0xfb923c);
+    }
     this.engine
       .setPosition(pos.x + Math.cos(back) * 16, pos.y + Math.sin(back) * 16)
       .setAlpha(len > 0 ? 0.8 : 0.4)
@@ -219,54 +215,53 @@ export class GameScene extends Scene {
     const blinking = this.now < run.invulnUntil && this.now > run.dashUntil;
     this.player.setAlpha(blinking ? (Math.floor(this.now / 70) % 2 ? 0.35 : 1) : 1);
 
-    if (run.coins >= 8) this.hints.trigger("coins");
+    if (run.coins >= 8 && run.stats.maxTurrets > 0) this.hints.trigger("coins");
     if (Input.Keyboard.JustDown(k.turret)) this.deployables.placeTurret();
     if (Input.Keyboard.JustDown(k.mine)) this.deployables.placeMine();
   }
 
   // ---------- Run ----------
 
-  private startRun(difficulty: DifficultyId = this.meta.difficulty) {
+  /** Avvia una run nella modalità indicata. */
+  startMode(mode: GameMode) {
     this.cleanupRun();
     closeScreen();
-    this.meta.difficulty = difficulty;
-    saveMeta(this.meta);
-
-    const seed = Math.floor(Math.random() * 0x7fffffff);
-    this.arena = generateArena(seed);
+    this.mode = mode;
+    const setup = mode.setup(this);
+    this.arena = setup.arena;
     this.arenaObjects = drawArena(this, this.arena);
     this.now = 0;
-    this.run = this.createRun(difficulty, seed);
+    this.run = this.createRun(setup.difficulty, setup.arena.seed, setup.base, setup.wave);
 
-    const c = arenaCenter();
-    this.engine = this.add.image(c.x, c.y, "glow").setTint(0xfb923c).setBlendMode(BlendModes.ADD).setDepth(DEPTH.player - 1).setDisplaySize(34, 34);
-    this.player = this.add.image(c.x, c.y, "player").setDepth(DEPTH.player);
+    const { x, y } = setup.start;
+    this.engine = this.add.image(x, y, "glow").setTint(0xfb923c).setBlendMode(BlendModes.ADD).setDepth(DEPTH.player - 1).setDisplaySize(34, 34);
+    this.player = this.add.image(x, y, "player").setDepth(DEPTH.player);
     this.player.setDisplaySize(48, 48);
+    if (mode.heading !== null) this.player.setRotation(mode.heading + Math.PI / 2);
     this.playerScale = this.player.scaleX;
 
     const cam = this.cameras.main;
-    cam.setBounds(-160, -160, ARENA_W + 320, ARENA_H + 320);
+    cam.setBounds(-160, -160, this.arena.width + 320, this.arena.height + 320);
     cam.startFollow(this.player, true, 0.12, 0.12);
     cam.setZoom(1);
 
     this.arsenal = new Arsenal(this);
-    this.director = new Director(this);
-    this.mode = "playing";
+    this.state = "playing";
+    mode.begin(this);
     this.hud.show();
     this.hud.update(this, true);
     audio.playMusic("game");
-    this.hints.trigger("move");
   }
 
-  private createRun(difficulty: DifficultyId, seed: number): Run {
+  private createRun(difficulty: DifficultyId, seed: number, base: Stats, wave: number): Run {
     const run: Run = {
       difficulty,
       seed,
       time: 0,
-      wave: 0,
+      wave,
       waveEndsAt: 0,
-      nextWaveAt: 1500,
-      inBreak: true,
+      nextWaveAt: 0,
+      inBreak: false,
       event: "normal",
       level: 1,
       xp: 0,
@@ -288,7 +283,8 @@ export class GameScene extends Scene {
       nextChestKills: CHEST_KILL_STEP,
       volleys: 0,
       damageBySource: {},
-      stats: undefined as never,
+      base,
+      stats: base,
       over: false,
     };
     run.stats = computeStats(run);
@@ -323,7 +319,12 @@ export class GameScene extends Scene {
     this.cameras.main.stopFollow();
   }
 
-  private refreshStats() {
+  /** Oggetti grafici legati alla run, distrutti a fine run (usato dalle modalità). */
+  trackRunObject(object: GameObjects.GameObject) {
+    this.arenaObjects.push(object);
+  }
+
+  refreshStats() {
     const oldMax = this.run.stats.maxHp;
     this.run.stats = computeStats(this.run);
     const gained = this.run.stats.maxHp - oldMax;
@@ -350,50 +351,35 @@ export class GameScene extends Scene {
     if (e.hp <= 0) this.killEnemy(e, true);
   }
 
-  private killEnemy(e: Enemy, rewards: boolean) {
+  /** Rimuove un nemico. Con `rewards` la modalità assegna i drop. */
+  killEnemy(e: Enemy, rewards: boolean, silent = false) {
     if (e.dead) return;
     e.dead = true;
-    const run = this.run;
     const { x, y, def } = e;
     const isBoss = def.id === "boss";
-    const size = Math.min(3.5, Math.max(0.7, e.radius / 20));
-    this.fx.explosion(x, y, e.affix ? AFFIXES[e.affix].color : def.color, size);
-    this.sfx(e.radius > 26 ? "boom" : "kill");
-    if (e.radius > 26) this.shake(isBoss ? 500 : 120, isBoss ? 0.02 : 0.005);
+    if (!silent) {
+      const size = Math.min(3.5, Math.max(0.7, e.radius / 20));
+      this.fx.explosion(x, y, e.affix ? AFFIXES[e.affix].color : def.color, size);
+      this.sfx(e.radius > 26 ? "boom" : "kill");
+      if (e.radius > 26) this.shake(isBoss ? 500 : 120, isBoss ? 0.02 : 0.005);
+    }
     destroyEnemy(e);
+    if (silent) return;
 
     if (def.id === "kamikaze") this.blast(x, y, 90, 6, false);
     if (def.id === "brute") for (let i = 0; i < 2; i += 1) spawnEnemy(this, "swarm", x + (i ? 20 : -20), y);
     if (e.affix === "splitter" && !isBoss) {
       for (let i = 0; i < 3; i += 1) spawnEnemy(this, def.id, x + Math.cos(i * 2.1) * 26, y + Math.sin(i * 2.1) * 26, { small: true });
     }
-
-    if (!rewards) return;
-    const reward = DIFFICULTIES[run.difficulty].reward;
-    const elite = Boolean(e.affix);
-    run.kills += 1;
-
-    dropPickup(this, "xp", x, y, Math.ceil(def.xp * (elite ? 3 : 1) * reward));
-    if (elite || isBoss || Math.random() < 0.45) {
-      dropPickup(this, "coin", x + 10, y + 6, Math.ceil(def.coins * (elite ? 2 : 1) * reward));
-    }
-    if (Math.random() < (elite ? 0.15 : 0.012)) dropPickup(this, "heart", x - 10, y + 4, 2);
-    if (Math.random() < (elite ? 0.08 : 0.005)) dropPickup(this, pick(["magnet", "venom", "emp"] as const), x, y - 12);
-    if (isBoss || (elite && Math.random() < 0.2)) dropPickup(this, "chest", x, y);
-
-    if (run.kills >= run.nextChestKills) {
-      run.nextChestKills += CHEST_KILL_STEP + run.wave * 4;
-      dropChestNearby(this);
-      this.hints.trigger("chest");
-    }
-    if (isEvolved(run, "vampirism")) this.heal(0.2);
-
     if (isBoss) {
       this.hud.setBoss(null);
       clearEnemyBullets(this);
-      banner("BOSS ABBATTUTO", "Una chest ti aspetta nel relitto.", "epic");
-      for (let i = 0; i < 8; i += 1) dropPickup(this, "coin", x + Math.cos(i) * 50, y + Math.sin(i) * 50, 3);
     }
+    if (!rewards) return;
+
+    this.run.kills += 1;
+    if (isEvolved(this.run, "vampirism")) this.heal(0.2);
+    this.mode.onKill(this, e);
   }
 
   explodeKamikaze(e: Enemy) {
@@ -436,10 +422,10 @@ export class GameScene extends Scene {
     this.sfx("hurt");
     this.hud.hurt();
     this.fx.burst(this.player.x, this.player.y, COLORS.danger, 12);
-    if (run.hp <= 0) this.gameOver();
+    if (run.hp <= 0) this.endRun("death");
   }
 
-  private heal(amount: number) {
+  heal(amount: number) {
     this.run.hp = Math.min(this.run.stats.maxHp, this.run.hp + amount);
   }
 
@@ -487,112 +473,30 @@ export class GameScene extends Scene {
         break;
       }
       case "chest":
-        this.openChest(p.x, p.y);
+        this.fx.explosion(p.x, p.y, 0xfbbf24, 1.4);
+        this.fx.ring(p.x, p.y, 0xfbbf24, 140);
+        this.sfx("reward");
+        this.mode.onChest(this, p.x, p.y);
         break;
     }
   }
 
-  private openChest(x: number, y: number) {
-    const item = rollItem(this.run, unlockedItems(this.meta));
-    this.fx.explosion(x, y, 0xfbbf24, 1.4);
-    this.fx.ring(x, y, 0xfbbf24, 140);
-    this.sfx("reward");
-    if (!item) {
-      this.run.coins += 25;
-      this.toast("Chest: +25 monete", "coin", "good");
-      return;
-    }
-    const level = (this.run.items[item.id] ?? 0) + 1;
-    this.run.items[item.id] = level;
-    this.refreshStats();
-    if (item.id === "bulkhead") this.heal(3);
-    this.toast(`${item.title} ${level > 1 ? `Liv. ${level}` : ""} · ${item.perLevel}`, item.icon, "epic");
-  }
-
-  // ---------- Level-up ----------
-
-  private openLevelUp() {
-    this.offers = rollTomeOffers(this.run, unlockedTomes(this.meta));
-    if (this.offers.length === 0) {
-      this.pendingLevels = 0;
-      this.run.coins += 10;
-      this.toast("Tomi al massimo: +10 monete", "coin");
-      return;
-    }
-    this.freeze("levelup");
-    this.sfx("levelUp");
-    this.renderLevelUp();
-  }
-
-  private renderLevelUp() {
-    const run = this.run;
-    const cost = this.rerollCost();
-    const free = run.freeRerolls > 0;
-    showLevelUp(
-      run,
-      this.offers,
-      {
-        label: free ? `Reroll gratis (${run.freeRerolls})` : `Reroll ${cost} monete (hai ${run.coins})`,
-        enabled: free || run.coins >= cost,
-      },
-      { pick: (offer) => this.applyTome(offer), reroll: () => this.reroll() },
-    );
-  }
-
-  private rerollCost() {
-    return Math.round(15 * (this.run.paidRerolls + 1) ** 1.5);
-  }
-
-  private reroll() {
-    const run = this.run;
-    if (run.freeRerolls > 0) run.freeRerolls -= 1;
-    else {
-      const cost = this.rerollCost();
-      if (run.coins < cost) return;
-      run.coins -= cost;
-      run.paidRerolls += 1;
-    }
-    this.offers = rollTomeOffers(run, unlockedTomes(this.meta));
-    this.renderLevelUp();
-  }
-
-  private applyTome(offer: TomeOffer) {
-    const run = this.run;
-    const current = run.tomes[offer.tome.id] ?? { level: 0, bonus: 0 };
-    run.tomes[offer.tome.id] = { level: current.level + 1, bonus: current.bonus + offer.value };
-    this.refreshStats();
-
-    const level = tomeLevel(run, offer.tome.id);
-    if (level === LIMITS.tomeMaxLevel - 1) this.hints.trigger("evolve");
-    if (level >= LIMITS.tomeMaxLevel) {
-      const tome = tomeById(offer.tome.id);
-      if (tome.id === "wisdom") run.freeRerolls += 1;
-      banner(`EVOLUZIONE: ${tome.evolution.title.toUpperCase()}`, tome.evolution.description, "epic");
-      this.sfx("reward");
-    }
-    if (offer.rarity === "legendary") this.fx.ring(this.player.x, this.player.y, RARITIES.legendary.color, 160);
-
-    this.pendingLevels -= 1;
-    closeScreen();
-    this.unfreeze();
-  }
-
   // ---------- Stati di gioco ----------
 
-  private freeze(mode: Mode) {
-    this.mode = mode;
+  freeze(state: SceneState) {
+    this.state = state;
     this.tweens.pauseAll();
     this.fx.pause(true);
   }
 
-  private unfreeze() {
-    this.mode = "playing";
+  unfreeze() {
+    this.state = "playing";
     this.tweens.resumeAll();
     this.fx.pause(false);
   }
 
   private pause() {
-    if (this.mode !== "playing") return;
+    if (this.state !== "playing") return;
     this.freeze("paused");
     audio.pauseMusic();
     showPause(this.run, this.meta.muted, {
@@ -600,55 +504,47 @@ export class GameScene extends Scene {
       quit: () => {
         closeScreen();
         this.unfreeze();
-        this.gameOver();
+        this.endRun("abandon");
       },
       toggleSound: () => this.toggleSound(),
     });
   }
 
   private togglePause() {
-    if (this.mode === "playing") return this.pause();
-    if (this.mode !== "paused") return;
+    if (this.state === "playing") return this.pause();
+    if (this.state !== "paused") return;
     closeScreen();
     this.unfreeze();
     audio.resumeMusic();
   }
 
-  private gameOver() {
+  /** Chiude la run: la modalità assegna le ricompense e mostra il riepilogo. */
+  endRun(outcome: RunOutcome) {
     const run = this.run;
     if (run.over) return;
     run.over = true;
-    run.hp = 0;
-    this.mode = "over";
-    this.fx.explosion(this.player.x, this.player.y, COLORS.player, 3);
-    this.shake(400, 0.02);
-    this.player.setVisible(false);
-    this.engine.setVisible(false);
+    this.state = "over";
     this.fx.clearArrows();
     this.telegraph.clear();
     this.hud.hide();
     this.hints.clear();
-    this.sfx("boom");
-
-    const credits = runCredits(run, DIFFICULTIES[run.difficulty].reward);
-    const record = run.wave > this.meta.bestWave;
-    this.meta.credits += credits;
-    this.meta.bestWave = Math.max(this.meta.bestWave, run.wave);
-    this.meta.runs += 1;
-    saveMeta(this.meta);
-
-    this.time.delayedCall(900, () =>
-      showGameOver(run, { credits, totalCredits: this.meta.credits, record }, {
-        retry: () => this.startRun(run.difficulty),
-        shop: () => this.showShop(),
-        menu: () => this.showMenu(),
-      }),
-    );
+    if (outcome === "victory") {
+      this.fx.ring(this.player.x, this.player.y, 0x4ade80, 260, 700);
+      this.sfx("reward");
+    } else {
+      run.hp = 0;
+      this.fx.explosion(this.player.x, this.player.y, COLORS.player, 3);
+      this.shake(400, 0.02);
+      this.player.setVisible(false);
+      this.engine.setVisible(false);
+      this.sfx("boom");
+    }
+    this.time.delayedCall(900, () => this.mode.end(this, outcome));
   }
 
-  private showMenu() {
+  showMenu() {
     this.cleanupRun();
-    this.mode = "menu";
+    this.state = "menu";
     this.hud.hide();
     this.hints.clear();
     const cam = this.cameras.main;
@@ -656,16 +552,25 @@ export class GameScene extends Scene {
     cam.setScroll(0, 0);
     audio.playMusic("menu");
     showMenu(this.meta, {
-      play: (difficulty) => this.startRun(difficulty),
+      play: (difficulty) => this.startMode(new SurvivalMode(difficulty)),
+      campaign: () => this.showCampaign(),
       shop: () => this.showShop(),
       toggleSound: () => this.toggleSound(),
     });
   }
 
-  private showShop() {
-    if (this.mode !== "menu") this.showMenu();
+  showShop() {
+    if (this.state !== "menu") this.showMenu();
     showShop(this.meta, {
       buy: (key, cost) => buyUnlock(this.meta, key, cost),
+      back: () => this.showMenu(),
+    });
+  }
+
+  showCampaign() {
+    if (this.state !== "menu") this.showMenu();
+    openCampaignHub({
+      launch: (missionId) => this.startMode(new CampaignMode(missionId)),
       back: () => this.showMenu(),
     });
   }
@@ -682,7 +587,7 @@ export class GameScene extends Scene {
 
   onBossSpawned(boss: Enemy) {
     this.hud.setBoss(boss);
-    banner(`WAVE ${this.run.wave} · ALLERTA BOSS`, boss.def.hint, "warning");
+    banner(`ALLERTA BOSS · ${boss.def.label.toUpperCase()}`, boss.def.hint, "warning");
     this.sfx("alarm");
     this.shake(300, 0.006);
     this.hints.enemy("boss");
@@ -713,13 +618,13 @@ export class GameScene extends Scene {
   // ---------- Strumenti di sviluppo ----------
 
   private mountDev() {
-    const playing = () => this.mode === "playing";
+    const playing = () => this.state === "playing";
     mountDevPanel({
       "+1 livello": () => playing() && (this.pendingLevels += 1),
       "+100 monete": () => playing() && (this.run.coins += 100),
-      "Oggetto casuale": () => playing() && this.openChest(this.player.x, this.player.y),
+      "Chest qui": () => playing() && dropPickup(this, "chest", this.player.x + 60, this.player.y),
       "Wave +1": () => {
-        if (!playing()) return;
+        if (!playing() || this.mode.id !== "survival") return;
         this.run.inBreak = true;
         this.run.nextWaveAt = this.now;
       },
@@ -735,13 +640,15 @@ export class GameScene extends Scene {
         (["splitter", "bounce", "blades", "arc", "drone"] as ItemId[]).forEach((id) => (this.run.items[id] = (this.run.items[id] ?? 0) + 1));
         this.refreshStats();
       },
+      "Vittoria": () => playing() && this.endRun("victory"),
       "Invulnerabile": () => {
         this.god = !this.god;
         toast(`God mode ${this.god ? "ON" : "OFF"}`);
       },
-      "+500 crediti": () => {
+      "+500 crediti/monete": () => {
         this.meta.credits += 500;
         saveMeta(this.meta);
+        window.dispatchEvent(new CustomEvent("dev:coins", { detail: 500 }));
       },
     });
   }

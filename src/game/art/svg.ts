@@ -54,6 +54,17 @@ export const ICONS = {
   "item-mine": `<circle cx="10" cy="14" r="4.5"/>` + S("M10 6.5v2M10 19.5v2M2.5 14h2M15.5 14h2M4.7 8.7l1.4 1.4M15.3 19.3l-1.4-1.4M4.7 19.3l1.4-1.4") + S("M19 2.5v6M16 5.5h6"),
   "item-bulkhead": S("M12 2.5 20.5 7.3v9.4L12 21.5l-8.5-4.8V7.3z") + S("M12 8v8M8 12h8"),
 
+  // Campagna: equipaggiamento e mappa
+  "gear-blaster": S("M3 10h11l3-2h4v8h-4l-3-2H3z") + S("M7 14v4h3"),
+  "gear-spread": S("M3 12h4M7 12l13-7M7 12h14M7 12l13 7") + F("M2 10h4v4H2z"),
+  "gear-rail": `<rect x="2" y="10" width="15" height="4" rx="1"/>` + S("M17 12h5M6 7v10M10 7v10M14 7v10"),
+  "gear-minigun": S("M3 9h12M3 12h12M3 15h12") + `<rect x="15" y="7" width="4" height="10" rx="1"/>` + S("M19 12h3"),
+  "gear-hull": S("M12 2.5l4 8v8l-4 3-4-3v-8z") + S("M8 12l-5 5v2l5-2M16 12l5 5v2l-5-2") + F("M12 8a1.8 1.8 0 1 0 0 3.6A1.8 1.8 0 0 0 12 8z"),
+  "arrow-up": S("M12 19V5M6 11l6-6 6 6"),
+  map: S("M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z") + S("M9 4v13.5M15 6.5V20"),
+  flag: S("M5 21V3.5") + F("M5 4h12l-2.5 4L17 12H5z"),
+  crate: S("M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z") + S("M3 7.5 12 12l9-4.5M12 12v9"),
+
   // Drop speciali
   "special-magnet": S("M6 3.5v8a6 6 0 0 0 12 0v-8") + F("M3.5 3h5v4h-5zM15.5 3h5v4h-5z"),
   "special-venom": S("M9 2.5h6M10 2.5v5.5L4.5 18a2.5 2.5 0 0 0 2.2 3.5h10.6a2.5 2.5 0 0 0 2.2-3.5L14 8V2.5") + F("M7 15h10l2 4.2a1.2 1.2 0 0 1-1.1 1.8H6.1A1.2 1.2 0 0 1 5 19.2z"),

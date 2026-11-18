@@ -27,7 +27,25 @@
 - [x] Pulizia: telemetria del template, Tailwind e file inutilizzati rimossi;
       nessuna richiesta a file inesistenti.
 
-## Prossimi passi
+## v2.1: due modalità (fatto)
+
+- [x] Nucleo di combattimento separato dalle modalità (`GameMode`).
+- [x] Survival estratto senza cambiare il gameplay.
+- [x] Campagna MVP: hub con mappa, equipaggiamento e inventario; vendita e
+      upgrade; corridoio a scorrimento; portale d'uscita; boss nella 1-5;
+      bottino e riepilogo della missione.
+
+## Campagna: prossimi passi
+
+- Blocchi di livello riconoscibili (corridoio di detriti, stazione con
+  torrette nemiche, zona d'imboscata) al posto della distribuzione casuale.
+- Armi con comportamenti nuovi (laser continuo, missili a ricerca).
+- Statistiche secondarie casuali sugli oggetti (affissi), confronto con
+  l'equipaggiamento attuale.
+- Bilanciamento della curva di monete e upgrade sulle cinque missioni.
+- Settore 2 e un secondo boss.
+
+## Survival: prossimi passi
 
 - Bilanciamento con partite vere: curva XP, densità degli spawn dopo la wave
   15, danno del boss nelle tier alte.

@@ -8,6 +8,11 @@ Nessuno sa chi abbia sparato il primo colpo, ma ora è una guerra di tutti contr
 
 Sei un "Orbital Survivor", su una navicella fatta di pezzi recuperati. Sopravvivi un'altra ondata, raccogli abbastanza risorse per potenziare la nave e, forse, un giorno troverai un passaggio per uscire da questa orbita maledetta.
 
+## Due modalità
+
+- **Survival**: roguelite a wave infinite. Tomi al level-up, oggetti dalle chest, un boss ogni 5 wave; i crediti di fine run sbloccano contenuti nell'Hangar.
+- **Campagna**: scegli la missione sulla mappa del settore e attraversa il corridoio fino all'uscita. Raccogli armi, sistemi, moduli e scafi, poi potenziali o vendili per monete.
+
 ## Come si gioca
 
 | Tasto | Azione |

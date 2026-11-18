@@ -278,7 +278,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     }
 
     pushOutOfAsteroids(g.arena, e, e.radius);
-    clampToArena(e, e.radius);
+    clampToArena(g.arena, e, e.radius);
 
     // Rendering.
     const s = e.sprite;

@@ -175,28 +175,46 @@ export const tomeBonus = (run: Run, id: TomeId) => (run.tomes[id]?.bonus ?? 0) /
 export const itemLevel = (run: Run, id: ItemId) => run.items[id] ?? 0;
 export const isEvolved = (run: Run, id: TomeId) => tomeLevel(run, id) >= LIMITS.tomeMaxLevel;
 
-/** Statistiche derivate: si ricalcolano dopo ogni scelta, niente stato duplicato. */
+export const defaultLoadout = (): Stats => ({
+  ...BASE_STATS,
+  pierce: 0,
+  bounce: 0,
+  maxTurrets: DEPLOY.baseTurrets,
+  maxMines: DEPLOY.baseMines,
+  drones: 0,
+  blades: 0,
+  arc: 0,
+  mineRadius: 1,
+  spread: 0.15,
+  aim: "auto",
+});
+
+/** Statistiche derivate: loadout base + tomi + oggetti. Niente stato duplicato. */
 export const computeStats = (run: Run): Stats => {
+  const base = run.base;
   const b = (id: TomeId) => tomeBonus(run, id);
   const i = (id: ItemId) => itemLevel(run, id);
 
   return {
-    maxHp: BASE_STATS.maxHp * (1 + b("vitality")) + i("bulkhead") * 3,
-    speed: BASE_STATS.speed * (1 + b("mobility")),
-    damage: BASE_STATS.damage * (1 + b("power")),
-    fireInterval: Math.max(90, BASE_STATS.fireInterval / (1 + b("cadence"))),
-    bulletSpeed: BASE_STATS.bulletSpeed,
-    range: BASE_STATS.range,
-    pickupRadius: BASE_STATS.pickupRadius * (1 + b("magnetism")),
-    projectiles: BASE_STATS.projectiles + i("splitter"),
-    xpMult: BASE_STATS.xpMult * (1 + b("wisdom")),
-    lifeSteal: b("vampirism"),
-    dashCooldown: BASE_STATS.dashCooldown / (1 + b("mobility")),
-    deployPower: BASE_STATS.deployPower * (1 + b("engineering")) * (1 + i("turretSlot") * 0.2),
-    pierce: isEvolved(run, "power") ? 2 : 0,
-    bounce: i("bounce"),
-    maxTurrets: DEPLOY.baseTurrets + i("turretSlot") + (isEvolved(run, "engineering") ? 1 : 0),
-    maxMines: DEPLOY.baseMines + i("mineSupply"),
+    ...base,
+    maxHp: base.maxHp * (1 + b("vitality")) + i("bulkhead") * 3,
+    speed: base.speed * (1 + b("mobility")),
+    damage: base.damage * (1 + b("power")),
+    fireInterval: Math.max(70, base.fireInterval / (1 + b("cadence"))),
+    pickupRadius: base.pickupRadius * (1 + b("magnetism")),
+    projectiles: base.projectiles + i("splitter"),
+    xpMult: base.xpMult * (1 + b("wisdom")),
+    lifeSteal: base.lifeSteal + b("vampirism"),
+    dashCooldown: base.dashCooldown / (1 + b("mobility")),
+    deployPower: base.deployPower * (1 + b("engineering")) * (1 + i("turretSlot") * 0.2),
+    pierce: base.pierce + (isEvolved(run, "power") ? 2 : 0),
+    bounce: base.bounce + i("bounce"),
+    maxTurrets: base.maxTurrets + i("turretSlot") + (isEvolved(run, "engineering") ? 1 : 0),
+    maxMines: base.maxMines + i("mineSupply"),
+    drones: base.drones + i("drone"),
+    blades: base.blades + i("blades"),
+    arc: base.arc + i("arc"),
+    mineRadius: base.mineRadius * (1 + i("mineSupply") * 0.15),
   };
 };
 

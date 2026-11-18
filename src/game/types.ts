@@ -2,11 +2,19 @@ import type { GameObjects } from "phaser";
 import type { IconId } from "./art/svg";
 import type { BASE_STATS, DifficultyId } from "./config";
 
+/** Statistiche complete della nave. Il loadout base viene dalla modalità. */
 export type Stats = typeof BASE_STATS & {
   pierce: number;
   bounce: number;
   maxTurrets: number;
   maxMines: number;
+  drones: number;
+  blades: number;
+  arc: number;
+  mineRadius: number;
+  spread: number;
+  /** "auto": mira il nemico più vicino; "forward": spara in avanti con un piccolo aiuto alla mira. */
+  aim: "auto" | "forward";
 };
 
 // ---------- Nemici ----------
@@ -164,6 +172,8 @@ export interface Mine {
 
 export interface Arena {
   seed: number;
+  width: number;
+  height: number;
   asteroids: { x: number; y: number; r: number }[];
   nebulas: { x: number; y: number; r: number }[];
 }
@@ -248,6 +258,8 @@ export interface Run {
   nextChestKills: number;
   volleys: number;
   damageBySource: Partial<Record<DamageSource, number>>;
+  /** Loadout di partenza: fisso nel survival, dato dall'equipaggiamento in campagna. */
+  base: Stats;
   stats: Stats;
   over: boolean;
 }

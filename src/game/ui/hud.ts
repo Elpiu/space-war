@@ -1,9 +1,9 @@
 import { icon, type IconId } from "../art/svg";
-import { DEPLOY, LIMITS } from "../config";
-import { ITEMS, TOMES, isEvolved } from "../data/upgrades";
+import { DEPLOY } from "../config";
+import { isEvolved } from "../data/upgrades";
 import type { GameScene } from "../scenes/GameScene";
 import type { Enemy } from "../types";
-import { fmt, formatTime, hex } from "../utils";
+import { fmt, hex } from "../utils";
 import { el, esc, layer, setText } from "./dom";
 
 export type ToastTone = "info" | "good" | "warning" | "epic";
@@ -33,7 +33,7 @@ export class Hud {
           </div>
         </div>
         <div class="hud-wave panel">
-          <span class="hud-wave__label">${icon("wave")} WAVE <b data-q="wave">0</b></span>
+          <span class="hud-wave__label">${icon("wave")} <span data-q="waveLabel">WAVE</span> <b data-q="wave">0</b></span>
           <span class="hud-wave__timer" data-q="timer">0:00</span>
           <span class="hud-wave__event" data-q="event"></span>
         </div>
@@ -97,26 +97,21 @@ export class Hud {
     const { run } = g;
     const s = run.stats;
 
-    setText(this.q.level, `LV ${run.level}`);
-    this.q.xpFill.style.width = `${Math.min(100, (run.xp / run.xpToNext) * 100)}%`;
+    const info = g.mode.hud(g);
+    setText(this.q.level, info.bar.text);
+    this.q.xpFill.style.width = `${Math.min(100, Math.max(0, info.bar.ratio) * 100)}%`;
+    this.q.xpFill.parentElement!.classList.toggle("is-route", info.bar.kind === "route");
     setText(this.q.hp, `${fmt(Math.max(0, Math.ceil(run.hp * 10) / 10))}/${fmt(Math.round(s.maxHp * 10) / 10)}`);
     this.q.hpFill.style.width = `${Math.max(0, (run.hp / s.maxHp) * 100)}%`;
     this.q.hpFill.parentElement!.classList.toggle("is-low", run.hp / s.maxHp < 0.3);
     setText(this.q.coins, `${run.coins}`);
     setText(this.q.kills, `${run.kills}`);
     setText(this.q.enemies, `${g.enemies.length}`);
-    setText(this.q.wave, `${run.wave}`);
-
-    if (run.inBreak) {
-      setText(this.q.timer, `prossima ${Math.max(0, Math.ceil((run.nextWaveAt - g.now) / 1000))}s`);
-    } else if (run.event === "boss") {
-      setText(this.q.timer, "abbatti il boss");
-    } else {
-      setText(this.q.timer, formatTime(Math.max(0, run.waveEndsAt - g.now)));
-    }
-    const eventLabel = run.inBreak ? "" : run.event === "boss" ? "BOSS" : run.event === "horde" ? "ORDA" : "";
-    setText(this.q.event, eventLabel);
-    this.q.event.classList.toggle("is-on", Boolean(eventLabel));
+    setText(this.q.waveLabel, info.label);
+    setText(this.q.wave, info.value);
+    setText(this.q.timer, info.detail);
+    setText(this.q.event, info.event);
+    this.q.event.classList.toggle("is-on", Boolean(info.event));
 
     if (this.boss) {
       this.q.bossFill.style.width = `${Math.max(0, (this.boss.hp / this.boss.maxHp) * 100)}%`;
@@ -130,6 +125,8 @@ export class Hud {
 
     const turrets = g.deployables.turrets.length;
     const mines = g.deployables.mines.length;
+    this.q.turret.classList.toggle("is-hidden", s.maxTurrets <= 0);
+    this.q.mine.classList.toggle("is-hidden", s.maxMines <= 0);
     setText(this.q.turretInfo, `${turrets}/${s.maxTurrets} · ${DEPLOY.turretCost}¢`);
     setText(this.q.mineInfo, `${mines}/${s.maxMines} · ${DEPLOY.mineCost}¢`);
     this.q.turret.classList.toggle("is-ready", turrets < s.maxTurrets && run.coins >= DEPLOY.turretCost);
@@ -157,23 +154,10 @@ export class Hud {
   }
 
   private renderBuild(g: GameScene) {
-    const { run } = g;
-    const key = JSON.stringify([run.tomes, run.items]);
-    if (key === this.buildKey) return;
-    this.buildKey = key;
-
-    const tomes = TOMES.filter((t) => run.tomes[t.id]).map((t) => {
-      const level = run.tomes[t.id]!.level;
-      const evolved = level >= LIMITS.tomeMaxLevel;
-      const pips = Array.from({ length: LIMITS.tomeMaxLevel }, (_, i) => `<i class="${i < level ? "on" : ""}"></i>`).join("");
-      return `<div class="build-chip build-chip--tome ${evolved ? "is-evolved" : ""}" style="--c:${hex(t.color)}" title="${esc(evolved ? t.evolution.title : t.title)}">
-        ${icon(t.icon)}<span class="pips">${pips}</span></div>`;
-    });
-    const emptySlots = Array.from({ length: LIMITS.maxRunTomes - tomes.length }, () => `<div class="build-chip build-chip--empty"></div>`);
-    const items = ITEMS.filter((it) => run.items[it.id]).map(
-      (it) => `<div class="build-chip build-chip--item" style="--c:${hex(it.color)}" title="${esc(it.title)}">${icon(it.icon)}<b>${run.items[it.id]}</b></div>`,
-    );
-    this.q.build.innerHTML = `<div class="build-row">${[...tomes, ...emptySlots].join("")}</div><div class="build-row">${items.join("")}</div>`;
+    const html = g.mode.build(g);
+    if (html === this.buildKey) return;
+    this.buildKey = html;
+    this.q.build.innerHTML = html;
   }
 }
 

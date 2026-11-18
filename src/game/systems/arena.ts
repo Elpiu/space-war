@@ -3,36 +3,75 @@ import { ARENA_H, ARENA_W, DEPTH, VIEW_H, VIEW_W } from "../config";
 import type { Arena } from "../types";
 import { clamp, createRng, dist2, rand } from "../utils";
 
-const CENTER = { x: ARENA_W / 2, y: ARENA_H / 2 };
-
-/** Arena unica: asteroidi che bloccano e nebulose che rallentano. */
+/** Arena quadrata del survival: asteroidi che bloccano e nebulose che rallentano. */
 export const generateArena = (seed: number): Arena => {
   const rng = createRng(seed);
+  const width = ARENA_W;
+  const height = ARENA_H;
+  const cx = width / 2;
+  const cy = height / 2;
   const asteroids: Arena["asteroids"] = [];
   const nebulas: Arena["nebulas"] = [];
 
   for (let tries = 0; asteroids.length < 34 && tries < 600; tries += 1) {
     const r = rand(36, 120, rng);
-    const x = rand(160, ARENA_W - 160, rng);
-    const y = rand(160, ARENA_H - 160, rng);
-    if (dist2(x, y, CENTER.x, CENTER.y) < 420 * 420) continue;
+    const x = rand(160, width - 160, rng);
+    const y = rand(160, height - 160, rng);
+    if (dist2(x, y, cx, cy) < 420 * 420) continue;
     if (asteroids.some((a) => dist2(x, y, a.x, a.y) < (a.r + r + 140) ** 2)) continue;
     asteroids.push({ x, y, r });
   }
 
   for (let tries = 0; nebulas.length < 7 && tries < 300; tries += 1) {
     const r = rand(170, 300, rng);
-    const x = rand(r, ARENA_W - r, rng);
-    const y = rand(r, ARENA_H - r, rng);
-    if (dist2(x, y, CENTER.x, CENTER.y) < (r + 260) ** 2) continue;
+    const x = rand(r, width - r, rng);
+    const y = rand(r, height - r, rng);
+    if (dist2(x, y, cx, cy) < (r + 260) ** 2) continue;
     if (nebulas.some((n) => dist2(x, y, n.x, n.y) < (n.r + r) ** 2)) continue;
     nebulas.push({ x, y, r });
   }
 
-  return { seed, asteroids, nebulas };
+  return { seed, width, height, asteroids, nebulas };
 };
 
-export const arenaCenter = () => ({ ...CENTER });
+/**
+ * Corridoio orizzontale della campagna, alto quanto lo schermo.
+ * La densita' di asteroidi e nebulose dipende dalla missione.
+ */
+export const generateCorridor = (
+  seed: number,
+  length: number,
+  density: { asteroids: number; nebulas: number },
+): Arena => {
+  const rng = createRng(seed);
+  const height = VIEW_H;
+  const asteroids: Arena["asteroids"] = [];
+  const nebulas: Arena["nebulas"] = [];
+  const safeStart = 700;
+  const safeEnd = 500;
+
+  const asteroidCount = Math.round((length / 1000) * 3.2 * density.asteroids);
+  for (let tries = 0; asteroids.length < asteroidCount && tries < asteroidCount * 30; tries += 1) {
+    const r = rand(30, 95, rng);
+    const x = rand(safeStart, length - safeEnd, rng);
+    const y = rand(r * 0.4, height - r * 0.4, rng);
+    if (asteroids.some((a) => dist2(x, y, a.x, a.y) < (a.r + r + 170) ** 2)) continue;
+    asteroids.push({ x, y, r });
+  }
+
+  const nebulaCount = Math.round((length / 1000) * 0.8 * density.nebulas);
+  for (let tries = 0; nebulas.length < nebulaCount && tries < nebulaCount * 30; tries += 1) {
+    const r = rand(160, 260, rng);
+    const x = rand(safeStart, length - safeEnd, rng);
+    const y = rand(0, height, rng);
+    if (nebulas.some((n) => dist2(x, y, n.x, n.y) < (n.r + r) ** 2)) continue;
+    nebulas.push({ x, y, r });
+  }
+
+  return { seed, width: length, height, asteroids, nebulas };
+};
+
+export const arenaCenter = (arena: Arena) => ({ x: arena.width / 2, y: arena.height / 2 });
 
 export const drawArena = (scene: Scene, arena: Arena) => {
   const objects: GameObjects.GameObject[] = [];
@@ -78,14 +117,15 @@ export const drawArena = (scene: Scene, arena: Arena) => {
   // Bordo dell'arena e vuoto esterno scurito.
   const pad = 2000;
   g.fillStyle(0x020617, 0.75);
-  g.fillRect(-pad, -pad, ARENA_W + pad * 2, pad);
-  g.fillRect(-pad, ARENA_H, ARENA_W + pad * 2, pad);
-  g.fillRect(-pad, 0, pad, ARENA_H);
-  g.fillRect(ARENA_W, 0, pad, ARENA_H);
+  const { width: w, height: h } = arena;
+  g.fillRect(-pad, -pad, w + pad * 2, pad);
+  g.fillRect(-pad, h, w + pad * 2, pad);
+  g.fillRect(-pad, 0, pad, h);
+  g.fillRect(w, 0, pad, h);
   g.lineStyle(10, 0x38bdf8, 0.12);
-  g.strokeRect(0, 0, ARENA_W, ARENA_H);
+  g.strokeRect(0, 0, w, h);
   g.lineStyle(3, 0x7dd3fc, 0.7);
-  g.strokeRect(0, 0, ARENA_W, ARENA_H);
+  g.strokeRect(0, 0, w, h);
 
   return objects;
 };
@@ -137,10 +177,10 @@ export const hitsAsteroid = (arena: Arena, x: number, y: number, radius: number)
 export const inNebula = (arena: Arena, x: number, y: number) =>
   arena.nebulas.some((n) => dist2(x, y, n.x, n.y) < n.r * n.r);
 
-export const clampToArena = (e: { x: number; y: number }, radius: number) => {
-  e.x = clamp(e.x, radius, ARENA_W - radius);
-  e.y = clamp(e.y, radius, ARENA_H - radius);
+export const clampToArena = (arena: Arena, e: { x: number; y: number }, radius: number) => {
+  e.x = clamp(e.x, radius, arena.width - radius);
+  e.y = clamp(e.y, radius, arena.height - radius);
 };
 
-export const insideArena = (x: number, y: number, margin = 0) =>
-  x > -margin && y > -margin && x < ARENA_W + margin && y < ARENA_H + margin;
+export const insideArena = (arena: Arena, x: number, y: number, margin = 0) =>
+  x > -margin && y > -margin && x < arena.width + margin && y < arena.height + margin;
