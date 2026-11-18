@@ -22,6 +22,12 @@ export interface WeaponSpec {
   gravity?: number;
   /** Raggio dell'esplosione all'impatto. */
   blast?: number;
+  /** Rimbalzi sul nemico successivo. */
+  bounce?: number;
+  /** Moltiplicatore di danno contro unità di terra e strutture. */
+  groundMul?: number;
+  /** Raggio continuo: `damage` è al secondo, `heat` è al secondo. */
+  beam?: boolean;
   color: number;
   scale?: number;
   texture?: "bullet" | "orb" | "missile";
@@ -47,6 +53,8 @@ export interface RackStats {
   heatSink: number;
   bombRate: number;
   coinMul: number;
+  /** Bonus monete per ogni passo di combo (con il Moltiplicatore). */
+  comboBonus: number;
 }
 
 export interface ShipStats {
@@ -55,6 +63,11 @@ export interface ShipStats {
   pickupRadius: number;
   drones: number;
   blades: number;
+  /** Punti scudo che assorbono i colpi prima degli HP. */
+  shield: number;
+  shieldRegen: number;
+  /** HP rigenerati al secondo (nanobot). */
+  regen: number;
 }
 
 interface GearEffect {
@@ -94,6 +107,8 @@ export interface GearItem {
   defId: string;
   rarity: Rarity;
   level: number;
+  /** Appena ottenuto e non ancora guardato in hangar. */
+  fresh?: boolean;
 }
 
 export const GEAR_MAX_LEVEL = 10;
@@ -177,6 +192,37 @@ export const GEAR: GearDef[] = [
     },
   },
 
+  {
+    id: "orb",
+    slot: "front",
+    title: "Sfera Rimbalzante",
+    description: "Una sfera lenta che salta da un nemico all'altro.",
+    icon: "gear-orb",
+    color: 0x93c5fd,
+    value: 65,
+    shopTier: 1,
+    weapon: { damage: 3, interval: 700, heat: 10, speed: 430, range: 900, projectiles: 1, spread: 0, bounce: 2, color: 0x93c5fd, texture: "orb", scale: 1.6 },
+    milestones: {
+      5: { text: "4 rimbalzi", patch: { bounce: 4 } },
+      10: { text: "Doppia sfera", patch: { projectiles: 2, spread: 0.16 } },
+    },
+  },
+  {
+    id: "laser",
+    slot: "front",
+    title: "Laser Continuo",
+    description: "Raggio fisso finché tieni premuto. Scalda in continuazione.",
+    icon: "gear-laser",
+    color: 0xf472b6,
+    value: 110,
+    shopTier: 3,
+    weapon: { damage: 9, interval: 100, heat: 30, speed: 0, range: 800, projectiles: 1, spread: 0, beam: true, color: 0xf472b6 },
+    milestones: {
+      5: { text: "Lente focale: gittata 1100", patch: { range: 1100 } },
+      10: { text: "Raggio perforante: colpisce 3 nemici", patch: { pierce: 2 } },
+    },
+  },
+
   // ---------- Armi posteriori ----------
   {
     id: "tail-gun",
@@ -204,6 +250,19 @@ export const GEAR: GearDef[] = [
     shopTier: 2,
     weapon: { damage: 1, interval: 650, heat: 6, speed: 560, range: 380, projectiles: 5, spread: 0.45, color: 0xc4b5fd, scale: 0.8 },
     milestones: { 5: { text: "7 schegge", patch: { projectiles: 7 } }, 10: { text: "Gittata doppia", patch: { range: 760 } } },
+  },
+
+  {
+    id: "rear-mines",
+    slot: "rear",
+    title: "Lanciamine di Coda",
+    description: "Lascia indietro mine lente che esplodono al contatto.",
+    icon: "mine",
+    color: 0xfb923c,
+    value: 60,
+    shopTier: 2,
+    weapon: { damage: 6, interval: 1100, heat: 5, speed: 70, range: 380, projectiles: 1, spread: 0, blast: 80, color: 0xfdba74, texture: "orb", scale: 1.2 },
+    milestones: { 5: { text: "Raggio 110", patch: { blast: 110 } }, 10: { text: "Due mine", patch: { projectiles: 2, spread: 0.6 } } },
   },
 
   // ---------- Missili (non scaldano) ----------
@@ -244,6 +303,19 @@ export const GEAR: GearDef[] = [
     shopTier: 0,
     weapon: { damage: 10, interval: 3500, heat: 0, speed: 160, range: 2000, projectiles: 1, spread: 0, gravity: 900, blast: 110, color: 0xfdba74, texture: "orb", scale: 1.6 },
     milestones: { 5: { text: "Raggio 140", patch: { blast: 140 } }, 10: { text: "Danno 16", patch: { damage: 16 } } },
+  },
+
+  {
+    id: "bunker",
+    slot: "bomb",
+    title: "Perforabunker",
+    description: "Esplosione piccola ma devastante su torrette e strutture.",
+    icon: "gear-bomb",
+    color: 0xfacc15,
+    value: 65,
+    shopTier: 2,
+    weapon: { damage: 9, interval: 3000, heat: 0, speed: 120, range: 2000, projectiles: 1, spread: 0, gravity: 1100, blast: 70, groundMul: 3, color: 0xfde047, texture: "orb", scale: 1.4 },
+    milestones: { 5: { text: "Danno a terra x4", patch: { groundMul: 4 } }, 10: { text: "Raggio 100", patch: { blast: 100 } } },
   },
 
   // ---------- Dispositivi ----------
@@ -345,6 +417,42 @@ export const GEAR: GearDef[] = [
     value: 40,
     shopTier: 2,
     effects: [{ target: "rack", stat: "bombRate", op: "mul", value: 0.3, scales: true, label: "Ricarica bombe" }],
+  },
+  {
+    id: "shield-gen",
+    slot: "device",
+    title: "Generatore di Scudo",
+    description: "Uno scudo assorbe i colpi e si ricarica dopo 2.5 s senza danni.",
+    icon: "shield",
+    color: 0x7dd3fc,
+    value: 70,
+    shopTier: 2,
+    effects: [
+      { target: "ship", stat: "shield", op: "add", value: 4, scales: true, label: "Scudo" },
+      { target: "ship", stat: "shieldRegen", op: "add", value: 1.2, label: "Ricarica scudo/s" },
+    ],
+  },
+  {
+    id: "nanobots",
+    slot: "device",
+    title: "Nanobot",
+    description: "Riparano lo scafo poco alla volta.",
+    icon: "wrench",
+    color: 0x4ade80,
+    value: 60,
+    shopTier: 1,
+    effects: [{ target: "ship", stat: "regen", op: "add", value: 0.12, scales: true, label: "HP/s" }],
+  },
+  {
+    id: "combo",
+    slot: "device",
+    title: "Moltiplicatore Combo",
+    description: "Le uccisioni a catena (entro 1.8 s) rendono sempre più monete.",
+    icon: "star",
+    color: 0xf472b6,
+    value: 60,
+    shopTier: 3,
+    effects: [{ target: "rack", stat: "comboBonus", op: "add", value: 0.08, scales: true, label: "Monete per passo di combo" }],
   },
   {
     id: "wingman",
@@ -450,13 +558,19 @@ export const describeGear = (item: GearItem) => {
   const lines: string[] = [];
   const spec = weaponSpec(item);
   if (spec) {
-    lines.push(`Danno ${spec.damage.toFixed(1)}${spec.projectiles > 1 ? ` ×${spec.projectiles}` : ""}`);
-    if (def.slot === "bomb") lines.push(`Ricarica ${(spec.interval / 1000).toFixed(1)}s`);
-    else lines.push(`Colpi/s ${(1000 / spec.interval).toFixed(1)}`);
-    if (spec.heat > 0) lines.push(`Calore ${spec.heat}/colpo`);
-    else if (def.slot !== "bomb") lines.push("Non scalda");
+    if (spec.beam) {
+      lines.push(`Danno ${spec.damage.toFixed(1)}/s`, `Calore ${spec.heat}/s`, `Gittata ${spec.range}`);
+    } else {
+      lines.push(`Danno ${spec.damage.toFixed(1)}${spec.projectiles > 1 ? ` ×${spec.projectiles}` : ""}`);
+      if (def.slot === "bomb") lines.push(`Ricarica ${(spec.interval / 1000).toFixed(1)}s`);
+      else lines.push(`Colpi/s ${(1000 / spec.interval).toFixed(1)}`);
+      if (spec.heat > 0) lines.push(`Calore ${spec.heat}/colpo`);
+      else if (def.slot !== "bomb") lines.push("Non scalda");
+    }
     if (spec.pierce) lines.push(`Perfora ${spec.pierce}`);
+    if (spec.bounce) lines.push(`Rimbalzi ${spec.bounce}`);
     if (spec.blast) lines.push(`Esplosione ${spec.blast}`);
+    if (spec.groundMul) lines.push(`Danno a terra x${spec.groundMul}`);
     if (spec.homing) lines.push("A ricerca");
   }
   if (def.hull) {
@@ -467,7 +581,8 @@ export const describeGear = (item: GearItem) => {
   const power = gearPower(item);
   for (const e of def.effects ?? []) {
     const value = e.scales ? e.value * power : e.value;
-    lines.push(e.op === "mul" ? `${e.label} +${Math.round(value * 100)}%` : `${e.label} +${Number.isInteger(value) ? value : value.toFixed(1)}`);
+    const shown = e.stat === "comboBonus" ? `+${Math.round(value * 100)}%` : `+${Number.isInteger(value) ? value : value < 1 ? value.toFixed(2) : value.toFixed(1)}`;
+    lines.push(e.op === "mul" ? `${e.label} +${Math.round(value * 100)}%` : `${e.label} ${shown}`);
   }
   return lines;
 };
@@ -497,3 +612,10 @@ export const rollGear = (tier: number, minRarity: Rarity = "common"): Omit<GearI
   const rarity = pickWeighted(allowed, (r) => rarityWeights[r]) ?? minRarity;
   return { defId: def.id, rarity, level: 1 };
 };
+
+/** Danno al secondo di un'arma (per i confronti in hangar). */
+export const weaponDps = (spec: WeaponSpec) =>
+  spec.beam ? spec.damage * (1 + (spec.pierce ?? 0)) : (spec.damage * spec.projectiles * 1000) / spec.interval;
+
+/** Calore al secondo a fuoco continuo. */
+export const weaponHeat = (spec: WeaponSpec) => (spec.beam ? spec.heat : (spec.heat * 1000) / spec.interval);

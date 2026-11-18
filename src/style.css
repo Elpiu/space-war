@@ -291,6 +291,11 @@ kbd {
 .bar--hp i { background: linear-gradient(90deg, #e11d48, #fb7185); }
 .bar--hp.is-low i { animation: blink 500ms ease-in-out infinite; }
 .bar--boss { height: 14px; }
+.bar--shield { height: 8px; }
+.bar--shield i { background: linear-gradient(90deg, #0ea5e9, #7dd3fc); }
+.hud-shield.is-hidden { display: none; }
+.hud-shield__icon { color: #7dd3fc; }
+.hud-shield__icon .ico { width: 18px; height: 18px; filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.7)); }
 .bar--boss i { background: linear-gradient(90deg, #b91c1c, #f87171, #fbbf24); }
 .hud-res { display: flex; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 7px; background: rgba(2, 6, 23, 0.55); color: var(--muted); font-size: 13px; }

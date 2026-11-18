@@ -27,6 +27,11 @@ export class Hud {
             <div class="bar bar--hp"><i data-q="hpFill"></i></div>
             <b data-q="hp">10/10</b>
           </div>
+          <div class="hud-hp hud-shield is-hidden" data-q="shieldRow">
+            <span class="hud-hp__icon hud-shield__icon">${icon("shield")}</span>
+            <div class="bar bar--shield"><i data-q="shieldFill"></i></div>
+            <b data-q="shield">0</b>
+          </div>
           <div class="hud-res">
             <span class="chip chip--coin">${icon("coin")}<b data-q="coins">0</b></span>
             <span class="chip">${icon("skull")}<b data-q="kills">0</b></span>
@@ -106,6 +111,11 @@ export class Hud {
     setText(this.q.hp, `${fmt(Math.max(0, Math.ceil(run.hp * 10) / 10))}/${fmt(Math.round(s.maxHp * 10) / 10)}`);
     this.q.hpFill.style.width = `${Math.max(0, (run.hp / s.maxHp) * 100)}%`;
     this.q.hpFill.parentElement!.classList.toggle("is-low", run.hp / s.maxHp < 0.3);
+    this.q.shieldRow.classList.toggle("is-hidden", !info.shield || info.shield.max <= 0);
+    if (info.shield && info.shield.max > 0) {
+      this.q.shieldFill.style.width = `${(info.shield.value / info.shield.max) * 100}%`;
+      setText(this.q.shield, `${fmt(Math.floor(info.shield.value * 10) / 10)}`);
+    }
     setText(this.q.coins, `${run.coins}`);
     setText(this.q.kills, `${run.kills}`);
     setText(this.q.enemies, `${g.enemies.length}`);

@@ -163,6 +163,8 @@ export interface Bullet {
   gravity: number;
   /** Raggio dell'esplosione all'impatto (0 = nessuna). */
   blast: number;
+  /** Moltiplicatore contro unità di terra e strutture. */
+  groundMul: number;
   target: number;
   hit: Set<number>;
   source: DamageSource;

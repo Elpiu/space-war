@@ -31,6 +31,8 @@ export interface CampaignProfile {
   equipped: Record<SlotKey, number | null>;
   completed: string[];
   nextUid: number;
+  /** Pezzi del negozio già visti: gli altri hanno il badge "nuovo". */
+  seenShop: string[];
 }
 
 const SLOT_TYPES = ["front", "rear", "missile", "bomb", "device"] as const;
@@ -49,6 +51,7 @@ const starter = (): CampaignProfile => ({
   equipped: { hull: 4, front0: 1, rear0: 2, bomb0: 3 },
   completed: [],
   nextUid: 5,
+  seenShop: ["blaster", "tail-gun", "cluster", "frigate"],
 });
 
 // ---------- Salvataggio e migrazione ----------
@@ -205,8 +208,31 @@ export const buy = (profile: CampaignProfile, defId: string) => {
   return item;
 };
 
+/** Vende tutti i pezzi comuni di livello 1 non montati. */
+export const sellCommons = (profile: CampaignProfile) => {
+  const junk = profile.inventory.filter((i) => i.rarity === "common" && i.level === 1 && !equippedSlotOf(profile, i.uid));
+  const total = junk.reduce((sum, i) => sum + sellPrice(i), 0);
+  const ids = new Set(junk.map((i) => i.uid));
+  profile.inventory = profile.inventory.filter((i) => !ids.has(i.uid));
+  profile.coins += total;
+  saveProfile(profile);
+  return { count: junk.length, total };
+};
+
+export const commonsValue = (profile: CampaignProfile) => {
+  const junk = profile.inventory.filter((i) => i.rarity === "common" && i.level === 1 && !equippedSlotOf(profile, i.uid));
+  return { count: junk.length, total: junk.reduce((sum, i) => sum + sellPrice(i), 0) };
+};
+
+/** Primo pezzo montato in uno slot di questo tipo (per i confronti). */
+export const equippedOfType = (profile: CampaignProfile, type: string) =>
+  slotKeys(profile)
+    .filter((key) => slotType(key) === type)
+    .map((key) => itemByUid(profile, profile.equipped[key]))
+    .find(Boolean);
+
 export const addLoot = (profile: CampaignProfile, items: { defId: string; rarity: Rarity; level: number }[]) => {
-  const added = items.map((item) => ({ ...item, uid: profile.nextUid++ }));
+  const added = items.map((item) => ({ ...item, uid: profile.nextUid++, fresh: true }));
   profile.inventory.push(...added);
   return added;
 };
@@ -231,8 +257,8 @@ export interface CampaignLoadout {
 export const buildLoadout = (profile: CampaignProfile): CampaignLoadout => {
   const hullItem = equippedHull(profile);
   const hull = hullItem ? hullSpec(hullItem) : { hp: 10, speed: 250, heatCap: 100, heatSink: 30 };
-  const ship: ShipStats = { maxHp: hull.hp, speed: hull.speed, pickupRadius: 160, drones: 0, blades: 0 };
-  const rack: RackStats = { damageMul: 1, rateMul: 1, heatCap: hull.heatCap, heatSink: hull.heatSink, bombRate: 1, coinMul: 1 };
+  const ship: ShipStats = { maxHp: hull.hp, speed: hull.speed, pickupRadius: 160, drones: 0, blades: 0, shield: 0, shieldRegen: 0, regen: 0 };
+  const rack: RackStats = { damageMul: 1, rateMul: 1, heatCap: hull.heatCap, heatSink: hull.heatSink, bombRate: 1, coinMul: 1, comboBonus: 0 };
   const mounts: Mount[] = [];
 
   for (const key of slotKeys(profile)) {

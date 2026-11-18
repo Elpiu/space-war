@@ -453,6 +453,15 @@ export class GameScene extends Scene {
       return;
     }
 
+    const remaining = this.mode.absorbDamage ? this.mode.absorbDamage(this, damage) : damage;
+    if (remaining <= 0) {
+      run.invulnUntil = this.now + 300;
+      this.fx.ring(this.player.x, this.player.y, COLORS.shield, 60);
+      this.sfx("shield");
+      return;
+    }
+    damage = remaining;
+
     run.hp -= damage;
     run.invulnUntil = this.now + PLAYER_HIT_IFRAMES;
     this.shake(160, 0.012);

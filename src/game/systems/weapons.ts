@@ -38,6 +38,7 @@ export interface FireOptions {
   homing?: number;
   gravity?: number;
   blast?: number;
+  groundMul?: number;
   texture?: "bullet" | "orb" | "missile";
 }
 
@@ -47,7 +48,7 @@ export const fireBullet = (g: GameScene, x: number, y: number, angle: number, op
     const sprite = g.add.image(0, 0, "bullet").setDepth(DEPTH.bullet);
     b = {
       sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, life: 0, radius: 6, pierce: 0, bounce: 0,
-      homing: 0, gravity: 0, blast: 0, target: -1, hit: new Set(), source: "blaster", active: false,
+      homing: 0, gravity: 0, blast: 0, groundMul: 1, target: -1, hit: new Set(), source: "blaster", active: false,
     };
     g.bullets.push(b);
   }
@@ -62,6 +63,7 @@ export const fireBullet = (g: GameScene, x: number, y: number, angle: number, op
   b.homing = opts.homing ?? 0;
   b.gravity = opts.gravity ?? 0;
   b.blast = opts.blast ?? 0;
+  b.groundMul = opts.groundMul ?? 1;
   b.target = -1;
   b.source = opts.source;
   b.hit.clear();
@@ -93,7 +95,8 @@ const detonate = (g: GameScene, b: Bullet) => {
   g.enemyHash.query(b.x, b.y, b.blast + 60, near);
   for (const e of near) {
     if (e.dead || dist2(b.x, b.y, e.x, e.y) > (b.blast + e.radius) ** 2) continue;
-    g.damageEnemy(e, b.damage, b.source, Math.atan2(e.y - b.y, e.x - b.x), 260);
+    const mul = e.anchor || e.def.structure ? b.groundMul : 1;
+    g.damageEnemy(e, b.damage * mul, b.source, Math.atan2(e.y - b.y, e.x - b.x), 260);
   }
   killBullet(b);
 };

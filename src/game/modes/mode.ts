@@ -14,6 +14,8 @@ export interface HudInfo {
   detail: string;
   event: string;
   bar: { ratio: number; text: string; kind: "xp" | "route"; marks?: number[] };
+  /** Scudo da mostrare sotto la barra degli HP. */
+  shield?: { value: number; max: number };
 }
 
 /** Un'abilità mostrata in basso a sinistra nell'HUD (anello di ricarica). */
@@ -58,6 +60,8 @@ export interface GameMode {
   /** Ricompense per un'uccisione (il nucleo ha già gestito effetti e contatori). */
   onKill(g: GameScene, e: Enemy): void;
   onChest(g: GameScene, x: number, y: number): void;
+  /** Assorbe parte del danno (scudi); restituisce il danno rimasto. */
+  absorbDamage?(g: GameScene, damage: number): number;
   /** Ci sono level-up in attesa (solo le modalità che danno XP). */
   onLevelUp?(g: GameScene): void;
   /** Fine run: assegna ricompense e mostra la schermata finale. */

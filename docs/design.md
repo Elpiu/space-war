@@ -225,5 +225,32 @@ calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
 - **Ricompense:** unità di terra, strutture e cargo lasciano sempre monete.
   Il raggio di raccolta di base in campagna è più ampio.
 
-**Prossime fasi:** negozio completo e contenuti del settore (D, E), poi
-rifinitura.
+**Fatto (fase D):**
+- **Nuove armi:**
+
+  | Arma | Slot | Comportamento | Dal tier |
+  | --- | --- | --- | --- |
+  | Sfera Rimbalzante | Frontale | Salta da un nemico all'altro | 1 |
+  | Laser Continuo | Frontale | Raggio fisso, danno e calore al secondo; al livello 10 attraversa 3 nemici | 3 |
+  | Lanciamine di Coda | Coda | Mine lente lasciate indietro | 2 |
+  | Perforabunker | Bombe | Danno ×3 su unità di terra e strutture | 2 |
+
+- **Nuovi dispositivi:**
+
+  | Dispositivo | Effetto | Dal tier |
+  | --- | --- | --- |
+  | Nanobot | Rigenerano HP | 1 |
+  | Generatore di Scudo | Assorbe i colpi, si ricarica dopo 2,5 s senza danni, barra azzurra nell'HUD | 2 |
+  | Moltiplicatore Combo | Le uccisioni entro 1,8 s rendono via via più monete; "COMBO xN" nell'HUD | 3 |
+
+- **Negozio:** cliccando un pezzo si apre l'anteprima con statistiche,
+  soglie e confronto con quello montato (danno e calore al secondo per le
+  armi), più i pulsanti "Compra" e "Compra e monta". I pezzi appena
+  sbloccati hanno il badge NUOVO.
+- **Hangar:** il badge NUOVO compare anche sul bottino non ancora guardato.
+  Il dettaglio dell'oggetto mostra cosa cambia al livello successivo e quale
+  soglia sblocca. Un pulsante vende tutti i comuni di livello 1 non montati,
+  con conferma.
+
+**Prossime fasi:** contenuti del settore (E: più missioni, mini-boss,
+capsule segrete, rigiocabilità a difficoltà più alte), poi rifinitura (F).

@@ -45,6 +45,10 @@ export class CampaignMode implements GameMode {
   private segments: Segment[] = [];
   private props: Prop[] = [];
   private currentSegment: SegmentKind | null = null;
+  private shield = 0;
+  private lastHitAt = -99999;
+  private combo = 0;
+  private lastKillAt = -99999;
 
   constructor(private readonly missionId: string) {
     this.mission = missionById(missionId);
@@ -106,12 +110,18 @@ export class CampaignMode implements GameMode {
       );
     }
 
+    this.shield = this.loadout.ship.shield;
     banner(`MISSIONE ${this.mission.code}`, this.mission.title);
     g.hints.trigger("fire");
   }
 
   update(g: GameScene, dt: number) {
     const cam = g.cameras.main;
+    const ship = this.loadout.ship;
+
+    // Dispositivi: lo scudo si ricarica dopo 2.5 s senza colpi, i nanobot riparano.
+    if (ship.shield > 0 && g.now - this.lastHitAt > 2500) this.shield = Math.min(ship.shield, this.shield + ship.shieldRegen * dt);
+    if (ship.regen > 0) g.heal(ship.regen * dt);
     const maxScroll = g.arena.width - VIEW_W;
 
     // Lo scorrimento rallenta quando lo schermo è affollato di volanti.
@@ -196,7 +206,22 @@ export class CampaignMode implements GameMode {
     pos.x = clamp(pos.x, this.scroll + 30, this.scroll + VIEW_W - 30);
   }
 
+  absorbDamage(g: GameScene, damage: number) {
+    this.lastHitAt = g.now;
+    const taken = Math.min(this.shield, damage);
+    this.shield -= taken;
+    return damage - taken;
+  }
+
+  /** Moltiplicatore monete: dispositivi taglia e combo. */
+  private coinMul() {
+    const steps = Math.min(10, Math.max(0, this.combo - 1));
+    return this.loadout.rack.coinMul * (1 + this.loadout.rack.comboBonus * steps);
+  }
+
   onKill(g: GameScene, e: Enemy) {
+    this.combo = g.now - this.lastKillAt < 1800 ? this.combo + 1 : 1;
+    this.lastKillAt = g.now;
     const { x, y, def } = e;
     const elite = Boolean(e.affix);
     const isBoss = def.id === "boss";
@@ -204,7 +229,7 @@ export class CampaignMode implements GameMode {
 
     const ground = Boolean(e.anchor || def.structure || def.id === "cargo");
     if (elite || isBoss || ground || Math.random() < 0.6) {
-      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.loadout.rack.coinMul));
+      dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.coinMul()));
     }
     if (Math.random() < (elite ? 0.15 : 0.025)) dropPickup(g, "heart", x - 10, y + 4, 2);
     if (Math.random() < (elite ? 0.06 : 0.006)) dropPickup(g, pick(["magnet", "venom", "emp"] as const), x, y - 12);
@@ -263,7 +288,8 @@ export class CampaignMode implements GameMode {
       label: "MISSIONE",
       value: this.mission.code,
       detail,
-      event: this.bossSpawned ? "BOSS" : "",
+      event: this.bossSpawned ? "BOSS" : this.combo >= 3 && g.now - this.lastKillAt < 1800 ? `COMBO x${this.combo}` : "",
+      shield: this.loadout.ship.shield > 0 ? { value: this.shield, max: this.loadout.ship.shield } : undefined,
       bar: {
         ratio,
         text: this.mission.title.toUpperCase(),

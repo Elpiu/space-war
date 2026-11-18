@@ -163,3 +163,20 @@
 .gear-milestones .ico { width: 14px; height: 14px; }
 .loadout-slot:last-child { grid-column: auto; }
 .loadout-slot:first-child { grid-column: 1 / -1; }
+
+/* ---------- Fase D: negozio con anteprima e novita ---------- */
+
+.badge-new { display: inline-block; margin-left: 4px; padding: 1px 5px; border-radius: 4px; background: var(--gold); color: #1c1003; font: 700 8px/1.4 var(--font-title); font-style: normal; letter-spacing: 0.08em; vertical-align: middle; }
+.gear-tile .badge-new { position: absolute; left: -4px; top: -7px; margin: 0; }
+button.shop-row { width: 100%; color: var(--text); text-align: left; font-family: var(--font); cursor: pointer; }
+button.shop-row:hover, .shop-row.is-selected { border-color: var(--c); box-shadow: 0 0 0 1px var(--c); }
+.shop-row__price { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); font-weight: 700; white-space: nowrap; }
+.shop-row__price.is-poor { color: var(--muted); }
+.btn--small { padding: 7px 10px; font-size: 11px; }
+.hub__inventory > .btn--small { margin-bottom: 8px; }
+.compare { padding: 8px 10px; border-radius: 9px; background: rgba(2, 6, 23, 0.55); border: 1px dashed rgba(148, 163, 184, 0.3); font-size: 12px; }
+.compare small { color: var(--muted); }
+.compare p { margin: 4px 0 0; }
+.compare .gear-stats { margin-top: 4px; }
+.gear-stats--muted { color: var(--muted); }
+.compare .unlock { color: var(--gold); display: flex; align-items: center; gap: 6px; }
