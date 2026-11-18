@@ -38,6 +38,17 @@ src/
 
 ## Principi
 
+- **Dimensioni fisse.** Tutto vive in un palco 1280×720 (`#stage`, `stage.ts`)
+  scalato in modo uniforme per entrare nello schermo; non ci sono layout che
+  dipendono dalla finestra. Phaser usa `Scale.NONE`, il palco è scalato via
+  CSS. Sui dispositivi touch l'interfaccia DOM lavora su un palco logico più
+  piccolo, ingrandito di un fattore `k` (fino a 1,6), così testi e pulsanti
+  restano leggibili. Per provare la modalità touch da desktop si aggiunge
+  `?touch=1` all'indirizzo.
+- **Comandi touch** (`ui/touch.ts`): joystick analogico sulla metà sinistra e
+  pulsanti per modalità. La scena li legge insieme alla tastiera. In verticale
+  compare l'invito a ruotare il dispositivo.
+
 - **Nucleo + modalità.** `GameScene` è il nucleo comune: nave, nemici, armi,
   pickup, effetti, pausa e stati (`menu`, `playing`, `levelup`, `paused`,
   `over`). Tutto ciò che distingue le modalità passa da `GameMode`

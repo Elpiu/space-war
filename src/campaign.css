@@ -236,9 +236,3 @@
 .pause-build { display: flex; justify-content: center; }
 .pause-build .build-row { flex-wrap: wrap; justify-content: center; }
 
-@media (max-width: 1100px) {
-  .hq-map, .hq-shop, .hq-workshop { grid-template-columns: 1fr; }
-  .hq-hangar { grid-template-columns: 1fr; }
-  .hq-tabs { flex-wrap: wrap; }
-  .hq-head { flex-wrap: wrap; }
-}

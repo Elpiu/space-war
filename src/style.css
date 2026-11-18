@@ -24,11 +24,49 @@ html, body {
   font-family: var(--font);
   overflow: hidden;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
-#app { position: fixed; inset: 0; }
+/* Palco fisso 1280x720, scalato e centrato: le dimensioni non cambiano mai. */
+#app { position: fixed; inset: 0; overflow: hidden; }
+#stage {
+  --s: 1;
+  --k: 1;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1280px;
+  height: 720px;
+  transform: translate(-50%, -50%) scale(var(--s));
+  overflow: hidden;
+  box-shadow: 0 0 80px rgba(2, 6, 23, 0.8);
+}
 #game-container { position: absolute; inset: 0; }
-#ui { position: absolute; inset: 0; pointer-events: none; }
+#game-container canvas { display: block; }
+/* L'interfaccia lavora su un palco logico 1280/k x 720/k ingrandito di k (k > 1 solo su touch). */
+#ui {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(1280px / var(--k));
+  height: calc(720px / var(--k));
+  transform: scale(var(--k));
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.screen { overscroll-behavior: contain; touch-action: pan-y; }
+
+#rotate { position: fixed; inset: 0; z-index: 100; display: none; place-items: center; background: var(--bg); text-align: center; }
+#rotate div { display: grid; gap: 8px; }
+#rotate b { font: 900 22px/1.2 var(--font-title); color: var(--accent); }
+#rotate span { color: var(--muted); }
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { display: grid; }
+}
 .layer { position: absolute; inset: 0; pointer-events: none; }
 .layer-screen > *, .layer-dev > *, .hud button { pointer-events: auto; }
 .layer-screen { z-index: 20; }
@@ -397,10 +435,25 @@ kbd {
 .dev button { padding: 6px; border: 1px solid rgba(216, 180, 254, 0.4); border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: #f3e8ff; font: 700 11px/1 var(--font); cursor: pointer; }
 .dev small { color: #d8b4fe; font-size: 10px; }
 
-@media (max-width: 760px) {
-  .title { font-size: 44px; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .over__cols { grid-template-columns: 1fr; }
-  .hud-vitals { min-width: 0; }
-  .card { width: 160px; min-height: 0; }
-}
+
+/* ---------- Comandi touch (solo dispositivi touch) ---------- */
+
+.layer-touch { z-index: 15; }
+.touch.is-hidden { display: none; }
+.touch__zone { position: absolute; left: 0; bottom: 0; width: 50%; height: 78%; pointer-events: auto; touch-action: none; }
+.touch__stick { position: absolute; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%; border: 2px solid rgba(125, 211, 252, 0.35); background: radial-gradient(circle, rgba(56, 189, 248, 0.12), rgba(2, 6, 23, 0.25)); opacity: 0; pointer-events: none; transition: opacity 120ms ease; }
+.touch__stick.is-on { opacity: 1; }
+.touch__stick i { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #7dd3fc, #0284c7); box-shadow: 0 0 18px rgba(56, 189, 248, 0.6); transform: translate(-50%, -50%); }
+.touch__buttons { position: absolute; right: 22px; bottom: 22px; display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; gap: 12px; align-items: end; pointer-events: auto; }
+.touch__btn { display: grid; place-items: center; gap: 2px; width: 70px; height: 70px; border: 2px solid rgba(125, 211, 252, 0.45); border-radius: 50%; background: rgba(9, 14, 34, 0.7); color: #e0f2fe; font: 700 10px/1 var(--font); letter-spacing: 0.06em; text-transform: uppercase; touch-action: none; backdrop-filter: blur(4px); }
+.touch__btn .ico { width: 26px; height: 26px; }
+.touch__btn.is-big { grid-row: 1 / 3; grid-column: 2; width: 104px; height: 104px; border-color: rgba(56, 189, 248, 0.8); background: rgba(2, 132, 199, 0.35); }
+.touch__btn.is-big .ico { width: 38px; height: 38px; }
+.touch__btn.is-down { transform: scale(0.92); background: rgba(56, 189, 248, 0.45); }
+
+/* Su touch: niente legenda tasti, abilità al centro in basso, build in alto a destra. */
+.is-touch .menu__keys { display: none; }
+.is-touch .hud-skills { left: 50%; transform: translateX(-50%); bottom: 10px; }
+.is-touch .hud-skills kbd { display: none; }
+.is-touch .hud-build { top: 70px; bottom: auto; }
+.is-touch .layer-hint { padding-bottom: 150px; }

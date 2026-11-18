@@ -3,6 +3,7 @@ import { ENEMIES } from "../data/enemies";
 import { saveMeta, type Meta } from "../meta";
 import type { EnemyId } from "../types";
 import { el, esc, layer } from "./dom";
+import { touch } from "./touch";
 
 // Il vecchio tutorial diventa una serie di suggerimenti contestuali,
 // mostrati una sola volta e salvati nel profilo.
@@ -19,6 +20,15 @@ const HINTS: Record<string, { title: string; text: string; icon: IconId }> = {
   "turret-placed": { title: "Torretta", text: "Le torrette durano 30 secondi: piazzale dove vuoi combattere.", icon: "turret" },
 };
 
+/** Testi alternativi quando si gioca con i comandi touch. */
+const TOUCH_TEXT: Record<string, string> = {
+  move: "Appoggia il pollice nella metà sinistra dello schermo e trascinalo per muoverti. Il cannone spara da solo.",
+  dash: "Tocca Scatto: per un istante sei invulnerabile.",
+  coins: "Con le monete piazzi difese: tocca Torretta o Mina, dove si trova la nave.",
+  fire: "Tieni premuto Fuoco per sparare con tutte le armi. Ogni colpo scalda: guarda l'anello del calore.",
+  bomb: "Tocca Bomba per sganciarla. Il pulsante Profilo cambia le armi attive (1 → 2 → 3).",
+};
+
 export class Hints {
   private queue: { title: string; text: string; icon: IconId }[] = [];
   private busyUntil = 0;
@@ -28,6 +38,12 @@ export class Hints {
   trigger(id: string) {
     if (this.meta.hintsSeen.includes(id) || !HINTS[id]) return;
     this.meta.hintsSeen.push(id);
+    if (touch.enabled && TOUCH_TEXT[id]) {
+      saveMeta(this.meta);
+      this.queue.push({ ...HINTS[id], text: TOUCH_TEXT[id] });
+      this.flush();
+      return;
+    }
     saveMeta(this.meta);
     this.queue.push(HINTS[id]);
     this.flush();

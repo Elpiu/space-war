@@ -23,6 +23,12 @@ Sei un "Orbital Survivor", su una navicella fatta di pezzi recuperati. Sopravviv
 | P | Pausa |
 | M | Audio on/off |
 
+**Su telefono e tablet** (in orizzontale):
+- la metà sinistra dello schermo è un joystick: appoggi il pollice e trascini;
+- a destra ci sono i pulsanti: Scatto, Torretta e Mina nel survival; Fuoco (da tenere premuto), Bomba e Profilo in campagna.
+
+All'avvio della partita il gioco passa a schermo intero.
+
 - Raccogli le gemme, sali di livello e scegli un **tomo**: massimo 4 per run, e ognuno **si evolve** al livello 5.
 - Le **chest** contengono oggetti: proiettili extra, rimbalzi, lame orbitanti, droni, fulmini a catena.
 - Ogni 5 wave arriva un **boss** a tre fasi. Impara a leggere gli avvisi: linee rosse, laser di mira, cerchi d'innesco.

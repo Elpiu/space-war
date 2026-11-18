@@ -22,6 +22,8 @@ import type { Arena, Bullet, DamageSource, Enemy, EnemyBullet, EnemyId, ItemId, 
 import { mountDevPanel } from "../ui/devPanel";
 import { Hints } from "../ui/hints";
 import { Hud, banner, toast, type ToastTone } from "../ui/hud";
+import { showTouchControls, touch } from "../ui/touch";
+import { enterFullscreen, isTouchDevice } from "../stage";
 import { closeScreen, showMenu, showPause, showShop } from "../ui/screens";
 import { SpatialHash, dist2 } from "../utils";
 
@@ -91,6 +93,7 @@ export class GameScene extends Scene {
     this.meta = loadMeta();
     this.hints = new Hints(this.meta);
     audio.setMuted(this.meta.muted);
+    touch.enabled = isTouchDevice();
 
     const kb = this.input.keyboard!;
     const K = Input.Keyboard.KeyCodes;
@@ -141,9 +144,13 @@ export class GameScene extends Scene {
     this.run.time += delta;
 
     const pointer = this.input.activePointer;
-    this.controls.firing = this.keys.dash.isDown || (pointer.isDown && pointer.leftButtonDown());
-    this.controls.bomb = Input.Keyboard.JustDown(this.keys.bomb) || this.rightClick;
+    const mouseFire = !touch.enabled && pointer.isDown && pointer.leftButtonDown();
+    this.controls.firing = this.keys.dash.isDown || mouseFire || touch.held.has("fire");
+    this.controls.bomb = Input.Keyboard.JustDown(this.keys.bomb) || this.rightClick || touch.consume("bomb");
     this.controls.profile = Input.Keyboard.JustDown(this.keys.p1) ? 1 : Input.Keyboard.JustDown(this.keys.p2) ? 2 : Input.Keyboard.JustDown(this.keys.p3) ? 3 : 0;
+    // Su touch un solo pulsante fa ruotare i profili 1 → 2 → 3.
+    const rackProfile = (this.armament as { profile?: number } | null)?.profile;
+    if (touch.consume("profile") && rackProfile) this.controls.profile = (rackProfile % 3) + 1;
     this.rightClick = false;
 
     this.mode.update(this, dt);
@@ -173,18 +180,21 @@ export class GameScene extends Scene {
   private updatePlayer(dt: number) {
     const run = this.run;
     const k = this.keys;
-    let mx = (k.d.isDown || k.right.isDown ? 1 : 0) - (k.a.isDown || k.left.isDown ? 1 : 0);
-    let my = (k.s.isDown || k.down.isDown ? 1 : 0) - (k.w.isDown || k.up.isDown ? 1 : 0);
-    const len = Math.hypot(mx, my);
-    if (len > 0) {
+    // Tastiera (direzioni piene) + joystick touch (analogico, intensità 0-1).
+    let mx = (k.d.isDown || k.right.isDown ? 1 : 0) - (k.a.isDown || k.left.isDown ? 1 : 0) + touch.move.x;
+    let my = (k.s.isDown || k.down.isDown ? 1 : 0) - (k.w.isDown || k.up.isDown ? 1 : 0) + touch.move.y;
+    let len = Math.hypot(mx, my);
+    if (len > 1) {
       mx /= len;
       my /= len;
+      len = 1;
     }
 
-    const wantsDash = this.mode.allowDash && (Input.Keyboard.JustDown(k.dash) || Input.Keyboard.JustDown(k.shift));
+    const wantsDash =
+      this.mode.allowDash && (Input.Keyboard.JustDown(k.dash) || Input.Keyboard.JustDown(k.shift) || touch.consume("dash"));
     if (wantsDash && this.now >= run.dashReadyAt) {
       const facing = this.player.rotation - Math.PI / 2;
-      run.dashDir = len > 0 ? { x: mx, y: my } : { x: Math.cos(facing), y: Math.sin(facing) };
+      run.dashDir = len > 0 ? { x: mx / len, y: my / len } : { x: Math.cos(facing), y: Math.sin(facing) };
       run.dashUntil = this.now + DASH.duration;
       run.dashReadyAt = this.now + run.stats.dashCooldown;
       run.invulnUntil = Math.max(run.invulnUntil, this.now + DASH.iframes);
@@ -249,8 +259,8 @@ export class GameScene extends Scene {
     this.player.setAlpha(blinking ? (Math.floor(this.now / 70) % 2 ? 0.35 : 1) : 1);
 
     if (run.coins >= 8 && run.stats.maxTurrets > 0) this.hints.trigger("coins");
-    if (run.stats.maxTurrets > 0 && Input.Keyboard.JustDown(k.turret)) this.deployables.placeTurret();
-    if (run.stats.maxMines > 0 && Input.Keyboard.JustDown(k.mine)) this.deployables.placeMine();
+    if (run.stats.maxTurrets > 0 && (Input.Keyboard.JustDown(k.turret) || touch.consume("turret"))) this.deployables.placeTurret();
+    if (run.stats.maxMines > 0 && (Input.Keyboard.JustDown(k.mine) || touch.consume("mine"))) this.deployables.placeMine();
   }
 
   // ---------- Run ----------
@@ -281,6 +291,9 @@ export class GameScene extends Scene {
     this.armament = mode.createArmament?.(this) ?? new Arsenal(this);
     this.state = "playing";
     mode.begin(this);
+    showTouchControls(mode.id);
+    // Sul telefono la partita va a schermo intero e in orizzontale (il gesto è il tocco su "Gioca").
+    if (touch.enabled) void enterFullscreen();
     this.hud.show();
     this.hud.update(this, true);
     audio.playMusic("game");
@@ -581,6 +594,7 @@ export class GameScene extends Scene {
     this.telegraph.clear();
     this.hud.hide();
     this.hints.clear();
+    showTouchControls(null);
     if (outcome === "victory") {
       this.fx.ring(this.player.x, this.player.y, 0x4ade80, 260, 700);
       this.sfx("reward");
@@ -597,6 +611,7 @@ export class GameScene extends Scene {
 
   showMenu() {
     this.cleanupRun();
+    showTouchControls(null);
     this.state = "menu";
     this.hud.hide();
     this.hints.clear();
