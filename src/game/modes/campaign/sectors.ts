@@ -385,8 +385,62 @@ export const sectorOfId = (id: string) => {
 
 export const nodeById = (profileSeed: number, id: string) => generateSector(profileSeed, sectorOfId(id)).nodes.get(id);
 
-/** Missione da id: fatta a mano (settore 1) o generata. */
-export const resolveMission = (profileSeed: number, id: string): MissionDef => {
+// ---------- Sfida del giorno ----------
+
+/** Data locale in formato AAAAMMGG. */
+export const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+};
+
+export const dailyId = (key = todayKey()) => `daily-${key}`;
+export const isDailyId = (id: string) => id.startsWith("daily-");
+
+/**
+ * Missione del giorno: stesso percorso, bioma e mutatori per tutti (seed
+ * dalla data); minaccia e item level seguono il settore più alto del giocatore.
+ */
+export const generateDaily = (key: string, sector: number): MissionDef => {
+  const rng = createRng(hash2(Number(key), 0x5eed));
+  const biome = BIOMES[Math.floor(rng() * BIOMES.length)];
+  const mutators: MutatorId[] = [];
+  while (mutators.length < 2) {
+    const id = MUTATOR_IDS[Math.floor(rng() * MUTATOR_IDS.length)];
+    if (!mutators.includes(id)) mutators.push(id);
+  }
+  const s = Math.max(0, sector - 2) + 0.5;
+  const threat = threatOf(s);
+  const place = biome.places[Math.floor(rng() * biome.places.length)];
+  return {
+    id: dailyId(key),
+    code: `${key.slice(6, 8)}/${key.slice(4, 6)}`,
+    title: place,
+    description: `Uguale per tutti oggi: ${biome.name}, due mutatori, scorta élite. La prima vittoria del giorno vale bottino extra.`,
+    tier: 5,
+    segments: markovSegments(5, biome, rng),
+    boss: false,
+    miniBoss: 0.6,
+    x: 0,
+    y: 0,
+    requires: [],
+    asteroids: biome.asteroids,
+    nebulas: biome.nebulas,
+    elite: true,
+    biome: biome.id,
+    mutators,
+    ilvl: ilvlOf(Math.max(2, sector), LAYERS - 2),
+    threat: { hp: threat.hp * 1.25, damage: threat.damage },
+    density: densityOf(s),
+    ground: biome.ground,
+    palette: biome.palette,
+    miniBossId: MINI_BOSSES[Math.floor(rng() * MINI_BOSSES.length)],
+    daily: key,
+  };
+};
+
+/** Missione da id: fatta a mano (settore 1), generata o sfida del giorno. */
+export const resolveMission = (profileSeed: number, id: string, sector = 2): MissionDef => {
+  if (isDailyId(id)) return generateDaily(id.slice(6), sector);
   if (sectorOfId(id) === 1) return missionById(id) ?? MISSIONS[0];
   return nodeById(profileSeed, id)?.mission ?? MISSIONS[0];
 };

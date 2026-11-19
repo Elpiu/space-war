@@ -33,7 +33,14 @@ const on = (root: HTMLElement, selector: string, fn: (node: HTMLElement) => void
 
 export const showMenu = (
   meta: Meta,
-  actions: { play: (difficulty: DifficultyId) => void; campaign: () => void; shop: () => void; toggleSound: () => boolean },
+  actions: {
+    play: (difficulty: DifficultyId) => void;
+    campaign: () => void;
+    shop: () => void;
+    toggleSound: () => boolean;
+    archive: () => void;
+    settings: () => void;
+  },
 ) => {
   let difficulty = meta.difficulty;
   const segs = (Object.keys(DIFFICULTIES) as DifficultyId[])
@@ -69,7 +76,11 @@ export const showMenu = (
           </ul>
         </section>
       </div>
-      <button class="icon-btn menu__sound" data-act="sound" title="Audio">${icon(meta.muted ? "soundOff" : "soundOn")}</button>
+      <div class="menu__corner">
+        <button class="btn btn--small" data-act="archive">${icon("trophy")} Archivio</button>
+        <button class="btn btn--small" data-act="settings">${icon("wrench")} Impostazioni</button>
+        <button class="icon-btn" data-act="sound" title="Audio">${icon(meta.muted ? "soundOff" : "soundOn")}</button>
+      </div>
       <div class="menu__keys">
         <span><kbd>WASD</kbd> muovi</span>
         <span><kbd>SPAZIO</kbd> scatto</span>
@@ -92,6 +103,8 @@ export const showMenu = (
   on(root, "[data-act=play]", () => actions.play(difficulty));
   on(root, "[data-act=shop]", actions.shop);
   on(root, "[data-act=campaign]", actions.campaign);
+  on(root, "[data-act=archive]", actions.archive);
+  on(root, "[data-act=settings]", actions.settings);
   on(root, "[data-act=sound]", (node) => (node.innerHTML = icon(actions.toggleSound() ? "soundOff" : "soundOn")));
 };
 
@@ -215,7 +228,7 @@ export interface PauseContent {
 export const showPause = (
   run: Run,
   muted: boolean,
-  actions: { resume: () => void; quit: () => void; toggleSound: () => boolean },
+  actions: { resume: () => void; quit: () => void; toggleSound: () => boolean; settings: () => void },
   content?: PauseContent,
 ) => {
   const root = mount(
@@ -227,6 +240,7 @@ export const showPause = (
         <div class="pause__actions">
           <button class="btn btn--primary" data-act="resume">${icon("play")} Riprendi <kbd>P</kbd></button>
           <button class="btn" data-act="sound">${icon(muted ? "soundOff" : "soundOn")} Audio</button>
+          <button class="btn" data-act="settings">${icon("wrench")} Impostazioni</button>
           <button class="btn btn--danger" data-act="quit">${icon("skull")} ${content ? esc(content.quitLabel) : "Abbandona run"}</button>
         </div>
       </div>
@@ -234,6 +248,7 @@ export const showPause = (
   );
   on(root, "[data-act=resume]", actions.resume);
   on(root, "[data-act=quit]", actions.quit);
+  on(root, "[data-act=settings]", actions.settings);
   on(root, "[data-act=sound]", (node) => (node.innerHTML = `${icon(actions.toggleSound() ? "soundOff" : "soundOn")} Audio`));
 };
 

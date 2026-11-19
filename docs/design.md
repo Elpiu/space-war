@@ -469,3 +469,32 @@ Le frecce in cima alla mappa passano da un settore sbloccato all'altro.
   | Bottino doppio | Casse doppie e un pezzo in più a fine missione; nemici +15% danno | — |
   | Ondata élite | Élite 2,5 volte più frequenti | +30% |
   | Nemici rapidi | Nemici +20% velocità | +20% |
+
+## Contorno (v3)
+
+- **Impostazioni** (menu principale e pausa): volume di musica ed effetti,
+  tremolio dello schermo (spento, ridotto, pieno), numeri di danno, avvisi ad
+  alto contrasto (linee d'attacco più spesse e opache). Salvate a parte.
+- **Esporta e importa:** un file JSON con tutti i salvataggi (survival,
+  campagna, archivio, impostazioni). L'importazione controlla il file e chiede
+  conferma prima di sostituire tutto.
+- **Archivio** (menu principale):
+  - **Bestiario:** ogni nemico incontrato, con ruolo, suggerimento e
+    abbattimenti; quelli mai visti restano sagome.
+  - **Catalogo:** i pezzi d'equipaggiamento trovati, con la percentuale.
+  - **Medaglie:** 12 obiettivi a lungo termine, ognuno sblocca una
+    **verniciatura** della nave (solo estetica, scelta nell'archivio).
+- **Contratti di missione:** ogni missione della campagna ha un obiettivo
+  facoltativo fisso (unità di terra, élite, nessun surriscaldamento, combo,
+  colpi subiti, capsula). Riuscirlo vale un bonus in monete; si vede nella
+  scheda della missione, all'avvio, in pausa e nell'esito.
+- **Sfida del giorno** (dal settore 2, sopra la scheda della missione): un
+  percorso con seed dalla data, uguale per tutti, con bioma, due mutatori e
+  scorta élite; minaccia e item level seguono il settore del giocatore. La
+  prima vittoria del giorno dà un pezzo raro in più.
+- **Annunci delle combo** (abbattimenti entro 1,3 s): DOPPIA, TRIPLA, STRAGE,
+  CARNEFICINA, APOCALISSE, LEGGENDARIO.
+- **Impatto:** breve fermo sulle uccisioni di élite e mini-boss;
+  **rallentatore** di 1,4 s alla morte di un boss.
+- **Radio di Controllo Missione:** battute satiriche fra un segmento e
+  l'altro della campagna.

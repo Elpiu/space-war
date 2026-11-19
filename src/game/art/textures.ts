@@ -3,7 +3,7 @@ import { ENEMY_SPRITES } from "./enemySprites";
 import { SPRITES, badgeDocument, type IconId } from "./svg";
 
 // Il loader di Phaser decodifica i data URI con atob: servono in base64.
-const svgUrl = (svg: string) => {
+export const svgUrl = (svg: string) => {
   const bytes = new TextEncoder().encode(svg);
   let binary = "";
   bytes.forEach((b) => (binary += String.fromCharCode(b)));

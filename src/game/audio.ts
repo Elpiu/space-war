@@ -38,6 +38,17 @@ class AudioEngine {
   private last = new Map<Sfx, number>();
   private samples = new Map<Sfx, HTMLAudioElement>();
   muted = false;
+  /** Volumi scelti nelle impostazioni (0-1). */
+  private musicVol = 0.8;
+  private sfxVol = 0.8;
+
+  setVolumes(music: number, sfx: number) {
+    this.musicVol = music;
+    this.sfxVol = sfx;
+    if (this.master) this.master.gain.value = this.muted ? 0 : 0.35 * sfx;
+    if (this.music) this.music.volume = 0.4 * music;
+    this.samples.forEach((el) => (el.volume = 0.6 * sfx));
+  }
 
   /** Va chiamato dopo un gesto dell'utente (policy autoplay dei browser). */
   unlock() {
@@ -45,7 +56,7 @@ class AudioEngine {
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new Ctx();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.35;
+      this.master.gain.value = this.muted ? 0 : 0.35 * this.sfxVol;
       this.master.connect(this.ctx.destination);
     }
     if (this.ctx.state === "suspended") void this.ctx.resume();
@@ -54,7 +65,7 @@ class AudioEngine {
 
   setMuted(muted: boolean) {
     this.muted = muted;
-    if (this.master) this.master.gain.value = muted ? 0 : 0.35;
+    if (this.master) this.master.gain.value = muted ? 0 : 0.35 * this.sfxVol;
     if (this.music) this.music.muted = muted;
   }
 
@@ -66,7 +77,7 @@ class AudioEngine {
     this.music?.pause();
     const el = new Audio(TRACKS[track]);
     el.loop = true;
-    el.volume = 0.4;
+    el.volume = 0.4 * this.musicVol;
     el.muted = this.muted;
     el.preload = "auto";
     this.music = el;
@@ -94,7 +105,7 @@ class AudioEngine {
       let el = this.samples.get(sfx);
       if (!el) {
         el = new Audio(sample);
-        el.volume = 0.6;
+        el.volume = 0.6 * this.sfxVol;
         this.samples.set(sfx, el);
       }
       el.currentTime = 0;

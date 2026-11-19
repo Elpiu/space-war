@@ -12,6 +12,9 @@ src/
     types.ts              tipi condivisi
     utils.ts              RNG con seed, pick pesato, SpatialHash
     meta.ts               salvataggio, sblocchi, crediti
+    settings.ts           impostazioni del giocatore (volumi, tremolio, numeri, contrasto, verniciatura)
+    archive.ts            archivio comune: nemici visti e abbattuti, pezzi trovati, medaglie, verniciature
+    savefile.ts           esporta/importa di tutte le chiavi "space-war-…" in JSON
     audio.ts              musica in streaming + effetti sintetizzati (WebAudio)
     art/svg.ts            icone (24×24, currentColor) e sprite SVG (64×64)
     art/enemySprites.ts   sprite SVG di tutti i nemici e dei boss
@@ -26,6 +29,8 @@ src/
     modes/campaign/sectors.ts  campagna infinita: seed, mappa a nodi, Markov, curve, biomi, mutatori
     modes/campaign/events.ts   cantiere, eventi e tesori (nodi senza combattimento)
     modes/campaign/affixes.ts  affissi del bottino: tiro, etichette, effetti su arma e nave
+    modes/campaign/contracts.ts contratti di missione (obiettivo facoltativo per missione)
+    ui/extras.ts          finestra Impostazioni e schermata Archivio
     modes/campaign/ui/    viste dell'hub: mappa, hangar, negozio, officina, elementi comuni
     modes/campaign/schematic.ts  sagome SVG degli scafi e posizione delle prese
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
@@ -107,6 +112,11 @@ src/
   con slot, intervallo e l'effetto `weapon` (sulla WeaponSpec) oppure `ship`
   (su ShipStats o RackStats). Fusione, ricalibrazione e offerte del settore
   sono in `profile.ts`.
+- **Medaglia**: una voce in `MEDALS` (`archive.ts`) con progresso e
+  verniciatura; la verniciatura va in `PAINTS`. Le statistiche nuove si
+  registrano con `recordStat` e si salvano a fine run (`saveArchive`).
+- **Contratto**: un id in `ContractId` più etichetta e stato in
+  `contracts.ts`, e il contatore in `CampaignMode` (`this.cstats`).
 - **Evento**: un `case` in `nodeContent` (`modes/campaign/events.ts`) e l'id
   in `EVENTS` (`sectors.ts`).
 - **Minaccia**: `ModeSetup.threat` moltiplica HP, danno e velocità dei nemici

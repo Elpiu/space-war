@@ -155,7 +155,7 @@ con un'icona nel bestiario.
 | **G3. Campagna infinita** ✅ | Generatore di settori (DAG, Markov, fBm), curve di minaccia, biomi, mutatori, item level | Dopo il settore 1 si gioca senza fine, con difficoltà sensata |
 | **G4. Bottino e Officina** ✅ | Affissi, fusione, ricalibrazione, offerte del settore | Le monete hanno sempre un uso, il bottino sorprende |
 | **G5. Bestiario 2 e boss** ✅ | Altri 12 nemici, 3 boss e 2 mini-boss nuovi | Circa 40 nemici, boss a rotazione |
-| **G6. Chicche** | Impostazioni, bestiario/catalogo, contratti, medaglie, verniciature, esporta/importa, sfida giornaliera | Il gioco ha un "contorno" completo |
+| **G6. Chicche** ✅ | Impostazioni, bestiario/catalogo, contratti, medaglie, verniciature, esporta/importa, sfida giornaliera | Il gioco ha un "contorno" completo |
 
 Ogni fase si chiude con build, collaudo automatico (l'autopilota della
 fase F) e commit.

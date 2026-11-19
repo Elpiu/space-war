@@ -24,6 +24,7 @@ import {
 } from "./gear";
 import { MISSIONS, type MissionDef } from "./missions";
 import { AFFIX_COUNT, applyShipAffixes, rollAffix, rollAffixes } from "./affixes";
+import { recordGear, recordStat, saveArchive } from "../../archive";
 import { LAYERS, generateSector, ilvlOf, nodeState, sectorOfId } from "./sectors";
 
 const KEY = "space-war-campaign-v2";
@@ -60,6 +61,8 @@ export interface CampaignProfile {
   victories: number;
   /** Offerte del settore nel negozio: pezzi rari o migliori con affissi. */
   offers: { stamp: number; rerolls: number; items: (Omit<GearItem, "uid"> | null)[] };
+  /** Ultima sfida del giorno vinta (AAAAMMGG). */
+  dailyDone: string;
 }
 
 export const DIFFICULTY_STARS: Record<DifficultyId, number> = { normal: 1, hard: 2, nightmare: 3 };
@@ -89,6 +92,7 @@ const starter = (): CampaignProfile => ({
   nodeOutcomes: {},
   victories: 0,
   offers: { stamp: -1, rerolls: 0, items: [] },
+  dailyDone: "",
 });
 
 export const toggleFireSlot = (profile: CampaignProfile, which: 2 | 3, key: SlotKey) => {
@@ -187,6 +191,7 @@ export const equippedSlotOf = (profile: CampaignProfile, uid: number) =>
 const BOSS_S1 = "s1-5";
 
 export const isMissionUnlocked = (profile: CampaignProfile, mission: MissionDef) => {
+  if (mission.daily) return profile.sector >= 2;
   if (mission.sector && mission.sector >= 2) {
     if (mission.sector > profile.sector) return false;
     const sector = generateSector(profile.seed, mission.sector);
@@ -360,6 +365,8 @@ export const fuse = (profile: CampaignProfile, uid: number) => {
   }
   if (affixes.length) item.affixes = affixes;
   profile.inventory = profile.inventory.filter((i) => !used.has(i.uid));
+  recordStat("fusions");
+  saveArchive();
   saveProfile(profile);
   return `Fusione riuscita: ${def.title} ora è ${RARITY_LABEL[next]}`;
 };
@@ -511,6 +518,7 @@ export const equippedOfType = (profile: CampaignProfile, type: string) =>
     .find(Boolean);
 
 export const addLoot = (profile: CampaignProfile, items: Omit<GearItem, "uid">[]) => {
+  items.forEach((item) => recordGear(item.defId));
   const added = items.map((item) => ({ ...item, uid: profile.nextUid++, fresh: true }));
   profile.inventory.push(...added);
   return added;

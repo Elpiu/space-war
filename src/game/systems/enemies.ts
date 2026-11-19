@@ -1,3 +1,4 @@
+import { recordSeen } from "../archive";
 import { BlendModes, TintModes } from "phaser";
 import { DEPTH, DIFFICULTIES, LIMITS, PLAYER_RADIUS, SIGNAL, VIEW_H, VIEW_W } from "../config";
 import { AFFIXES, ENEMIES, isBig, waveScale } from "../data/enemies";
@@ -22,6 +23,7 @@ export const spawnEnemy = (
 ): Enemy => {
   const def = ENEMIES[id];
   const run = g.run;
+  recordSeen(id);
   const ws = waveScale(run.wave);
   const diff = DIFFICULTIES[run.difficulty];
   const elite = Boolean(opts.affix);

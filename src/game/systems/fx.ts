@@ -97,6 +97,17 @@ export class Fx {
     });
   }
 
+  /** Scritta grande che sale e svanisce (annunci delle combo). */
+  callout(x: number, y: number, text: string, color: number, big = false) {
+    const label = this.scene.add
+      .text(x, y, text, { fontFamily: "Orbitron, Arial Black, sans-serif", fontSize: big ? "34px" : "24px", color: hex(color), stroke: "#0b1020", strokeThickness: 6 })
+      .setOrigin(0.5)
+      .setDepth(DEPTH.text + 1)
+      .setScale(0.6);
+    this.scene.tweens.add({ targets: label, scale: 1, duration: 140, ease: "Back.easeOut" });
+    this.scene.tweens.add({ targets: label, y: y - 60, alpha: 0, delay: 500, duration: 600, onComplete: () => label.destroy() });
+  }
+
   damageNumber(x: number, y: number, value: number, color = 0xffffff, big = false) {
     let text = this.numbers.find((t) => !t.active);
     if (!text) {

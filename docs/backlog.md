@@ -51,6 +51,7 @@
   15, danno del boss nelle tier alte.
 - Ricomprimere la musica (circa 17 MB complessivi).
 - Supporto gamepad (oggi tastiera e touch).
+- Rimappatura dei tasti nelle impostazioni (rimasta fuori da G6).
 - Seconda arma attiva o "ultimate" a ricarica.
 - Altri boss con meccaniche legate all'arena (asteroidi che si muovono,
   nebulose tossiche).

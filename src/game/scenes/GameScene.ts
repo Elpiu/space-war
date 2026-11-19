@@ -1,4 +1,9 @@
 import { armorMul } from "../systems/bossAI";
+import { PAINTS, checkMedals, getArchive, recordKill, recordStat, saveArchive } from "../archive";
+import { getSettings } from "../settings";
+import { showArchive, showSettings } from "../ui/extras";
+import { loadProfile } from "../modes/campaign/profile";
+import { GEAR } from "../modes/campaign/gear";
 import { BlendModes, Input, Scene, type GameObjects } from "phaser";
 import type { IconId } from "../art/svg";
 import { createProceduralTextures, preloadArt } from "../art/textures";
@@ -67,6 +72,12 @@ export class GameScene extends Scene {
   pendingLevels = 0;
   /** Disturbo EMP attivo fino a questo istante: nave più lenta, armi più calde. */
   jammedUntil = 0;
+  /** Impatto: per qualche millisecondo reale il gioco si ferma (tempo reale). */
+  private hitStopUntil = 0;
+  /** Rallentatore alla morte di un boss (tempo reale). */
+  private slowMoUntil = 0;
+  private streak = 0;
+  private lastStreakAt = -99999;
   slowedUntil = 0;
   /** Input di combattimento letto a ogni frame (usato dal sistema d'arma della campagna). */
   controls = { firing: false, bomb: false, profile: 0 };
@@ -94,6 +105,17 @@ export class GameScene extends Scene {
     this.starfield = new Starfield(this);
     this.fx = new Fx(this);
     this.telegraph = this.add.graphics().setDepth(DEPTH.telegraph);
+    // Avvisi ad alto contrasto: linee più spesse e opache, letto a ogni disegno.
+    const t = this.telegraph as unknown as {
+      lineStyle: (w: number, c: number, a?: number) => unknown;
+      fillStyle: (c: number, a?: number) => unknown;
+    };
+    const lineStyle = t.lineStyle.bind(t);
+    const fillStyle = t.fillStyle.bind(t);
+    t.lineStyle = (w, c, a = 1) => (getSettings().contrast ? lineStyle(w * 1.6 + 1, c, Math.min(1, a * 1.5 + 0.1)) : lineStyle(w, c, a));
+    t.fillStyle = (c, a = 1) => (getSettings().contrast ? fillStyle(c, Math.min(1, a * 1.5)) : fillStyle(c, a));
+    const settings = getSettings();
+    audio.setVolumes(settings.music, settings.sfx);
     this.meta = loadMeta();
     this.hints = new Hints(this.meta);
     audio.setMuted(this.meta.muted);
@@ -142,7 +164,9 @@ export class GameScene extends Scene {
     this.starfield.update();
     if (this.state !== "playing") return;
 
-    const delta = Math.min(rawDelta, 50);
+    const real = performance.now();
+    if (real < this.hitStopUntil) return;
+    const delta = Math.min(rawDelta, 50) * (real < this.slowMoUntil ? 0.3 : 1);
     const dt = delta / 1000;
     this.now += delta;
     this.run.time += delta;
@@ -292,6 +316,8 @@ export class GameScene extends Scene {
     const { x, y } = setup.start;
     this.engine = this.add.image(x, y, "glow").setTint(0xfb923c).setBlendMode(BlendModes.ADD).setDepth(DEPTH.player - 1).setDisplaySize(34, 34);
     this.player = this.add.image(x, y, "player").setDepth(DEPTH.player);
+    const paint = PAINTS[getSettings().paint]?.tint;
+    if (paint) this.player.setTint(paint);
     this.player.setDisplaySize(48, 48);
     if (mode.heading !== null) this.player.setRotation(mode.heading + Math.PI / 2);
     this.playerScale = this.player.scaleX;
@@ -443,7 +469,7 @@ export class GameScene extends Scene {
       e.vy += Math.sin(angle) * k;
     }
     if (source === "blaster" && this.run.stats.lifeSteal > 0) this.heal(dealt * this.run.stats.lifeSteal);
-    this.fx.damageNumber(e.x, e.y - e.radius, damage, SOURCE_COLORS[source] ?? 0xffffff, damage >= 10);
+    if (getSettings().damageNumbers) this.fx.damageNumber(e.x, e.y - e.radius, damage, SOURCE_COLORS[source] ?? 0xffffff, damage >= 10);
     this.sfx("hit");
     if (e.hp <= 0) this.killEnemy(e, true);
   }
@@ -486,6 +512,14 @@ export class GameScene extends Scene {
     if (!rewards) return;
 
     this.run.kills += 1;
+    recordKill(def.id, Boolean(e.affix));
+    this.comboTick(x, y);
+    if (def.boss) {
+      this.slowMoUntil = performance.now() + 1400;
+      this.hitStopUntil = performance.now() + 120;
+    } else if (def.miniBoss || e.affix) {
+      this.hitStopUntil = performance.now() + (def.miniBoss ? 90 : 45);
+    }
     if (isEvolved(this.run, "vampirism")) this.heal(0.2);
     this.mode.onKill(this, e);
   }
@@ -629,6 +663,7 @@ export class GameScene extends Scene {
         this.endRun("abandon");
       },
       toggleSound: () => this.toggleSound(),
+      settings: () => showSettings(),
     }, this.mode.pauseContent?.(this));
   }
 
@@ -662,7 +697,22 @@ export class GameScene extends Scene {
       this.engine.setVisible(false);
       this.sfx("boom");
     }
-    this.time.delayedCall(900, () => this.mode.end(this, outcome));
+    this.time.delayedCall(900, () => {
+      this.mode.end(this, outcome);
+      this.awardMedals();
+    });
+  }
+
+  /** Contesto delle medaglie: record del survival, settore della campagna, catalogo. */
+  private medalContext() {
+    return { bestWave: loadMeta().bestWave, sector: loadProfile().sector, catalogRatio: getArchive().gear.length / GEAR.length };
+  }
+
+  /** Salva l'archivio e annuncia le medaglie appena guadagnate. */
+  private awardMedals() {
+    const earned = checkMedals(this.medalContext());
+    saveArchive();
+    earned.forEach((m) => toast(`Medaglia: ${m.title} · verniciatura ${PAINTS[m.paint].label} sbloccata`, "trophy", "epic"));
   }
 
   showMenu() {
@@ -680,6 +730,11 @@ export class GameScene extends Scene {
       campaign: () => this.showCampaign(),
       shop: () => this.showShop(),
       toggleSound: () => this.toggleSound(),
+      archive: () => {
+        this.awardMedals();
+        showArchive(this.medalContext(), () => this.showMenu());
+      },
+      settings: () => showSettings(),
     });
   }
 
@@ -724,8 +779,27 @@ export class GameScene extends Scene {
     clearEnemyBullets(this);
   }
 
+  /** Annunci delle combo: abbattimenti ravvicinati (entro 1,3 s l'uno dall'altro). */
+  private comboTick(x: number, y: number) {
+    this.streak = this.now - this.lastStreakAt < 1300 ? this.streak + 1 : 1;
+    this.lastStreakAt = this.now;
+    recordStat("maxCombo", this.streak, "max");
+    const calls: Record<number, [string, number]> = {
+      2: ["DOPPIA!", 0x7dd3fc],
+      3: ["TRIPLA!", 0x4ade80],
+      5: ["STRAGE!", 0xfacc15],
+      8: ["CARNEFICINA!", 0xfb923c],
+      12: ["APOCALISSE!", 0xf472b6],
+      20: ["LEGGENDARIO!", 0xc084fc],
+    };
+    const call = calls[this.streak];
+    if (call) this.fx.callout(x, y - 30, call[0], call[1], this.streak >= 8);
+  }
+
   shake(duration: number, intensity: number) {
-    this.cameras.main.shake(duration, intensity);
+    const level = getSettings().shake;
+    if (level <= 0) return;
+    this.cameras.main.shake(duration, intensity * level);
   }
 
   sfx(name: Sfx) {

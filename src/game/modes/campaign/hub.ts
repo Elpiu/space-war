@@ -345,6 +345,7 @@ export const showMissionResult = (
     difficulty: string;
     kills: number;
     time: number;
+    contract?: { text: string; done: boolean; reward: number };
   },
   actions: { map: () => void; retry: () => void },
 ) => {
@@ -370,6 +371,7 @@ export const showMissionResult = (
           <div><small>Monete</small><b>${result.coins}</b></div>
           <div><small>Bonus</small><b>${result.bonus}</b></div>
         </div>
+        ${result.contract ? `<p class="result__contract ${result.contract.done ? "is-done" : ""}">${icon(result.contract.done ? "check" : "flag")} Contratto: ${esc(result.contract.text)}${result.contract.done ? ` · +${result.contract.reward} monete` : " · non riuscito"}</p>` : ""}
         <section class="result__loot"><h3>Bottino</h3><ul class="build-list">${loot}</ul></section>
         ${result.victory ? "" : `<p class="muted">Monete e bottino raccolti restano tuoi: riprova quando vuoi.</p>`}
         <div class="pause__actions">

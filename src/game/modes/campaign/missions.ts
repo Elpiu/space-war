@@ -41,6 +41,8 @@ export interface MissionDef {
   bossTier?: number;
   /** Mini-boss lungo il percorso (default Cannoniera). */
   miniBossId?: EnemyId;
+  /** Sfida del giorno: data in formato AAAAMMGG. */
+  daily?: string;
 }
 
 export const SECTOR = {

@@ -20,6 +20,24 @@ import { showMissionResult } from "./hub";
 import { pickFormation } from "./formations";
 import { SEGMENT_LABELS, generateLevel, segmentAt, type Prop, type Segment, type SegmentKind } from "./level";
 import type { MissionDef } from "./missions";
+import { contractFor, contractLabel, contractStatus, newContractStats, type Contract } from "./contracts";
+import { recordStat } from "../../archive";
+
+/** "Controllo Missione": radio satirica fra un segmento e l'altro. */
+const RADIO = [
+  "Ricordiamo che ogni proiettile è un investimento.",
+  "Il settore è sicuro al 40%. Arrotondato per eccesso.",
+  "I danni allo scafo non sono coperti dalla garanzia.",
+  "Sorridi: la telecamera di bordo è in diretta per gli azionisti.",
+  "I cartelloni si possono abbattere. Il marketing preferirebbe di no.",
+  "Buone notizie: il carburante costa meno del pilota.",
+  "Se esplodi, compila il modulo B-12 prima di farlo.",
+  "Questa chiamata è registrata per migliorare la qualità del servizio.",
+  "La ritirata non è prevista dal tuo contratto.",
+  "Il reparto contabilità ti ringrazia per ogni cassa recuperata.",
+  "Abbiamo assicurato la nave. Non te.",
+  "Promemoria: la pausa pranzo è stata abolita per motivi di efficienza.",
+];
 import { BIOMES, MUTATORS, mutatorReward, resolveMission } from "./sectors";
 import {
   DIFFICULTY_STARS,
@@ -68,6 +86,9 @@ export class CampaignMode implements GameMode {
   private combo = 0;
   private lastKillAt = -99999;
   private nextToxicAt = 0;
+  private contract: Contract;
+  private cstats = newContractStats();
+  private radioIndex = Math.floor(Math.random() * RADIO.length);
   private toxicWarned = false;
 
   constructor(
@@ -75,8 +96,9 @@ export class CampaignMode implements GameMode {
     private readonly difficulty: DifficultyId = "normal",
   ) {
     this.profile = loadProfile();
-    this.mission = resolveMission(this.profile.seed, missionId);
+    this.mission = resolveMission(this.profile.seed, missionId, this.profile.sector);
     this.loadout = buildLoadout(this.profile);
+    this.contract = contractFor(this.mission, this.profile.secrets.includes(this.mission.id));
     // Mutatore "Calore +20%": le armi dissipano meno.
     if (this.has("heat")) this.loadout.rack.heatSink *= 0.83;
   }
@@ -165,6 +187,7 @@ export class CampaignMode implements GameMode {
     if (this.capsule && !this.profile.secrets.includes(this.mission.id)) dropPickup(g, "capsule", this.capsule.x, this.capsule.y);
     const mutators = (this.mission.mutators ?? []).map((m) => MUTATORS[m].label).join(" · ");
     banner(`MISSIONE ${this.mission.code}`, mutators ? `${this.mission.title} · ${mutators}` : this.mission.title);
+    g.toast(`Contratto: ${contractLabel(this.contract)} (+${this.contract.reward} monete)`, "flag", "info");
     g.hints.trigger("fire");
   }
 
@@ -189,6 +212,8 @@ export class CampaignMode implements GameMode {
     cam.setScroll(this.scroll, 0);
 
     this.backdrop?.update(segmentAt(this.segments, this.scroll + VIEW_W / 2).kind, this.scroll, dt);
+
+    if (this.rack?.overheated) this.cstats.overheated = true;
 
     // Nebulosa tossica: le nebulose corrodono lo scafo.
     if (this.mission.biome === "toxic" && inNebula(g.arena, g.player.x, g.player.y) && g.now >= this.nextToxicAt) {
@@ -219,6 +244,8 @@ export class CampaignMode implements GameMode {
     const ahead = segmentAt(this.segments, this.scroll + VIEW_W * 0.6);
     if (ahead.kind !== this.currentSegment) {
       if (this.currentSegment !== null && ahead.kind !== "open") g.toast(SEGMENT_LABELS[ahead.kind], ahead.kind === "boss" ? "boss" : "map");
+      // Una battuta di Controllo Missione a ogni cambio di segmento, a volte.
+      if (this.currentSegment !== null && Math.random() < 0.45) g.toast(`Controllo Missione: ${this.radio()}`, "event", "info");
       this.currentSegment = ahead.kind;
     }
 
@@ -309,8 +336,14 @@ export class CampaignMode implements GameMode {
     pos.x = clamp(pos.x, this.scroll + 30, this.scroll + VIEW_W - 30);
   }
 
+  private radio() {
+    this.radioIndex = (this.radioIndex + 1) % RADIO.length;
+    return RADIO[this.radioIndex];
+  }
+
   absorbDamage(g: GameScene, damage: number) {
     this.lastHitAt = g.now;
+    this.cstats.hits += 1;
     const taken = Math.min(this.shield, damage);
     this.shield -= taken;
     return damage - taken;
@@ -324,6 +357,9 @@ export class CampaignMode implements GameMode {
 
   onKill(g: GameScene, e: Enemy) {
     this.combo = g.now - this.lastKillAt < 1800 ? this.combo + 1 : 1;
+    this.cstats.maxCombo = Math.max(this.cstats.maxCombo, this.combo);
+    if (e.affix) this.cstats.elite += 1;
+    if (e.anchor || e.def.structure) this.cstats.ground += 1;
     this.lastKillAt = g.now;
     const { x, y, def } = e;
     // Affisso "esplosione all'uccisione": danno ad area pari a 1.5 colpi dell'arma migliore.
@@ -360,6 +396,7 @@ export class CampaignMode implements GameMode {
 
   onCapsule(g: GameScene) {
     this.capsuleFound = true;
+    this.cstats.capsule = true;
     const coins = Math.round(50 * this.mission.tier * this.coinScale);
     g.run.coins += coins;
     const item = rollGear(this.lootTier, "rare", this.mission.ilvl);
@@ -381,17 +418,27 @@ export class CampaignMode implements GameMode {
     const victory = outcome === "victory";
     const stars = DIFFICULTY_STARS[this.difficulty];
     // Prima vittoria a questa difficoltà: bonus doppio e bottino migliore.
-    const firstClear = victory && (profile.stars[this.mission.id] ?? 0) < stars;
+    const daily = this.mission.daily;
+    // Sfida del giorno: conta solo la prima vittoria del giorno.
+    const firstClear = victory && (daily ? profile.dailyDone !== daily : (profile.stars[this.mission.id] ?? 0) < stars);
     const bonus = victory ? Math.round(40 * this.mission.tier * DIFFICULTIES[this.difficulty].reward * (firstClear ? 2 : 1) * this.coinScale) : 0;
     const minRarity = stars >= 3 || (this.mission.elite && firstClear) ? "rare" : stars === 2 || firstClear || this.mission.elite ? "uncommon" : "common";
     // Bottino doppio e boss dei settori generati: un pezzo in più a fine missione.
-    const rewards = victory ? (this.has("loot") ? 2 : 1) + (this.mission.boss && this.mission.sector ? 1 : 0) : 0;
-    const reward = Array.from({ length: rewards }, () => rollGear(this.lootTier, minRarity, this.mission.ilvl));
+    const rewards = victory ? (this.has("loot") ? 2 : 1) + (this.mission.boss && this.mission.sector ? 1 : 0) + (daily && firstClear ? 1 : 0) : 0;
+    const reward = Array.from({ length: rewards }, () => rollGear(this.lootTier, daily && firstClear ? "rare" : minRarity, this.mission.ilvl));
+    const status = contractStatus(this.contract, this.cstats);
+    const contractDone = victory && status.done;
+    const contractBonus = contractDone ? this.contract.reward : 0;
+    if (contractDone) recordStat("contracts");
 
     // Non è un roguelite: monete e bottino raccolti si tengono sempre.
-    profile.coins += g.run.coins + bonus;
+    profile.coins += g.run.coins + bonus + contractBonus;
     const added = addLoot(profile, [...this.loot, ...reward]);
-    if (victory) recordVictory(profile, this.mission.id, this.difficulty);
+    if (victory && daily) {
+      if (firstClear) recordStat("dailies");
+      profile.dailyDone = daily;
+      profile.victories += 1;
+    } else if (victory) recordVictory(profile, this.mission.id, this.difficulty);
     if (this.capsuleFound && !profile.secrets.includes(this.mission.id)) profile.secrets.push(this.mission.id);
     saveProfile(profile);
 
@@ -407,6 +454,7 @@ export class CampaignMode implements GameMode {
         difficulty: DIFFICULTIES[this.difficulty].label,
         kills: g.run.kills,
         time: g.run.time,
+        contract: { text: `${contractLabel(this.contract)} · ${status.text}`, done: contractDone, reward: this.contract.reward },
       },
       {
         map: () => g.showCampaign(),
@@ -447,6 +495,7 @@ export class CampaignMode implements GameMode {
       subtitle: `Missione ${this.mission.code} · ${this.mission.title} · ${DIFFICULTIES[this.difficulty].label}${(this.mission.mutators ?? []).map((m) => ` · ${MUTATORS[m].label}`).join("")}`,
       body: `<div class="pause-build">${this.build()}</div>
         <p class="muted">${g.run.kills} abbattuti · ${g.run.coins} monete · ${this.loot.length} casse di bottino</p>
+        <p class="pause-contract ${contractStatus(this.contract, this.cstats).done ? "is-done" : ""}">${icon("flag")} Contratto: ${esc(contractLabel(this.contract))} · ${esc(contractStatus(this.contract, this.cstats).text)} · +${this.contract.reward}</p>
         <div class="menu__keys">${keys.map(([k, v]) => `<span><kbd>${k}</kbd> ${v}</span>`).join("")}</div>
         <p class="muted">Abbandonando tieni monete e bottino raccolti.</p>`,
       quitLabel: "Abbandona missione",

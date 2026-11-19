@@ -15,12 +15,16 @@ import {
   isCombat,
   mutatorReward,
   nodeState,
+  dailyId,
+  isDailyId,
   resolveMission,
   sectorOfId,
+  todayKey,
   type Sector,
   type SectorNode,
 } from "../sectors";
 import { starsHtml, type HubState } from "./common";
+import { contractFor, contractLabel } from "../contracts";
 
 const DIFF_ORDER: DifficultyId[] = ["normal", "hard", "nightmare"];
 
@@ -113,7 +117,7 @@ const missionPanel = (profile: CampaignProfile, m: MissionDef, difficulty: Diffi
   const scale = ilvlMul(m.ilvl) * mutatorReward(m.mutators) * (m.elite ? 1.3 : 1);
   const bonus = Math.round(40 * m.tier * DIFFICULTIES[difficulty].reward * (firstAtDiff ? 2 : 1) * scale);
   const threat = Array.from({ length: 5 }, (_, i) => `<i class="${i < m.tier ? "on" : ""}"></i>`).join("");
-  const kind = m.boss ? "Boss" : m.elite ? "Élite" : "Missione";
+  const kind = m.daily ? "Sfida del giorno" : m.boss ? "Boss" : m.elite ? "Élite" : "Missione";
   const mutators = (m.mutators ?? [])
     .map((id) => `<span class="hq-mut" title="${esc(MUTATORS[id].text)}">${icon("warning")} ${esc(MUTATORS[id].label)}<small>${esc(MUTATORS[id].text)}</small></span>`)
     .join("");
@@ -122,13 +126,14 @@ const missionPanel = (profile: CampaignProfile, m: MissionDef, difficulty: Diffi
     <h3 class="hq-mission__title">${esc(m.title)}</h3>
     <p>${esc(m.description)}</p>
     ${
-      m.sector
+      m.threat
         ? `<div class="threat"><span>Minaccia</span><b class="hq-threat">×${m.threat!.hp.toFixed(2)} HP · ×${m.threat!.damage.toFixed(2)} danno</b><span class="mission-stars">${starsHtml(stars)}</span></div>`
         : `<div class="threat"><span>Minaccia</span><span class="pips">${threat}</span><span class="mission-stars">${starsHtml(stars)}</span></div>`
     }
     ${mutators ? `<div class="hq-muts">${mutators}</div>` : ""}
     <div class="segmented segmented--small">${diffs}</div>
     <ul class="mission-facts">
+      <li class="is-contract">${icon("flag")} Contratto: ${esc(contractLabel(contractFor(m, profile.secrets.includes(m.id))))} · +${contractFor(m, profile.secrets.includes(m.id)).reward}</li>
       <li>${icon("coin")} Bonus vittoria: ${bonus} monete${firstAtDiff ? " (prima vittoria x2)" : ""}</li>
       <li>${icon("crate")} ${difficulty === "nightmare" ? "Bottino garantito raro o migliore" : difficulty === "hard" || firstAtDiff || m.elite ? "Bottino garantito non comune o migliore" : "Bottino garantito a fine missione"}${m.ilvl ? ` · item level ${m.ilvl}` : ""}</li>
       ${m.miniBoss ? `<li>${icon("warning")} Mini-boss lungo il percorso: ${esc(ENEMIES[m.miniBossId ?? "gunship"].label)}</li>` : ""}
@@ -182,10 +187,22 @@ const shipStrip = (profile: CampaignProfile) => {
   </div>`;
 };
 
+/** Pulsante della sfida del giorno, sopra la scheda della missione. */
+const dailyCard = (profile: CampaignProfile, state: HubState) => {
+  if (profile.sector < 2) {
+    return `<div class="hq-daily is-locked">${icon("lock")}<span><b>Sfida del giorno</b><small>Batti il Dreadnought del settore 1 per sbloccarla</small></span></div>`;
+  }
+  const done = profile.dailyDone === todayKey();
+  return `<button class="hq-daily ${isDailyId(state.missionId) ? "is-on" : ""} ${done ? "is-done" : ""}" data-action="mission" data-id="${dailyId()}">
+    ${icon(done ? "check" : "star")}<span><b>Sfida del giorno</b><small>${done ? "Vinta oggi: si può rigiocare" : "Uguale per tutti · prima vittoria: bottino extra"}</small></span>
+  </button>`;
+};
+
 export const mapView = (profile: CampaignProfile, state: HubState) => {
   const n = state.sector;
   let board: string;
   let side: string;
+  const daily = isDailyId(state.missionId) && profile.sector >= 2 ? resolveMission(profile.seed, state.missionId, profile.sector) : null;
   if (n <= 1) {
     const mission = MISSIONS.find((m) => m.id === state.missionId) ?? MISSIONS[0];
     board = handmadeMap(profile, mission.id);
@@ -195,15 +212,17 @@ export const mapView = (profile: CampaignProfile, state: HubState) => {
     const node = (sectorOfId(state.missionId) === n && sector.nodes.get(state.missionId)) || sector.layers[0][0];
     board = dagMap(profile, sector, node.id);
     side = isCombat(node.kind)
-      ? missionPanel(profile, resolveMission(profile.seed, node.id), state.difficulty)
+      ? missionPanel(profile, resolveMission(profile.seed, node.id, profile.sector), state.difficulty)
       : nodePanel(profile, sector, node, state.feedback);
   }
+  if (daily) side = missionPanel(profile, daily, state.difficulty);
   return `<div class="hq-map">
     <section class="hq-map__board panel ${n >= 2 ? `biome-${generateSector(profile.seed, n).biome.id}` : ""}">
       ${sectorNav(profile, n)}
       ${board}
     </section>
     <aside class="hq-map__side">
+      ${dailyCard(profile, state)}
       <section class="panel hq-mission">${side}</section>
       ${shipStrip(profile)}
     </aside>
