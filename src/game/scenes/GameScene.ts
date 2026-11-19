@@ -1,3 +1,4 @@
+import { armorMul } from "../systems/bossAI";
 import { BlendModes, Input, Scene, type GameObjects } from "phaser";
 import type { IconId } from "../art/svg";
 import { createProceduralTextures, preloadArt } from "../art/textures";
@@ -66,6 +67,7 @@ export class GameScene extends Scene {
   pendingLevels = 0;
   /** Disturbo EMP attivo fino a questo istante: nave più lenta, armi più calde. */
   jammedUntil = 0;
+  slowedUntil = 0;
   /** Input di combattimento letto a ogni frame (usato dal sistema d'arma della campagna). */
   controls = { firing: false, bomb: false, profile: 0 };
   armament: Armament | null = null;
@@ -170,7 +172,7 @@ export class GameScene extends Scene {
 
     const arrows = activeChests(this).map((c) => ({ x: c.x, y: c.y, color: 0xfbbf24, size: 1.1 }));
     this.enemies.forEach((e) => {
-      if (e.def.id === "boss") arrows.push({ x: e.x, y: e.y, color: 0xf87171, size: 1.5 });
+      if (e.def.boss || e.def.miniBoss) arrows.push({ x: e.x, y: e.y, color: 0xf87171, size: 1.5 });
       else if (e.affix) arrows.push({ x: e.x, y: e.y, color: AFFIXES[e.affix].color, size: 0.7 });
     });
     this.fx.drawArrows(arrows);
@@ -208,6 +210,11 @@ export class GameScene extends Scene {
     if (this.now < this.jammedUntil) {
       mx *= 0.7;
       my *= 0.7;
+    }
+    // Sanguisuga attaccata: la nave arranca.
+    if (this.now < this.slowedUntil) {
+      mx *= 0.55;
+      my *= 0.55;
     }
     let vx = mx * run.stats.speed;
     let vy = my * run.stats.speed;
@@ -397,6 +404,11 @@ export class GameScene extends Scene {
     this.jammedUntil = this.now + 150;
   }
 
+  /** Chiamato dalle Sanguisughe attaccate allo scafo. */
+  slowPlayer() {
+    this.slowedUntil = this.now + 150;
+  }
+
   damageEnemy(e: Enemy, damage: number, source: DamageSource, angle = 0, knockback = 0) {
     if (e.dead) return;
     // Fantasmi intangibili: il colpo li attraversa.
@@ -405,6 +417,12 @@ export class GameScene extends Scene {
     if (this.now < e.protectedUntil) {
       damage *= 0.5;
       if (Math.random() < 0.3) this.fx.burst(e.x, e.y, 0x22d3ee, 3);
+    }
+    // Corazze di boss e mini-boss (punti deboli, segmenti, nucleo chiuso).
+    const armor = armorMul(this, e);
+    if (armor !== 1) {
+      damage *= armor;
+      if (armor < 1 && Math.random() < 0.25) this.fx.burst(e.x, e.y, 0x7dd3fc, 2);
     }
     // Barriera (affisso Schermato): si consuma prima degli HP.
     if (e.barrier > 0) {
@@ -435,7 +453,7 @@ export class GameScene extends Scene {
     if (e.dead) return;
     e.dead = true;
     const { x, y, def } = e;
-    const isBoss = def.id === "boss";
+    const isBoss = Boolean(def.boss);
     if (!silent) {
       const size = Math.min(3.5, Math.max(0.7, e.radius / 20));
       this.fx.explosion(x, y, e.affix ? AFFIXES[e.affix].color : def.color, size);
@@ -454,6 +472,10 @@ export class GameScene extends Scene {
       for (const side of [-1, 1]) spawnEnemy(this, "splitter", x + side * 18, y + side * 10, { gen: e.gen + 1 });
     }
     if (def.id === "brute") for (let i = 0; i < 2; i += 1) spawnEnemy(this, "swarm", x + (i ? 20 : -20), y);
+    // Madre dello sciame: libera l'ultima covata.
+    if (def.id === "broodmother") for (let i = 0; i < (e.scale < 1 ? 3 : 6); i += 1) spawnEnemy(this, "swarm", x + Math.cos(i) * 40, y + Math.sin(i) * 40);
+    // Le parti (segmenti, punti deboli) cadono con il loro proprietario.
+    for (const o of this.enemies) if (o.owner === e && !o.dead) this.killEnemy(o, false);
     if (e.affix === "splitter" && !isBoss) {
       for (let i = 0; i < 3; i += 1) spawnEnemy(this, def.id, x + Math.cos(i * 2.1) * 26, y + Math.sin(i * 2.1) * 26, { small: true });
     }
@@ -695,8 +717,9 @@ export class GameScene extends Scene {
     this.hints.enemy("boss");
   }
 
-  onBossPhase(phase: number) {
-    banner(`FASE ${phase}`, phase === 2 ? "Spirale di fuoco in arrivo" : "Cariche: muoviti di lato!", "warning");
+  onBossPhase(phase: number, boss?: Enemy) {
+    const text = boss?.def.phases?.[phase - 2] ?? "";
+    banner(`FASE ${phase}`, text, "warning");
     this.sfx("alarm");
     clearEnemyBullets(this);
   }

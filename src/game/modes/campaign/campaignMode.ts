@@ -203,7 +203,7 @@ export class CampaignMode implements GameMode {
     // Nebbia densa: i nemici lontani dalla nave si vedono appena.
     if (this.has("fog")) {
       for (const e of g.enemies) {
-        if (e.dead || e.intangible || e.def.id === "boss") continue;
+        if (e.dead || e.intangible || e.def.boss) continue;
         const d = Math.hypot(e.x - g.player.x, e.y - g.player.y);
         e.sprite.setAlpha(clamp(1 - (d - 300) / 260, 0.1, 1));
       }
@@ -211,7 +211,7 @@ export class CampaignMode implements GameMode {
 
     // Le armi sparano in avanti: il boss resta sempre nella metà destra dello schermo.
     for (const e of g.enemies) {
-      if (e.dead || e.def.id !== "boss") continue;
+      if (e.dead || !e.def.boss) continue;
       e.x = clamp(e.x, this.scroll + VIEW_W * 0.55, this.scroll + VIEW_W - 90);
     }
 
@@ -239,7 +239,7 @@ export class CampaignMode implements GameMode {
 
     // I nemici rimasti indietro o usciti di lato escono di scena senza ricompense.
     for (const e of g.enemies) {
-      if (e.dead || e.def.id === "boss" || e.def.id === "gunship") continue;
+      if (e.dead || e.def.boss || e.def.miniBoss || e.def.part) continue;
       if (e.x < this.scroll - 280 || e.y < -180 || e.y > VIEW_H + 180) g.killEnemy(e, false, true);
     }
 
@@ -250,12 +250,12 @@ export class CampaignMode implements GameMode {
           const bx = this.scroll + VIEW_W - 220;
           const terrain = g.arena.terrain;
           const by = terrain ? (Math.max(0, ceilAt(terrain, bx)) + Math.min(VIEW_H, floorAt(terrain, bx))) / 2 : VIEW_H / 2;
-          const boss = spawnEnemy(g, "boss", bx, by);
+          const boss = spawnEnemy(g, this.mission.bossId ?? "boss", bx, by, { bossTier: this.mission.bossTier ?? 0 });
           // In campagna la nave è potenziata dall'hangar: il boss deve reggere di più.
           boss.maxHp *= 3;
           boss.hp = boss.maxHp;
           g.onBossSpawned(boss);
-        } else if (!g.enemies.some((e) => e.def.id === "boss" && !e.dead)) {
+        } else if (!g.enemies.some((e) => e.def.boss && !e.dead)) {
           g.endRun("victory");
         }
       } else if (g.player.x > this.exitX) {
@@ -269,13 +269,14 @@ export class CampaignMode implements GameMode {
     const x = this.scroll + VIEW_W + 120;
     const terrain = g.arena.terrain;
     const y = terrain ? (Math.max(0, ceilAt(terrain, x)) + Math.min(VIEW_H, floorAt(terrain, x))) / 2 : VIEW_H / 2;
-    this.miniBoss = spawnEnemy(g, "gunship", x, y, {
+    const id = this.mission.miniBossId ?? "gunship";
+    this.miniBoss = spawnEnemy(g, id, x, y, {
       path: { kind: "hold", t: 0, x0: x, y0: y, speed: 140, holdAt: 0.74, holdFor: 1e9 },
     });
     g.hud.setBoss(this.miniBoss);
-    banner("MINI-BOSS", "Cannoniera pirata: lo scorrimento si ferma finché non la abbatti", "warning");
+    banner(`MINI-BOSS · ${this.miniBoss.def.label.toUpperCase()}`, "Lo scorrimento si ferma finché non lo abbatti", "warning");
     g.sfx("alarm");
-    g.hints.enemy("gunship");
+    g.hints.enemy(id);
   }
 
   private spawnGroup(g: GameScene) {
@@ -331,11 +332,11 @@ export class CampaignMode implements GameMode {
       g.blast(x, y, 90, best * this.loadout.rack.damageMul * 1.5, false);
     }
     const elite = Boolean(e.affix);
-    const isBoss = def.id === "boss" || def.id === "gunship";
+    const isBoss = Boolean(def.boss || def.miniBoss);
     const tier = this.mission.tier;
-    if (def.id === "gunship") {
+    if (def.miniBoss) {
       g.hud.setBoss(null);
-      banner("CANNONIERA ABBATTUTA", "Il percorso riparte", "epic");
+      banner("MINI-BOSS ABBATTUTO", "Il percorso riparte", "epic");
     }
 
     const ground = Boolean(e.anchor || def.structure || def.id === "cargo");

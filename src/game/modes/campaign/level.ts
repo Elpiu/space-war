@@ -35,16 +35,26 @@ const GROUND: Partial<Record<SegmentKind, { id: EnemyId; weight: number; minTier
     { id: "billboard", weight: 1.5, minTier: 1 },
     { id: "tank", weight: 2, minTier: 2 },
     { id: "silo", weight: 1.5, minTier: 3 },
+    { id: "spider", weight: 1.5, minTier: 2 },
+    { id: "flakTower", weight: 1.3, minTier: 3 },
+    { id: "shieldGen", weight: 0.8, minTier: 3 },
+    { id: "droneHangar", weight: 0.8, minTier: 4 },
   ],
   cave: [
     { id: "aaTurret", weight: 4, minTier: 1, anchor: "both" },
     { id: "fuelTank", weight: 1.5, minTier: 1 },
     { id: "silo", weight: 1, minTier: 3 },
+    { id: "laserPylon", weight: 1.6, minTier: 2, anchor: "both" },
+    { id: "spider", weight: 1.4, minTier: 2, anchor: "both" },
   ],
   station: [
     { id: "aaTurret", weight: 4, minTier: 1, anchor: "both" },
     { id: "billboard", weight: 1, minTier: 1 },
     { id: "fuelTank", weight: 1.5, minTier: 1 },
+    { id: "laserPylon", weight: 1.8, minTier: 2, anchor: "both" },
+    { id: "flakTower", weight: 1.2, minTier: 3, anchor: "both" },
+    { id: "shieldGen", weight: 1, minTier: 3 },
+    { id: "droneHangar", weight: 1, minTier: 4 },
   ],
 };
 

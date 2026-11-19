@@ -1,3 +1,4 @@
+import type { EnemyId } from "../../types";
 import type { SegmentKind } from "./level";
 
 export interface MissionDef {
@@ -35,6 +36,11 @@ export interface MissionDef {
   /** Densità delle unità di terra. */
   ground?: number;
   palette?: { fill: number; edge: number; vein: number; nebula: [number, number]; rock: [number, number] };
+  /** Boss di fine percorso (default Dreadnought) e sue fasi extra. */
+  bossId?: EnemyId;
+  bossTier?: number;
+  /** Mini-boss lungo il percorso (default Cannoniera). */
+  miniBossId?: EnemyId;
 }
 
 export const SECTOR = {

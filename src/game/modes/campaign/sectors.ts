@@ -2,6 +2,14 @@ import { createRng, type Rng } from "../../utils";
 import { ilvlMul } from "./gear";
 import type { SegmentKind } from "./level";
 import { MISSIONS, missionById, type MissionDef } from "./missions";
+import { ENEMIES } from "../../data/enemies";
+import type { EnemyId } from "../../types";
+
+/** Boss a rotazione dei settori generati; ogni 3 settori guadagnano una fase extra. */
+const SECTOR_BOSSES: EnemyId[] = ["serpent", "fortress", "queen", "boss"];
+const MINI_BOSSES: EnemyId[] = ["gunship", "minelayer", "battleship"];
+
+export const sectorBoss = (n: number) => ({ id: SECTOR_BOSSES[(n - 2) % SECTOR_BOSSES.length], tier: Math.floor((n - 2) / 3) });
 
 /**
  * Campagna infinita: dal settore 2 ogni settore è generato da un seed
@@ -65,7 +73,7 @@ export const BIOMES: Biome[] = [
     asteroids: 1.4,
     nebulas: 0.6,
     ground: 1,
-    favored: ["sine-swarm", "splitters", "convoy", "chaser-pack"],
+    favored: ["sine-swarm", "splitters", "convoy", "chaser-pack", "brood"],
     palette: { fill: 0x1c1917, edge: 0xf59e0b, vein: 0x44403c, nebula: [0x7c3aed, 0xdb2777], rock: [0x44403c, 0x57534e] },
     places: ["Cimitero di cargo", "Ammasso di lamiere", "Pozzo dei relitti", "Deriva dei container", "Ferrovecchio", "Rottamaio sospeso", "Banchina fantasma", "Valle delle carcasse"],
   },
@@ -77,7 +85,7 @@ export const BIOMES: Biome[] = [
     asteroids: 2.1,
     nebulas: 0.5,
     ground: 0.9,
-    favored: ["sniper-post", "laser-post", "interceptor-wing", "shield-wall"],
+    favored: ["sniper-post", "laser-post", "interceptor-wing", "shield-wall", "mirror-wall"],
     palette: { fill: 0x0c1a2b, edge: 0x7dd3fc, vein: 0x1e3a5f, nebula: [0x0ea5e9, 0x67e8f9], rock: [0x5b7a99, 0x93b4d1] },
     places: ["Anello esterno", "Grotte di brina", "Faglia cristallina", "Lago gelato", "Specchio di ghiaccio", "Crepaccio blu", "Cometa spezzata", "Tundra orbitale"],
   },
@@ -89,7 +97,7 @@ export const BIOMES: Biome[] = [
     asteroids: 0.7,
     nebulas: 2.4,
     ground: 0.8,
-    favored: ["phantoms", "emp-raid", "zigzag-line", "dive"],
+    favored: ["phantoms", "emp-raid", "zigzag-line", "dive", "leeches"],
     palette: { fill: 0x14200f, edge: 0x84cc16, vein: 0x365314, nebula: [0x4d7c0f, 0xa3e635], rock: [0x3f4a2a, 0x556b2f] },
     places: ["Palude di gas", "Bolla acida", "Nube verde", "Fumarole", "Velo corrosivo", "Banco di spore", "Estuario tossico", "Occhio della nebbia"],
   },
@@ -101,7 +109,7 @@ export const BIOMES: Biome[] = [
     asteroids: 0.7,
     nebulas: 0.6,
     ground: 1.35,
-    favored: ["gunline", "missile-battery", "repair-squad", "shield-escort"],
+    favored: ["gunline", "missile-battery", "repair-squad", "shield-escort", "radar-escort", "flak-line"],
     palette: { fill: 0x1a1025, edge: 0xf472b6, vein: 0x4a1d3f, nebula: [0xdb2777, 0x8b5cf6], rock: [0x3b3450, 0x51476b] },
     places: ["Molo 7", "Distretto logistico", "Piattaforma di lancio", "Fabbrica di droni", "Torre del marketing", "Deposito franchigia", "Hangar azionisti", "Varco doganale"],
   },
@@ -113,7 +121,7 @@ export const BIOMES: Biome[] = [
     asteroids: 1.2,
     nebulas: 0.8,
     ground: 1,
-    favored: ["kamikaze-rain", "gravity-trap", "bomber-run", "blinkers"],
+    favored: ["kamikaze-rain", "gravity-trap", "bomber-run", "blinkers", "minefield", "divers"],
     palette: { fill: 0x1f0f0f, edge: 0xef4444, vein: 0x4c1d1d, nebula: [0x991b1b, 0xf97316], rock: [0x4a3535, 0x634545] },
     places: ["Zona rossa", "Linea delle mine", "Varco detonante", "Fronte bruciato", "Trincea orbitale", "Corridoio a scoppio", "Settore interdetto", "Pianura dei crateri"],
   },
@@ -328,13 +336,14 @@ export const generateSector = (profileSeed: number, n: number): Sector => {
       const elite = node.kind === "elite";
       const threat = threatOf(s);
       const title = node.kind === "boss" ? `Cuore di ${biome.name}` : place();
+      const boss = sectorBoss(n);
       node.mission = {
         id: node.id,
         code: `${n}-${node.layer + 1}`,
         title,
         description:
           node.kind === "boss"
-            ? `Il guardiano del settore ${n} difende l'uscita. Abbattilo per aprire il settore ${n + 1}.`
+            ? `${ENEMIES[boss.id].label} difende l'uscita del settore ${n}. ${ENEMIES[boss.id].hint} Abbattilo per aprire il settore ${n + 1}.`
             : `${biome.description}${elite ? " Squadre élite di scorta: bottino migliore." : ""}`,
         tier: 5,
         segments,
@@ -355,6 +364,9 @@ export const generateSector = (profileSeed: number, n: number): Sector => {
         density: densityOf(s),
         ground: biome.ground,
         palette: biome.palette,
+        bossId: node.kind === "boss" ? boss.id : undefined,
+        bossTier: node.kind === "boss" ? boss.tier : undefined,
+        miniBossId: MINI_BOSSES[Math.floor(rng() * MINI_BOSSES.length)],
       };
     }
   }

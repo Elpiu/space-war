@@ -80,7 +80,37 @@ campo stellare in parallasse su quattro livelli.
 | Pozzo gravitazionale | 11 | Attira la nave verso di sé (anelli viola) | Allontanarsi, ucciderlo da lontano |
 | Fantasma | 12 | A tratti diventa intangibile e trasparente | Sparare quando è opaco |
 | Teletrasporto | 12 | Cerchio magenta dove riappare, poi anello di colpi | Uscire dal cerchio |
-| Dreadnought | ogni 5 | 3 fasi: raffiche radiali, spirale con evocazioni, cariche con raffica all'impatto | Leggere le fasi |
+| Picchiatore | 5 | Si piazza sopra la nave, linea gialla, picchiata | Spostarsi di lato |
+| Mina vagante | 6 | Gruppi di 3–5 quasi fermi; vicino si innesca (cerchio rosso) | Abbatterle da lontano |
+| Flak volante | 8 | Granate gialle che a fine corsa si aprono in 8 schegge | Non restare dove esplodono |
+| Radar volante | 9 | Cono verde rotante: chi ci sta dentro spara molto più spesso | Priorità alta |
+| Sanguisuga | 10 | Gruppi di 2–3; se tocca si attacca, rallenta e consuma | Abbatterla subito |
+| Specchio | 11 | Specchio frontale che rimanda indietro i colpi | Aggirarlo; missili, bombe e laser lo ignorano |
+| Madre dello sciame | 13 | Lenta, sforna 3 sciami ogni 4,5 s e 6 alla morte | Danno sostenuto da lontano |
+| Boss | ogni 5 | A rotazione: Dreadnought, Serpente, Fortezza orbitale, Regina dello sciame; dal secondo giro una fase extra | Leggere le fasi |
+
+**Boss a rotazione** (survival ogni 5 wave, campagna dal settore 2):
+
+| Boss | Meccanica |
+| --- | --- |
+| Dreadnought | 3 fasi: raffiche radiali, spirale con evocazioni, cariche con raffica all'impatto |
+| Serpente | Testa più 8 segmenti che la seguono e sparano. Finché restano più di 3 segmenti la testa subisce il 30% del danno. In fase 3 raffiche radiali |
+| Fortezza orbitale | Quasi ferma, cannoni rotanti a flusso continuo (2, poi 4). Da chiusa subisce il 12% del danno; il nucleo si apre a intervalli (anello giallo) e allora subisce il 140% |
+| Regina dello sciame | Ondate di sciami; dalla fase 2 cariche telegrafate e uova (Madri dello sciame piccole); in fase 3 raffiche radiali |
+
+Ogni "fase extra" (un giro completo di rotazione nel survival, 3 settori in
+campagna) accorcia del 15% i tempi fra gli attacchi.
+
+**Unità di terra della campagna** (oltre ad antiaerea, carro, silo, serbatoio
+e cartellone): Torre flak (granate a frammentazione), Recinto laser (raggio
+verticale fino al terreno opposto, giallo poi rosso), Ragno (cammina sul
+terreno e spara a ventaglio), Generatore di scudo (dimezza il danno alle unità
+di terra vicine), Hangar droni (lancia coppie di intercettori).
+
+**Mini-boss della campagna:** nel settore 1 la Cannoniera; dal settore 2 uno a
+caso fra Cannoniera, Posamine (semina mine vaganti, ventaglio di 5 colpi) e
+Corazzata (due punti deboli sopra e sotto: finché sono accesi lo scafo subisce
+il 15% del danno).
 
 Il kamikaze esplode anche quando viene distrutto, e quell'esplosione colpisce
 solo gli altri nemici: ucciderlo in mezzo a un gruppo conviene.
@@ -395,7 +425,8 @@ Le frecce in cima alla mappa passano da un settore sbloccato all'altro.
   - **Evento:** una scelta con rischio (Relitto, Contrabbandiere, Segnale
     di soccorso, Laboratorio pirata).
   - **Tesoro:** un pezzo non comune o migliore e delle monete.
-  - **Boss:** il Dreadnought con la minaccia del settore; dà un pezzo in più.
+  - **Boss:** a rotazione Serpente, Fortezza, Regina, Dreadnought, con la
+    minaccia del settore e una fase extra ogni 3 settori; dà un pezzo in più.
 - **Regole della mappa:** al massimo un nodo senza combattimento per strato,
   e due nodi senza combattimento non sono mai collegati: nessuna rotta salta
   tutti gli scontri.

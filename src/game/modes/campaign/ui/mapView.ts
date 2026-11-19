@@ -1,5 +1,6 @@
 import { icon } from "../../../art/svg";
 import { DIFFICULTIES, type DifficultyId } from "../../../config";
+import { ENEMIES } from "../../../data/enemies";
 import { esc } from "../../../ui/dom";
 import { hex } from "../../../utils";
 import { nodeContent } from "../events";
@@ -130,8 +131,8 @@ const missionPanel = (profile: CampaignProfile, m: MissionDef, difficulty: Diffi
     <ul class="mission-facts">
       <li>${icon("coin")} Bonus vittoria: ${bonus} monete${firstAtDiff ? " (prima vittoria x2)" : ""}</li>
       <li>${icon("crate")} ${difficulty === "nightmare" ? "Bottino garantito raro o migliore" : difficulty === "hard" || firstAtDiff || m.elite ? "Bottino garantito non comune o migliore" : "Bottino garantito a fine missione"}${m.ilvl ? ` · item level ${m.ilvl}` : ""}</li>
-      ${m.miniBoss ? `<li>${icon("warning")} Mini-boss lungo il percorso</li>` : ""}
-      ${m.boss ? `<li>${icon("boss")} Boss a fine percorso${m.sector ? ` · apre il settore ${m.sector + 1}` : ""}</li>` : `<li>${icon("flag")} Raggiungi l'uscita in fondo al corridoio</li>`}
+      ${m.miniBoss ? `<li>${icon("warning")} Mini-boss lungo il percorso: ${esc(ENEMIES[m.miniBossId ?? "gunship"].label)}</li>` : ""}
+      ${m.boss ? `<li>${icon("boss")} Boss: ${esc(ENEMIES[m.bossId ?? "boss"].label)}${m.bossTier ? ` (+${m.bossTier} fase)` : ""}${m.sector ? ` · apre il settore ${m.sector + 1}` : ""}</li>` : `<li>${icon("flag")} Raggiungi l'uscita in fondo al corridoio</li>`}
       ${m.biome === "toxic" ? `<li>${icon("warning")} Le nebulose tossiche tolgono HP</li>` : ""}
       <li>${icon("star")} Capsula segreta: ${profile.secrets.includes(m.id) ? "trovata" : "da trovare"}</li>
     </ul>

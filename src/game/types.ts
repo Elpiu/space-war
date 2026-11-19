@@ -48,7 +48,28 @@ export type EnemyId =
   | "empDrone"
   | "phantom"
   | "teleporter"
-  | "splitter";
+  | "splitter"
+  // Bestiario 2
+  | "diver"
+  | "flak"
+  | "radar"
+  | "leech"
+  | "mirror"
+  | "broodmother"
+  | "spaceMine"
+  | "flakTower"
+  | "laserPylon"
+  | "spider"
+  | "shieldGen"
+  | "droneHangar"
+  // Mini-boss, boss e loro parti
+  | "minelayer"
+  | "battleship"
+  | "weakpoint"
+  | "serpent"
+  | "serpentSegment"
+  | "fortress"
+  | "queen";
 
 export type AffixId = "swift" | "armored" | "splitter" | "regen" | "explosive" | "barrier" | "phantom";
 
@@ -61,6 +82,8 @@ export interface ProjectileDef {
   /** Colpi a parabola (bombe) e a ricerca (missili). */
   gravity?: number;
   homing?: number;
+  /** Granata a frammentazione: a fine corsa si apre in N schegge. */
+  burst?: number;
 }
 
 export interface EnemyDef {
@@ -90,6 +113,14 @@ export interface EnemyDef {
   campaignOnly?: boolean;
   /** Struttura: non si muove e non attacca, vale monete. */
   structure?: boolean;
+  /** Boss di fine percorso / di wave: barra in alto, vittoria alla sua morte. */
+  boss?: boolean;
+  /** Mini-boss della campagna: ferma lo scorrimento finché non cade. */
+  miniBoss?: boolean;
+  /** Parte di un nemico più grande (segmenti, punti deboli): muore con lui. */
+  part?: boolean;
+  /** Annunci delle fasi 2 e 3 (boss). */
+  phases?: [string, string];
 }
 
 /** Traiettoria prestabilita dei volanti in formazione (campagna). */
@@ -111,7 +142,7 @@ export interface FlightPath {
   exitY?: number;
 }
 
-export type EnemyState = "move" | "windup" | "dash" | "recover" | "aim" | "arming";
+export type EnemyState = "move" | "windup" | "dash" | "recover" | "aim" | "arming" | "latched" | "open";
 
 export interface Enemy {
   uid: number;
@@ -156,6 +187,12 @@ export interface Enemy {
   gen: number;
   auxX: number;
   auxY: number;
+  /** Nemico a cui appartiene questa parte (segmenti, punti deboli). */
+  owner?: Enemy;
+  /** Scia della testa del Serpente: i segmenti la seguono. */
+  trail?: { x: number; y: number }[];
+  /** Fasi extra del boss (campagna infinita): attacchi più fitti. */
+  bossTier: number;
 }
 
 // ---------- Combattimento ----------
@@ -209,6 +246,7 @@ export interface EnemyBullet {
   life: number;
   gravity: number;
   homing: number;
+  burst: number;
   active: boolean;
 }
 

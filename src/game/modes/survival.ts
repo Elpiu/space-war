@@ -44,7 +44,7 @@ export class SurvivalMode implements GameMode {
     const { x, y, def } = e;
     const reward = DIFFICULTIES[run.difficulty].reward;
     const elite = Boolean(e.affix);
-    const isBoss = def.id === "boss";
+    const isBoss = Boolean(def.boss);
 
     dropPickup(g, "xp", x, y, Math.ceil(def.xp * (elite ? 3 : 1) * reward));
     if (elite || isBoss || Math.random() < 0.45) {

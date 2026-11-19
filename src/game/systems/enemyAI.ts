@@ -10,7 +10,7 @@ export interface Steer {
   mul: number;
 }
 
-interface Ctx {
+export interface Ctx {
   d: number;
   ux: number;
   uy: number;
@@ -27,7 +27,7 @@ const pointSegmentDistance = (px: number, py: number, ax: number, ay: number, bx
 };
 
 /** Gira intorno alla nave mantenendo una distanza preferita. */
-const orbit = (e: Enemy, c: Ctx, distance: number): Steer => {
+export const orbit = (e: Enemy, c: Ctx, distance: number): Steer => {
   const side = e.seed > 500 ? 1 : -1;
   if (c.d > distance * 1.15) return { mx: c.ux, my: c.uy, mul: 1 };
   if (c.d < distance * 0.8) return { mx: -c.ux, my: -c.uy, mul: 1 };
@@ -83,7 +83,7 @@ export const laserAttack = (g: GameScene, e: Enemy, toPlayer: number) => {
 };
 
 /** Boss, mini-boss e strutture non ricevono cure né scudi: resterebbero immortali. */
-const supportable = (o: Enemy) => o.def.id !== "boss" && o.def.id !== "gunship" && !o.def.structure;
+const supportable = (o: Enemy) => !o.def.boss && !o.def.miniBoss && !o.def.part && !o.def.structure;
 
 /** Riparatore e Scudiero: effetti sugli alleati vicini. */
 export const supportTick = (g: GameScene, e: Enemy) => {
@@ -232,7 +232,7 @@ export const extraBehavior = (g: GameScene, e: Enemy, c: Ctx): Steer | null => {
 };
 
 /** Colpo mirato periodico (con eventuale parabola o ricerca dal ProjectileDef). */
-const fireAimed = (g: GameScene, e: Enemy, c: Ctx) => {
+export const fireAimed = (g: GameScene, e: Enemy, c: Ctx) => {
   const p = e.def.projectile;
   if (!p || g.now < e.nextAttack || c.d > p.range) return;
   g.fireEnemyBullet(e, c.toPlayer, p);

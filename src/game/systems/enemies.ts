@@ -1,6 +1,8 @@
 import { BlendModes, TintModes } from "phaser";
 import { DEPTH, DIFFICULTIES, LIMITS, PLAYER_RADIUS, SIGNAL, VIEW_H, VIEW_W } from "../config";
-import { AFFIXES, ENEMIES, waveScale } from "../data/enemies";
+import { AFFIXES, ENEMIES, isBig, waveScale } from "../data/enemies";
+import { bestiary2Behavior, groundTick } from "./bestiary2";
+import { bossBehavior, miniBossAttack } from "./bossAI";
 import type { GameScene } from "../scenes/GameScene";
 import type { AffixId, Enemy, EnemyId, FlightPath } from "../types";
 import { angleDiff, clamp, pick } from "../utils";
@@ -16,14 +18,14 @@ export const spawnEnemy = (
   id: EnemyId,
   x: number,
   y: number,
-  opts: { affix?: AffixId; small?: boolean; path?: FlightPath; anchor?: "floor" | "ceil"; gen?: number } = {},
+  opts: { affix?: AffixId; small?: boolean; path?: FlightPath; anchor?: "floor" | "ceil"; gen?: number; owner?: Enemy; bossTier?: number } = {},
 ): Enemy => {
   const def = ENEMIES[id];
   const run = g.run;
   const ws = waveScale(run.wave);
   const diff = DIFFICULTIES[run.difficulty];
   const elite = Boolean(opts.affix);
-  const isBoss = id === "boss";
+  const isBoss = Boolean(def.boss);
   const bossTier = Math.floor(run.wave / 5);
   const gen = opts.gen ?? 0;
   const scale = (elite ? 1.3 : 1) * (opts.small ? 0.7 : 1) * 0.72 ** gen;
@@ -76,6 +78,8 @@ export const spawnEnemy = (
     gen,
     auxX: 0,
     auxY: 0,
+    owner: opts.owner,
+    bossTier: opts.bossTier ?? 0,
   };
   // Sul soffitto: la torretta si capovolge ruotando, le strutture specchiandosi.
   if (opts.anchor === "ceil") {
@@ -92,9 +96,11 @@ export const spawnEnemy = (
       .setDisplaySize(enemy.radius * 5, enemy.radius * 5);
   }
 
-  if (id === "shielded") {
+  if (id === "shielded" || id === "mirror") {
     enemy.shield = g.add.image(x, y, "shield-arc").setDepth(DEPTH.enemy + 1).setOrigin(0.5, 0.55);
     enemy.shield.setDisplaySize(enemy.radius * 3.4, enemy.radius * 3.4);
+    // Lo specchio è argentato: rimanda indietro i colpi invece di fermarli.
+    if (id === "mirror") enemy.shield.setTint(0xf8fafc);
   }
 
   g.enemies.push(enemy);
@@ -110,7 +116,7 @@ export const destroyEnemy = (enemy: Enemy) => {
 
 /** True se il colpo proveniente da `angle` (direzione di volo) è bloccato dallo scudo. */
 export const shieldBlocks = (enemy: Enemy, bulletAngle: number) => {
-  if (enemy.def.id !== "shielded") return false;
+  if (enemy.def.id !== "shielded" && enemy.def.id !== "mirror") return false;
   // Il proiettile arriva "contro" la direzione di volo: confronto con il facing.
   return Math.abs(angleDiff(enemy.facing, bulletAngle + Math.PI)) < 1.0;
 };
@@ -276,7 +282,8 @@ export const updateEnemies = (g: GameScene, dt: number) => {
         });
         break;
       default: {
-        const steer = extraBehavior(g, e, { d, ux, uy, toPlayer, dt });
+        const ctx = { d, ux, uy, toPlayer, dt };
+        const steer = extraBehavior(g, e, ctx) ?? bestiary2Behavior(g, e, ctx) ?? bossBehavior(g, e, ctx);
         if (steer) {
           mx = steer.mx;
           my = steer.my;
@@ -296,7 +303,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     e.vy *= decay;
 
     // Separazione: i nemici non si impilano in un unico blob.
-    if (e.def.id !== "boss") {
+    if (!isBig(e.def) && !e.def.part) {
       g.enemyHash.query(e.x, e.y, e.radius + 40, neighbors);
       for (const o of neighbors) {
         if (o === e || o.dead) continue;
@@ -306,7 +313,7 @@ export const updateEnemies = (g: GameScene, dt: number) => {
         const d2 = ox * ox + oy * oy;
         if (d2 >= min * min || d2 === 0) continue;
         const od = Math.sqrt(d2);
-        const push = (min - od) * (o.def.id === "boss" ? 1 : 0.5);
+        const push = (min - od) * (isBig(o.def) || o.def.part ? 1 : 0.5);
         e.x += (ox / od) * push;
         e.y += (oy / od) * push;
       }
@@ -316,10 +323,10 @@ export const updateEnemies = (g: GameScene, dt: number) => {
     if (g.arena.terrain) e.y = clampToGap(g.arena.terrain, e.x, e.y, e.radius);
     clampToArena(g.arena, e, e.radius);
 
-    const lean = e.def.id !== "boss" && e.def.id !== "kamikaze" && e.def.id !== "interceptor" ? clamp((mx / len) * speedMul, -1, 1) * 0.22 : null;
+    const lean = !e.def.boss && !e.def.part && e.def.id !== "kamikaze" && e.def.id !== "interceptor" ? clamp((mx / len) * speedMul, -1, 1) * 0.22 : null;
     renderEnemy(g, e, lean, dx);
 
-    if (e.damage > 0 && !e.intangible && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
+    if (e.damage > 0 && !e.intangible && e.state !== "latched" && d < e.radius + PLAYER_RADIUS - 4) g.hurtPlayer(e.damage);
   }
 };
 
@@ -412,6 +419,7 @@ const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer:
     gunshipAttack(g, e, toPlayer);
     return;
   }
+  if (miniBossAttack(g, e, toPlayer) || groundTick(g, e, dt, toPlayer)) return;
   if (e.def.id === "laserDrone") {
     laserAttack(g, e, toPlayer);
     return;
@@ -475,7 +483,7 @@ const updateBoss = (
     e.bossPhase = phase;
     e.state = "move";
     e.nextAttack = now + 900;
-    g.onBossPhase(phase);
+    g.onBossPhase(phase, e);
   }
 
   const radial = (count: number, offset: number, speedMul = 1) => {

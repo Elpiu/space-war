@@ -153,6 +153,8 @@ export const updateBullets = (g: GameScene, dt: number) => {
       if (SHIELDABLE.includes(b.source) && shieldBlocks(e, angle)) {
         g.fx.burst(b.x, b.y, COLORS.shield, 6);
         g.sfx("shield");
+        // Specchio: il colpo torna indietro verso la nave.
+        if (e.def.id === "mirror") fireEnemyBullet(g, b.x, b.y, angle + Math.PI + (Math.random() - 0.5) * 0.3, REFLECTED, Math.max(1, e.damage));
         killBullet(b);
         break;
       }
@@ -189,7 +191,7 @@ export const fireEnemyBullet = (g: GameScene, x: number, y: number, angle: numbe
   let b = g.enemyBullets.find((entry) => !entry.active);
   if (!b) {
     const sprite = g.add.image(0, 0, "orb").setBlendMode(BlendModes.ADD).setDepth(DEPTH.enemyBullet);
-    b = { sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, radius: 6, life: 0, gravity: 0, homing: 0, active: false };
+    b = { sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, radius: 6, life: 0, gravity: 0, homing: 0, burst: 0, active: false };
     g.enemyBullets.push(b);
   }
   b.x = x;
@@ -203,11 +205,18 @@ export const fireEnemyBullet = (g: GameScene, x: number, y: number, angle: numbe
   b.life = p.range;
   b.gravity = p.gravity ?? 0;
   b.homing = p.homing ?? 0;
+  b.burst = p.burst ?? 0;
   b.active = true;
-  // Colori dei proiettili: rosa normali, arancio bombe, viola missili a ricerca.
-  const tint = p.gravity ? 0xfb923c : p.homing ? 0xc084fc : COLORS.enemyBullet;
+  // Colori dei proiettili: rosa normali, arancio bombe, viola missili, giallo granate.
+  const tint = p.gravity ? 0xfb923c : p.homing ? 0xc084fc : p.burst ? 0xfacc15 : COLORS.enemyBullet;
   b.sprite.setActive(true).setVisible(true).setPosition(x, y).setTint(tint).setDisplaySize(p.radius * 3.4, p.radius * 3.4);
 };
+
+/** Schegge delle granate a frammentazione. */
+const SHRAPNEL: ProjectileDef = { speed: 210, damage: 1, radius: 5, cooldown: 0, range: 240 };
+
+/** Colpo rimandato indietro dallo Specchio. */
+const REFLECTED: ProjectileDef = { speed: 330, damage: 1, radius: 6, cooldown: 0, range: 900 };
 
 export const updateEnemyBullets = (g: GameScene, dt: number) => {
   const px = g.player.x;
@@ -238,6 +247,13 @@ export const updateEnemyBullets = (g: GameScene, dt: number) => {
       continue;
     } else if (b.gravity) {
       g.fx.explosion(b.x, b.y, 0xfb923c, 0.8);
+    } else if (b.burst && b.life <= 0) {
+      // Granata a frammentazione: si apre in schegge a fine corsa.
+      g.fx.ring(b.x, b.y, 0xfacc15, 60);
+      const offset = Math.random() * Math.PI;
+      for (let i = 0; i < b.burst; i += 1) {
+        fireEnemyBullet(g, b.x, b.y, offset + (i / b.burst) * Math.PI * 2, SHRAPNEL, b.damage * 0.7);
+      }
     }
     b.active = false;
     b.sprite.setActive(false).setVisible(false);

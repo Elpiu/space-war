@@ -340,6 +340,88 @@ export const FORMATIONS: Formation[] = [
       return "teleporter";
     },
   },
+
+  // ---------- Bestiario 2 ----------
+  {
+    id: "divers",
+    segments: ["open", "debris", "surface"],
+    minTier: 2,
+    weight: 2,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) spawnEnemy(c.g, "diver", c.x + i * 90, c.top + 20, { affix: i === 0 ? c.elite() : undefined });
+      return "diver";
+    },
+  },
+  {
+    id: "flak-line",
+    segments: ["open", "surface", "station"],
+    minTier: 3,
+    weight: 1.6,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) {
+        const y0 = c.top + ((i + 1) / 3) * (c.bottom - c.top);
+        spawnEnemy(c.g, "flak", c.x + i * 60, y0, { path: { kind: "hold", t: 0, x0: c.x, y0, speed: 150, holdAt: 0.8, holdFor: 6000, exitY: i ? 1 : -1 } });
+      }
+      return "flak";
+    },
+  },
+  {
+    id: "radar-escort",
+    segments: ["open", "station", "debris"],
+    minTier: 3,
+    weight: 1.4,
+    spawn: (c) => {
+      const y0 = midY(c);
+      spawnEnemy(c.g, "radar", c.x + 120, y0, { path: { kind: "hold", t: 0, x0: c.x + 120, y0, speed: 140, holdAt: 0.88, holdFor: 7000, exitY: 1 } });
+      for (let i = 0; i < 3; i += 1) {
+        const y = clamp(y0 + (i - 1) * 70, c.top + 20, c.bottom - 20);
+        spawnEnemy(c.g, "shooter", c.x, y, { path: { kind: "hold", t: 0, x0: c.x, y0: y, speed: 160, holdAt: 0.7, holdFor: 6000, exitY: i % 2 ? 1 : -1 } });
+      }
+      return "radar";
+    },
+  },
+  {
+    id: "leeches",
+    segments: ["cave", "open", "debris"],
+    minTier: 4,
+    weight: 1.4,
+    spawn: (c) => {
+      for (let i = 0; i < 3; i += 1) spawnEnemy(c.g, "leech", c.x + i * 50, midY(c) + (i - 1) * 40);
+      return "leech";
+    },
+  },
+  {
+    id: "mirror-wall",
+    segments: ["station", "open", "cave"],
+    minTier: 4,
+    weight: 1.3,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) spawnEnemy(c.g, "mirror", c.x + i * 40, c.top + ((i + 1) / 3) * (c.bottom - c.top), { affix: i === 0 ? c.elite() : undefined });
+      return "mirror";
+    },
+  },
+  {
+    id: "brood",
+    segments: ["open", "debris"],
+    minTier: 5,
+    weight: 1,
+    spawn: (c) => {
+      spawnEnemy(c.g, "broodmother", c.x + 40, midY(c), { affix: c.elite() });
+      return "broodmother";
+    },
+  },
+  {
+    id: "minefield",
+    segments: ["open", "debris", "cave"],
+    minTier: 2,
+    weight: 1.6,
+    spawn: (c) => {
+      for (let i = 0; i < 5; i += 1) {
+        spawnEnemy(c.g, "spaceMine", c.x + i * 70 + Math.random() * 30, c.top + 20 + Math.random() * Math.max(10, c.bottom - c.top - 40));
+      }
+      return "spaceMine";
+    },
+  },
 ];
 
 /** Sceglie un'ondata adatta al segmento; il bioma può favorirne alcune (peso x2.5). */

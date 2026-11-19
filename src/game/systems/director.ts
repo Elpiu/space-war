@@ -4,6 +4,7 @@ import type { GameScene } from "../scenes/GameScene";
 import type { EnemyId } from "../types";
 import { clamp, pick, pickWeighted, rand, randInt } from "../utils";
 import { hitsAsteroid } from "./arena";
+import { BOSS_ROTATION } from "./bossAI";
 import { spawnEnemy } from "./enemies";
 
 
@@ -22,7 +23,7 @@ export class Director {
       return;
     }
 
-    const bossAlive = g.enemies.some((e) => e.def.id === "boss" && !e.dead);
+    const bossAlive = g.enemies.some((e) => e.def.boss && !e.dead);
     if (run.event === "boss" ? !bossAlive : g.now >= run.waveEndsAt) {
       this.endWave();
       return;
@@ -43,7 +44,9 @@ export class Director {
 
     if (run.event === "boss") {
       const p = this.spawnPoint(560);
-      const boss = spawnEnemy(g, "boss", p.x, p.y);
+      // Boss a rotazione: Dreadnought, Serpente, Fortezza, Regina.
+      const index = run.wave / WAVE.bossEvery - 1;
+      const boss = spawnEnemy(g, BOSS_ROTATION[index % BOSS_ROTATION.length], p.x, p.y, { bossTier: Math.floor(index / BOSS_ROTATION.length) });
       g.onBossSpawned(boss);
     } else if (run.event === "horde") {
       g.banner(`WAVE ${run.wave}`, "Orda in arrivo: tieniti libero un varco!", "warning");

@@ -32,6 +32,8 @@ src/
     systems/director.ts   wave del survival, eventi orda/boss, spawn
     systems/enemies.ts    spawn e IA di base dei nemici, boss a fasi
     systems/enemyAI.ts    comportamenti del bestiario v3: laser, supporto, gravità, EMP, teletrasporto, affissi continui
+    systems/bestiary2.ts  bestiario 2: picchiatore, flak, radar, sanguisuga, specchio, madre, mina, unità di terra
+    systems/bossAI.ts     boss a rotazione (Serpente, Fortezza, Regina), mini-boss, parti e corazze
     systems/weapons.ts    proiettili in pool (anche a ricerca, a gravità, esplosivi), arsenale del survival
     systems/rack.ts       armi a slot della campagna: fuoco tenuto, calore, missili, bombe
     systems/terrain.ts    pavimento e soffitto: campionamento, collisioni, disegno
@@ -121,7 +123,12 @@ src/
   (`systems/terrain.ts`).
 
 - **Nemico**: una voce in `data/enemies.ts`. Se ha un comportamento nuovo, un
-  `case` in `extraBehavior` (`systems/enemyAI.ts`). Sprite SVG in
+  `case` in `extraBehavior` (`systems/enemyAI.ts`) o in `bestiary2Behavior`
+  (`systems/bestiary2.ts`); le unità di terra in `groundTick`. Boss e
+  mini-boss hanno i flag `boss` / `miniBoss` nella definizione (mai
+  confrontare l'id con "boss"); le parti (segmenti, punti deboli) hanno
+  `part` e `owner`, e muoiono con il proprietario. Le corazze legate alle
+  parti stanno in `armorMul` (`systems/bossAI.ts`). Sprite SVG in
   `ENEMY_SPRITES` (`art/enemySprites.ts`). I telegrafi usano i colori di
   `SIGNAL` (`config.ts`): non introdurre colori nuovi per un attacco.
 - **Tomo**: una voce in `TOMES` più l'effetto in `computeStats`; l'eventuale
