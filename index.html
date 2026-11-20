@@ -1,18 +1,35 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/space-war/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Space War</title>
-  <script type="module" crossorigin src="/space-war/assets/index-BJCKNiKg.js"></script>
-  <link rel="modulepreload" crossorigin href="/space-war/assets/phaser-BS8pCKSe.js">
-  <link rel="stylesheet" crossorigin href="/space-war/assets/index-C5Kcb1z0.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#050816" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Space War: Orbital Survivor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="/space-war/assets/index-CubjCcBh.js"></script>
+  <link rel="modulepreload" crossorigin href="/space-war/assets/phaser-CjWBIfBr.js">
+  <link rel="stylesheet" crossorigin href="/space-war/assets/index-BFo21xb-.css">
 </head>
 
 <body>
     <div id="app">
-        <div id="game-container"></div>
+        <!-- Palco a dimensioni fisse (1280x720): viene scalato per intero sullo schermo. -->
+        <div id="stage">
+            <div id="game-container"></div>
+            <div id="ui"></div>
+        </div>
+        <div id="rotate">
+            <div>
+                <b>Ruota il dispositivo</b>
+                <span>Space War si gioca in orizzontale.</span>
+            </div>
+        </div>
     </div>
 </body>
 </html>
