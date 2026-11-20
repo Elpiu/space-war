@@ -95,7 +95,7 @@ campo stellare in parallasse su quattro livelli.
 | --- | --- |
 | Dreadnought | 3 fasi: raffiche radiali, spirale con evocazioni, cariche con raffica all'impatto |
 | Serpente | Testa più 8 segmenti che la seguono e sparano. Finché restano più di 3 segmenti la testa subisce il 30% del danno. In fase 3 raffiche radiali |
-| Fortezza orbitale | Quasi ferma, cannoni rotanti a flusso continuo (2, poi 4). Da chiusa subisce il 12% del danno; il nucleo si apre a intervalli (anello giallo) e allora subisce il 140% |
+| Fortezza orbitale | Quasi ferma, cannoni rotanti a flusso continuo (2, poi 4). Da chiusa subisce il 25% del danno; il nucleo si apre ogni 6 s per 3,2 s (anello giallo) e allora subisce il 160%. La mira automatica del survival punta il boss a colpi alterni |
 | Regina dello sciame | Ondate di sciami; dalla fase 2 cariche telegrafate e uova (Madri dello sciame piccole); in fase 3 raffiche radiali |
 
 Ogni "fase extra" (un giro completo di rotazione nel survival, 3 settori in
@@ -438,8 +438,8 @@ Le frecce in cima alla mappa passano da un settore sbloccato all'altro.
 
   | Curva | Formula | Esempi (a inizio settore) |
   | --- | --- | --- |
-  | HP nemici | `1 + 0.35·s^1.15` | settore 3: ×1,35 · settore 7: ×3,2 · settore 12: ×5,9 |
-  | Danno nemici | `1 + 0.2·s^1.05` | settore 3: ×1,2 · settore 7: ×2,1 |
+  | HP nemici | `1 + 0.25·s^1.1` | settore 3: ×1,25 · settore 7: ×2,5 · settore 12: ×4,1 |
+  | Danno nemici | `1 + 0.15·s^1.05` | settore 3: ×1,15 · settore 7: ×1,8 |
   | Densità | `1 + 0.6 / (1 + e^(−0.6(s−4)))` | da ×1,05 a ×1,6, poi stabile |
   | Item level | `10·(n−1)` + fino a 10 lungo il settore | settore 2: 10–20 |
   | Potenza item level | `1 + 0.1·√ilvl` | iL 10: ×1,32 · iL 100: ×2 |

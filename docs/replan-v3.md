@@ -96,7 +96,7 @@ Il settore 1 resta fatto a mano e fa da tutorial. Dal settore 2 i settori si
 | **Grafo a strati (DAG)** | 6–7 strati, 2–3 nodi per strato, archi solo verso nodi vicini. I tipi di nodo sono Missione, Élite, Cantiere (negozio e riparazione), Evento (una scelta con rischio), Tesoro e Boss. |
 | **Catena di Markov sui segmenti** | Una matrice di transizione (ad es. dopo una caverna è più probabile una stazione che un'altra caverna) produce percorsi vari ma coerenti, invece di sequenze casuali. |
 | **Rumore frattale (fBm)** | Il profilo del terreno è una somma di ottave (ampiezza ×0.5, frequenza ×2): rilievi naturali a ogni scala. |
-| **Curva di minaccia** `m(n) = 1 + 0.35·n^1.15` | Crescita leggermente più che lineare: HP e danni dei nemici salgono senza esplodere. |
+| **Curva di minaccia** `m(n) = 1 + 0.25·n^1.1` (rivista dopo il collaudo; era `0.35·n^1.15`) | Crescita leggermente più che lineare: HP e danni dei nemici salgono senza esplodere. |
 | **Densità logistica** `d(n) = dMax / (1 + e^(−0.6(n−4)))` | Il numero di nemici a schermo cresce e poi si stabilizza, così lo schermo resta leggibile. |
 | **Item level** `potenza = rarità × livello × (1 + 0.1·√ilvl)` | Il bottino dei settori alti è più forte, ma con rendimenti decrescenti (radice quadrata): l'equipaggiamento vecchio non diventa subito spazzatura. |
 | **Biomi a rotazione e mutatori** | `bioma = biomi[n mod 5]` (Rottami, Anelli di ghiaccio, Nebulosa tossica, Cantieri corporate, Campo minato), ognuno con palette, pericoli e nemici favoriti. Dal settore 4 si aggiungono 1–2 **mutatori** casuali (nemici corazzati, nebbia, calore +20%, bottino doppio) che alzano rischio e ricompensa. |

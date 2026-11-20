@@ -19,7 +19,7 @@ export const sectorBoss = (n: number) => ({ id: SECTOR_BOSSES[(n - 2) % SECTOR_B
  * Tecniche:
  * - grafo a strati (DAG) per la mappa a nodi;
  * - catena di Markov per la sequenza dei segmenti di una missione;
- * - curva di minaccia m(s) = 1 + 0.35·s^1.15 su HP e danni;
+ * - curva di minaccia m(s) = 1 + 0.25·s^1.1 su HP (danni 1 + 0.15·s^1.05);
  * - densità logistica d(s) = 1 + 0.6 / (1 + e^(−0.6(s−4)));
  * - item level con rendimenti decrescenti: potenza × (1 + 0.1·√ilvl);
  * - biomi a rotazione (n mod 5) e mutatori dal settore 4.
@@ -33,10 +33,14 @@ export const LAYERS = 6;
 /** Progresso continuo nella campagna infinita: 0 all'inizio del settore 2. */
 export const progressOf = (sector: number, layer: number) => Math.max(0, sector - 2 + layer / (LAYERS - 1));
 
-/** Curva di minaccia: crescita appena più che lineare. */
+/**
+ * Curva di minaccia: crescita appena più che lineare. Tarata sulla potenza
+ * attesa del bottino (rarità × livello × item level): con 0.35·s^1.15 al
+ * settore 8 i nemici reggevano più del doppio rispetto alla crescita della nave.
+ */
 export const threatOf = (s: number) => ({
-  hp: 1 + 0.35 * s ** 1.15,
-  damage: 1 + 0.2 * s ** 1.05,
+  hp: 1 + 0.25 * s ** 1.1,
+  damage: 1 + 0.15 * s ** 1.05,
 });
 
 /** Densità logistica: cresce e poi si stabilizza, lo schermo resta leggibile. */

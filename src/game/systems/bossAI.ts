@@ -43,7 +43,7 @@ const partsOf = (g: GameScene, e: Enemy) => g.enemies.filter((o) => o.owner === 
  * Moltiplicatore del danno subito: corazze legate a parti o fasi.
  * - Corazzata: 15% finché un punto debole è acceso.
  * - Serpente: 30% finché restano più di 3 segmenti.
- * - Fortezza: 12% da chiusa, 140% con il nucleo aperto.
+ * - Fortezza: 25% da chiusa, 160% con il nucleo aperto.
  */
 export const armorMul = (g: GameScene, e: Enemy) => {
   switch (e.def.id) {
@@ -52,7 +52,7 @@ export const armorMul = (g: GameScene, e: Enemy) => {
     case "serpent":
       return partsOf(g, e).length > 3 ? 0.3 : 1;
     case "fortress":
-      return e.state === "open" ? 1.4 : 0.12;
+      return e.state === "open" ? 1.6 : 0.25;
     default:
       return 1;
   }
@@ -141,7 +141,7 @@ const fortress = (g: GameScene, e: Enemy, c: Ctx): Steer => {
   const t = g.telegraph;
   const phase = trackPhase(g, e);
   const p = e.def.projectile!;
-  const openEvery = (phase === 3 ? 9000 : 7000) * pace(e);
+  const openEvery = (phase === 3 ? 7500 : 6000) * pace(e);
   if (e.stateUntil === 0) e.stateUntil = now + openEvery;
 
   if (e.state === "move" && now >= e.stateUntil) {
@@ -154,7 +154,7 @@ const fortress = (g: GameScene, e: Enemy, c: Ctx): Steer => {
     t.strokeCircle(e.x, e.y, e.radius * (2.4 - progress * 1.2));
     if (now >= e.stateUntil) {
       e.state = "open";
-      e.stateUntil = now + 2600;
+      e.stateUntil = now + 3200;
       g.fx.ring(e.x, e.y, SIGNAL.charge, e.radius * 2);
       g.sfx("shield");
     }
@@ -180,7 +180,8 @@ const fortress = (g: GameScene, e: Enemy, c: Ctx): Steer => {
     }
   }
   e.sprite.rotation += c.dt * (e.state === "open" ? 0 : 0.25);
-  return c.d > 420 ? { mx: c.ux, my: c.uy, mul: 0.6 } : still;
+  // Si avvicina lentamente fino a entrare nella mischia (resta a portata delle armi automatiche).
+  return c.d > 250 ? { mx: c.ux, my: c.uy, mul: c.d > 500 ? 1.2 : 0.7 } : still;
 };
 
 const queen = (g: GameScene, e: Enemy, c: Ctx): Steer => {

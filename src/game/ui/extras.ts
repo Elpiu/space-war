@@ -7,7 +7,7 @@ import { ENEMIES } from "../data/enemies";
 import { GEAR, SLOT_LABELS } from "../modes/campaign/gear";
 import { applySave, exportSave, readSave } from "../savefile";
 import { getSettings, saveSettings } from "../settings";
-import { asset, el, esc, layer, morph } from "./dom";
+import { asset, el, esc, guardModalKeys, layer, morph } from "./dom";
 import { closeScreen } from "./screens";
 import { hex } from "../utils";
 
@@ -51,6 +51,7 @@ export const showSettings = (onClose?: () => void) => {
   layer("modal").appendChild(root);
   const render = () => morph(root, html());
   const close = () => {
+    guardModalKeys();
     root.remove();
     window.removeEventListener("keydown", onKey);
     onClose?.();

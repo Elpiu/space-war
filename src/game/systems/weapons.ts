@@ -5,6 +5,7 @@ import type { GameScene } from "../scenes/GameScene";
 import type { Bullet, DamageSource, Enemy, ProjectileDef } from "../types";
 import { dist2 } from "../utils";
 import { insideArena } from "./arena";
+import { armorMul } from "./bossAI";
 import { shieldBlocks } from "./enemies";
 
 const near: Enemy[] = [];
@@ -364,9 +365,29 @@ export class Arsenal {
     this.nextShot = g.now + stats.fireInterval;
   }
 
+  /**
+   * Mira automatica: prima difende la nave (nemico entro 120 px), poi a colpi
+   * alterni punta il boss in gittata (o le sue parti finché lo corazzano),
+   * altrimenti il nemico più vicino. Senza questa priorità un boss che resta a distanza,
+   * come la Fortezza, dietro a uno sciame non verrebbe mai colpito.
+   */
+  private aimToggle = false;
+
   private autoAim(range: number): number | null {
-    const { player } = this.g;
-    const target = nearestEnemy(this.g, player.x, player.y, range);
+    const g = this.g;
+    const { player } = g;
+    const close = nearestEnemy(g, player.x, player.y, 120);
+    let target = close;
+    // Un colpo su due va al boss anche in mezzo allo sciame.
+    this.aimToggle = !this.aimToggle;
+    if (!target && this.aimToggle) {
+      const boss = g.enemies.find((e) => !e.dead && e.def.boss && dist2(player.x, player.y, e.x, e.y) < range * range);
+      if (boss) {
+        const parts = armorMul(g, boss) < 1 ? g.enemies.filter((o) => o.owner === boss && !o.dead) : [];
+        target = parts.length ? parts.reduce((a, b) => (dist2(player.x, player.y, a.x, a.y) < dist2(player.x, player.y, b.x, b.y) ? a : b)) : boss;
+      }
+    }
+    target ??= nearestEnemy(g, player.x, player.y, range);
     return target ? Math.atan2(target.y - player.y, target.x - player.x) : null;
   }
 

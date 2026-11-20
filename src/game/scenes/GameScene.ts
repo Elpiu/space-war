@@ -1,3 +1,4 @@
+import { modalOpen } from "../ui/dom";
 import { armorMul } from "../systems/bossAI";
 import { PAINTS, checkMedals, getArchive, recordKill, recordStat, saveArchive } from "../archive";
 import { getSettings } from "../settings";
@@ -145,6 +146,9 @@ export class GameScene extends Scene {
     this.showMenu();
 
     this.game.events.on("blur", () => this.state === "playing" && this.pause());
+    // L'archivio si salva a fine run; se la pagina viene chiusa o nascosta prima, si salva lì.
+    window.addEventListener("pagehide", saveArchive);
+    document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && saveArchive());
   }
 
   // ---------- Loop ----------
@@ -158,7 +162,8 @@ export class GameScene extends Scene {
       return;
     }
 
-    if (Input.Keyboard.JustDown(this.keys.pause) || Input.Keyboard.JustDown(this.keys.esc)) {
+    const pausePressed = Input.Keyboard.JustDown(this.keys.pause) || Input.Keyboard.JustDown(this.keys.esc);
+    if (pausePressed && !modalOpen()) {
       if (this.state === "playing" || this.state === "paused") this.togglePause();
     }
     this.starfield.update();

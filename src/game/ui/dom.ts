@@ -8,6 +8,16 @@ export const el = <T extends HTMLElement = HTMLElement>(html: string): T => {
   return template.content.firstElementChild as T;
 };
 
+let modalGuardUntil = 0;
+
+/** Dopo la chiusura di una finestra, i tasti restano ignorati per un attimo (Esc non deve riprendere la partita). */
+export const guardModalKeys = () => {
+  modalGuardUntil = performance.now() + 200;
+};
+
+/** True se è aperta una finestra modale (impostazioni): i tasti di gioco vanno ignorati. */
+export const modalOpen = () => performance.now() < modalGuardUntil || Boolean(uiRoot()?.querySelector(":scope > .layer-modal > *"));
+
 /** Uno strato nominato dentro #ui (hud, screen, toasts...), creato al bisogno. */
 export const layer = (name: string) => {
   const root = uiRoot();

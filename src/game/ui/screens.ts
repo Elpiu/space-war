@@ -4,7 +4,7 @@ import { ITEMS, RARITIES, TOMES, isEvolved, itemLevel, tomeLevel } from "../data
 import type { Meta } from "../meta";
 import type { DamageSource, Run, TomeOffer } from "../types";
 import { fmt, formatTime, hex } from "../utils";
-import { asset, el, esc, layer, morph } from "./dom";
+import { asset, el, esc, layer, modalOpen, morph } from "./dom";
 
 let cleanupKeys: (() => void) | null = null;
 
@@ -91,7 +91,7 @@ export const showMenu = (
       </div>
     </div>`,
     (e) => {
-      if (e.key === "Enter") actions.play(difficulty);
+      if (e.key === "Enter" && !modalOpen()) actions.play(difficulty);
     },
   );
 

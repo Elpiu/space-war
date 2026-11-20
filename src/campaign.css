@@ -64,14 +64,14 @@
 /* Mappa a nodi: colori per tipo di nodo. */
 .map-inner--dag { inset: 15% 4% 12%; }
 .map-edges line.is-walked { stroke: var(--good); stroke-dasharray: none; stroke-width: 3; }
-.map-node.kind-elite { --k: #f97316; }
-.map-node.kind-shipyard { --k: #22d3ee; }
-.map-node.kind-event { --k: #c084fc; }
-.map-node.kind-treasure { --k: #fbbf24; }
-.map-node.kind-mission { --k: var(--accent); }
-.map-node.kind-boss { --k: var(--danger); }
-.map-node[class*="kind-"] { border-radius: 18px; color: color-mix(in srgb, var(--k) 70%, #fff); border-color: color-mix(in srgb, var(--k) 35%, transparent); }
-.map-node[class*="kind-"].is-open { border-color: var(--k); color: #fff; box-shadow: 0 0 18px color-mix(in srgb, var(--k) 55%, transparent); background: color-mix(in srgb, var(--k) 14%, var(--panel-solid)); }
+.map-node.kind-elite { --kc: #f97316; }
+.map-node.kind-shipyard { --kc: #22d3ee; }
+.map-node.kind-event { --kc: #c084fc; }
+.map-node.kind-treasure { --kc: #fbbf24; }
+.map-node.kind-mission { --kc: var(--accent); }
+.map-node.kind-boss { --kc: var(--danger); }
+.map-node[class*="kind-"] { border-radius: 18px; color: color-mix(in srgb, var(--kc) 70%, #fff); border-color: color-mix(in srgb, var(--kc) 35%, transparent); }
+.map-node[class*="kind-"].is-open { border-color: var(--kc); color: #fff; box-shadow: 0 0 18px color-mix(in srgb, var(--kc) 55%, transparent); background: color-mix(in srgb, var(--kc) 14%, var(--panel-solid)); }
 .map-node[class*="kind-"].is-done { border-color: var(--good); color: var(--good); }
 .map-node.is-skipped { opacity: 0.3; cursor: not-allowed; filter: grayscale(0.8); }
 .map-node[class*="kind-"].is-locked { opacity: 0.6; }
@@ -374,3 +374,27 @@
 .arc-paint .ico { width: 12px; height: 12px; }
 .arc-paint:disabled { opacity: 0.45; cursor: not-allowed; }
 .arc-paint.is-on { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.4); }
+
+/* ---------- Hub compatto su telefono (interfaccia larga ~800 px logici) ---------- */
+.is-touch .hq { padding: 8px 10px; gap: 8px; overflow: hidden; }
+.is-touch .hq-body { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.is-touch .hq-head { gap: 8px; }
+.is-touch .hq-brand { min-width: 0; max-width: 170px; }
+.is-touch .hq-brand b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.is-touch .hq-brand small { font-size: 9px; letter-spacing: 0.08em; }
+.is-touch .hq-tabs { gap: 4px; }
+.is-touch .hq-tab { padding: 8px 9px; gap: 5px; font-size: 10px; letter-spacing: 0.04em; }
+.is-touch .hq-tab .ico { width: 15px; height: 15px; }
+.is-touch .hq-head .pill--big { padding: 5px 8px; font-size: 13px; }
+.is-touch .hq-map, .is-touch .hq-shop { grid-template-columns: 1fr 290px; min-height: 0; }
+.is-touch .hq-workshop { grid-template-columns: 1fr 290px; }
+.is-touch .hq-hangar { grid-template-columns: 190px 1fr 270px; grid-template-rows: minmax(0, 1fr) auto; }
+.is-touch .hq-map__side { gap: 6px; }
+.is-touch .hq-daily { padding: 6px 9px; }
+.is-touch .hq-daily small { display: none; }
+.is-touch .map-node { width: 48px; height: 48px; font-size: 9px; }
+.is-touch .map-node .ico { width: 17px; height: 17px; }
+.is-touch .map-node.is-boss { width: 58px; height: 58px; }
+.is-touch .hq-sector__info { font-size: 10px; }
+.is-touch .archive { padding: 8px 10px; }
+.is-touch .archive .hq-brand b { font-size: 15px; }
