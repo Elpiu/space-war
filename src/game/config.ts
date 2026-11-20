@@ -11,7 +11,7 @@ export const PLAYER_HIT_IFRAMES = 650;
 
 export const BASE_STATS = {
   maxHp: 10,
-  speed: 250,
+  speed: 285,
   damage: 2,
   fireInterval: 400,
   bulletSpeed: 680,

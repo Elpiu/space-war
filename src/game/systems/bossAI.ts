@@ -1,3 +1,4 @@
+import { firePattern } from "./patterns";
 import { LIMITS, SIGNAL } from "../config";
 import type { GameScene } from "../scenes/GameScene";
 import type { Enemy, EnemyId } from "../types";
@@ -100,7 +101,9 @@ const serpent = (g: GameScene, e: Enemy, c: Ctx): Steer => {
   const phase = trackPhase(g, e);
   const p = e.def.projectile!;
   if (now > e.nextAttack) {
-    for (const off of phase === 3 ? [-0.3, -0.15, 0, 0.15, 0.3] : [-0.15, 0, 0.15]) g.fireEnemyBullet(e, c.toPlayer + off, p);
+    if (phase === 1) firePattern(g, e, "fan", c.toPlayer, p, { count: 3 });
+    else if (phase === 2) firePattern(g, e, "S", c.toPlayer, p, { count: 3 });
+    else firePattern(g, e, "U", c.toPlayer, p, { count: 9 });
     e.nextAttack = now + p.cooldown * pace(e);
   }
   if (phase === 3 && now > e.stateUntil) {
@@ -175,7 +178,9 @@ const fortress = (g: GameScene, e: Enemy, c: Ctx): Steer => {
       e.nextAttack = now + 150 / pace(e) ** 0.5;
     }
     if (phase >= 2 && now > e.auxY) {
-      for (const off of [-0.2, 0, 0.2]) g.fireEnemyBullet(e, c.toPlayer + off, p, 1.2);
+      e.auxX = (e.auxX + 1) % 2;
+      if (e.auxX) firePattern(g, e, "wall", c.toPlayer, p, { count: 11 });
+      else firePattern(g, e, "X", c.toPlayer, p, { count: phase === 3 ? 8 : 4, spin: now * 0.001 });
       e.auxY = now + 2200 * pace(e);
     }
   }
@@ -206,13 +211,13 @@ const queen = (g: GameScene, e: Enemy, c: Ctx): Steer => {
     e.auxY = now + 9000 * pace(e);
   }
   if (phase === 3 && now > e.stateUntil && e.state === "move") {
-    radial(g, e, 16, now * 0.0013);
+    firePattern(g, e, "C", c.toPlayer, p, { count: 22 });
     e.stateUntil = now + 2400 * pace(e);
   }
 
   if (phase === 1) {
     if (now > e.nextAttack) {
-      for (const off of [-0.2, 0, 0.2]) g.fireEnemyBullet(e, c.toPlayer + off, p);
+      firePattern(g, e, "U", c.toPlayer, p, { count: 7 });
       e.nextAttack = now + p.cooldown * pace(e);
     }
     return orbit(e, c, 340);
@@ -242,7 +247,7 @@ const queen = (g: GameScene, e: Enemy, c: Ctx): Steer => {
     if (now >= e.spiral) {
       e.state = "move";
       e.nextAttack = now + 2600 * pace(e);
-      for (const off of [-0.25, 0, 0.25]) g.fireEnemyBullet(e, c.toPlayer + off, p);
+      firePattern(g, e, "burst", c.toPlayer, p);
     }
     return { mx: Math.cos(e.lockAngle), my: Math.sin(e.lockAngle), mul: 4.4 };
   }
@@ -258,7 +263,8 @@ export const miniBossAttack = (g: GameScene, e: Enemy, toPlayer: number): boolea
   const p = e.def.projectile!;
   if (e.def.id === "minelayer") {
     if (now > e.nextAttack) {
-      for (const off of [-0.4, -0.2, 0, 0.2, 0.4]) g.fireEnemyBullet(e, toPlayer + off, p);
+      e.auxX = (e.auxX + 1) % 2;
+      firePattern(g, e, e.auxX ? "wall" : "U", toPlayer, p, { count: e.auxX ? 10 : 7 });
       e.nextAttack = now + p.cooldown;
     }
     if (now > e.stateUntil) {
@@ -282,11 +288,13 @@ export const miniBossAttack = (g: GameScene, e: Enemy, toPlayer: number): boolea
     }
     const armored = partsOf(g, e).length > 0;
     if (now > e.nextAttack) {
-      for (const off of [-0.16, 0, 0.16]) g.fireEnemyBullet(e, toPlayer + off, p);
+      firePattern(g, e, armored ? "I" : "burst", toPlayer, p, { count: 5 });
+      if (!armored) firePattern(g, e, "fan", toPlayer, p, { count: 5 });
       e.nextAttack = now + (armored ? 1700 : 1100);
     }
     if (now > e.stateUntil) {
-      radial(g, e, armored ? 10 : 16, now * 0.001, 0.85);
+      if (armored) firePattern(g, e, "X", toPlayer, p, { count: 8, spin: now * 0.001 });
+      else radial(g, e, 16, now * 0.001, 0.85);
       g.fx.ring(e.x, e.y, 0x38bdf8, 100);
       e.stateUntil = now + (armored ? 5000 : 3200);
     }

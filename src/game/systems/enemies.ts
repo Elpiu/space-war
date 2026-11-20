@@ -1,3 +1,4 @@
+import { firePattern, patternCooldown, patternOf } from "./patterns";
 import { recordSeen } from "../archive";
 import { BlendModes, TintModes } from "phaser";
 import { DEPTH, DIFFICULTIES, LIMITS, PLAYER_RADIUS, SIGNAL, VIEW_H, VIEW_W } from "../config";
@@ -5,8 +6,8 @@ import { AFFIXES, ENEMIES, isBig, waveScale } from "../data/enemies";
 import { bestiary2Behavior, groundTick } from "./bestiary2";
 import { bossBehavior, miniBossAttack } from "./bossAI";
 import type { GameScene } from "../scenes/GameScene";
-import type { AffixId, Enemy, EnemyId, FlightPath } from "../types";
-import { angleDiff, clamp, pick } from "../utils";
+import type { AffixId, PatternId, Enemy, EnemyId, FlightPath } from "../types";
+import { angleDiff, clamp, pick, rand } from "../utils";
 import { clampToArena, inNebula, pushOutOfAsteroids } from "./arena";
 import { affixTick, extraBehavior, laserAttack, supportTick } from "./enemyAI";
 import { ceilAt, clampToGap, floorAt } from "./terrain";
@@ -19,7 +20,7 @@ export const spawnEnemy = (
   id: EnemyId,
   x: number,
   y: number,
-  opts: { affix?: AffixId; small?: boolean; path?: FlightPath; anchor?: "floor" | "ceil"; gen?: number; owner?: Enemy; bossTier?: number } = {},
+  opts: { affix?: AffixId; small?: boolean; path?: FlightPath; anchor?: "floor" | "ceil"; gen?: number; owner?: Enemy; bossTier?: number; pattern?: PatternId } = {},
 ): Enemy => {
   const def = ENEMIES[id];
   const run = g.run;
@@ -82,6 +83,7 @@ export const spawnEnemy = (
     auxY: 0,
     owner: opts.owner,
     bossTier: opts.bossTier ?? 0,
+    pattern: opts.pattern,
   };
   // Sul soffitto: la torretta si capovolge ruotando, le strutture specchiandosi.
   if (opts.anchor === "ceil") {
@@ -231,8 +233,8 @@ export const updateEnemies = (g: GameScene, dt: number) => {
         keepDistance();
         const p = e.def.projectile!;
         if (now > e.nextAttack && d < p.range) {
-          g.fireEnemyBullet(e, toPlayer, p);
-          e.nextAttack = now + p.cooldown * (0.85 + Math.random() * 0.3);
+          firePattern(g, e, patternOf(e), toPlayer, p);
+          e.nextAttack = now + patternCooldown(e, p.cooldown);
         }
         break;
       }
@@ -386,6 +388,11 @@ const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer:
     } else if (p.kind === "sine") {
       e.x = p.x0 - p.speed * p.t;
       e.y = p.y0 + (p.amp ?? 80) * Math.sin((p.freq ?? 2.5) * p.t + (p.phase ?? 0));
+    } else if (p.kind === "wheel") {
+      // Ruota: il centro avanza, i membri girano attorno a lui.
+      const a = (p.phase ?? 0) + p.t * (p.freq ?? 2);
+      e.x = p.x0 - p.speed * p.t + Math.cos(a) * (p.amp ?? 70);
+      e.y = p.y0 + Math.sin(a) * (p.amp ?? 70);
     } else if (p.kind === "dive") {
       const k = Math.min(1, p.t / 1.4);
       e.x = p.x0 - p.speed * p.t;
@@ -399,6 +406,20 @@ const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer:
           p.stage = 1;
           p.holdUntil = now + (p.holdFor ?? 4000);
         }
+      } else if (p.stage === 1 && p.engage) {
+        // Ingaggio: resta a combattere e cambia posizione ogni pochi secondi nel 50-90% destro.
+        if (p.tx === undefined || now > (p.holdUntil ?? 0)) {
+          const tx = rand(0.52, 0.9);
+          p.tx = tx;
+          const gx = camX + VIEW_W * tx;
+          const top = (terrain ? Math.max(0, ceilAt(terrain, gx)) : 0) + e.radius + 20;
+          const bottom = (terrain ? Math.min(VIEW_H, floorAt(terrain, gx)) : VIEW_H) - e.radius - 20;
+          p.ty = rand(top, Math.max(top, bottom));
+          p.holdUntil = now + rand(2600, 4200);
+        }
+        const k = Math.min(1, dt * 1.6);
+        e.x += (camX + VIEW_W * (p.tx ?? 0.75) + Math.sin(now * 0.002 + e.seed) * 10 - e.x) * k;
+        e.y += ((p.ty ?? p.y0) + Math.sin(now * 0.0015 + e.seed) * 14 - e.y) * k;
       } else if (p.stage === 1) {
         e.x = stop + Math.sin(now * 0.002 + e.seed) * 12;
         e.y = p.y0 + Math.sin(now * 0.0015 + e.seed) * 24;
@@ -431,10 +452,13 @@ const updateScripted = (g: GameScene, e: Enemy, dt: number, d: number, toPlayer:
   // Attacco: tutte le unità armate sparano quando sono a schermo.
   const proj = e.def.projectile;
   const onScreen = e.x > camX + 20 && e.x < camX + VIEW_W - 20 && e.y > -20 && e.y < VIEW_H + 20;
-  if (proj && onScreen && d < proj.range && now > e.nextAttack) {
-    g.fireEnemyBullet(e, toPlayer, proj);
+  // In campagna i nemici in formazione stanno sul lato destro, lontani dalla nave:
+  // il loro colpo deve arrivare almeno da un capo all'altro dello schermo.
+  const reach = proj ? { ...proj, range: Math.max(proj.range, 1000) } : undefined;
+  if (proj && reach && onScreen && d < reach.range && now > e.nextAttack) {
+    firePattern(g, e, patternOf(e), toPlayer, reach);
     g.fx.burst(e.x, e.y, proj.radius > 9 ? 0xfacc15 : 0xf472b6, 4);
-    e.nextAttack = now + proj.cooldown * (0.8 + Math.random() * 0.4);
+    e.nextAttack = now + patternCooldown(e, proj.cooldown);
   }
 };
 
@@ -450,11 +474,13 @@ const gunshipAttack = (g: GameScene, e: Enemy, toPlayer: number) => {
     e.spiral = now + 5000;
   }
   if (now > e.nextAttack) {
-    for (const offset of [-0.18, 0, 0.18]) g.fireEnemyBullet(e, toPlayer + offset, p);
-    e.nextAttack = now + 1500;
+    // Alterna un arco a U e una colonna a I.
+    e.auxX = (e.auxX + 1) % 2;
+    firePattern(g, e, e.auxX ? "U" : "I", toPlayer, p, { count: e.auxX ? 7 : 5 });
+    e.nextAttack = now + 1600;
   }
   if (now > e.stateUntil) {
-    for (let i = 0; i < 10; i += 1) g.fireEnemyBullet(e, (i / 10) * Math.PI * 2 + now * 0.001, p, 0.8);
+    firePattern(g, e, "C", toPlayer, p, { count: 18 });
     g.fx.ring(e.x, e.y, 0xef4444, 90);
     e.stateUntil = now + 4200;
   }
@@ -499,7 +525,9 @@ const updateBoss = (
   if (phase === 1) {
     move(d > 320 ? ux : -uy, d > 320 ? uy : ux, d > 320 ? 1 : 0.5);
     if (now > e.nextAttack) {
-      radial(14, e.spiral);
+      e.auxX = (e.auxX + 1) % 3;
+      if (e.auxX === 2) firePattern(g, e, "C", toPlayer, p, { count: 20 });
+      else radial(14, e.spiral);
       e.spiral += 0.22;
       e.nextAttack = now + 2100;
     }
@@ -521,6 +549,11 @@ const updateBoss = (
         spawnEnemy(g, "swarm", e.x + Math.cos(i * 1.57) * 70, e.y + Math.sin(i * 1.57) * 70);
       }
       e.nextAttack = now + 6500;
+    }
+    // Serpentine mirate durante la pausa della spirale.
+    if (cycle >= 2600 && now > e.auxY) {
+      firePattern(g, e, "S", toPlayer, p, { count: 3 });
+      e.auxY = now + 700;
     }
     return;
   }
@@ -548,7 +581,8 @@ const updateBoss = (
     if (now >= e.stateUntil) {
       e.state = "recover";
       e.stateUntil = now + 700;
-      radial(18, Math.random() * Math.PI, 1.2);
+      radial(14, Math.random() * Math.PI, 1.2);
+      firePattern(g, e, "U", toPlayer, p, { count: 9 });
       g.shake(160, 0.008);
     }
   } else {

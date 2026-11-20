@@ -71,6 +71,9 @@ export type EnemyId =
   | "fortress"
   | "queen";
 
+/** Schemi di fuoco (vedi systems/patterns.ts). */
+export type PatternId = "aimed" | "burst" | "fan" | "U" | "I" | "S" | "C" | "X" | "wall" | "spiral";
+
 export type AffixId = "swift" | "armored" | "splitter" | "regen" | "explosive" | "barrier" | "phantom";
 
 export interface ProjectileDef {
@@ -84,6 +87,9 @@ export interface ProjectileDef {
   homing?: number;
   /** Granata a frammentazione: a fine corsa si apre in N schegge. */
   burst?: number;
+  /** Moto ondulato (schema a S): ampiezza laterale in px e frequenza in rad/s. */
+  wave?: number;
+  waveFreq?: number;
 }
 
 export interface EnemyDef {
@@ -121,11 +127,18 @@ export interface EnemyDef {
   part?: boolean;
   /** Annunci delle fasi 2 e 3 (boss). */
   phases?: [string, string];
+  /** Schema di fuoco del colpo normale (default: mirato). */
+  pattern?: PatternId;
 }
 
 /** Traiettoria prestabilita dei volanti in formazione (campagna). */
 export interface FlightPath {
-  kind: "straight" | "sine" | "dive" | "hold";
+  kind: "straight" | "sine" | "dive" | "hold" | "wheel";
+  /** Per "hold": resta a combattere riposizionandosi invece di uscire dopo holdFor. */
+  engage?: boolean;
+  /** Bersaglio corrente del riposizionamento (frazione dello schermo in x, pixel in y). */
+  tx?: number;
+  ty?: number;
   t: number;
   x0: number;
   y0: number;
@@ -187,6 +200,8 @@ export interface Enemy {
   gen: number;
   auxX: number;
   auxY: number;
+  /** Schema di fuoco di questo esemplare (sostituisce quello della definizione). */
+  pattern?: PatternId;
   /** Nemico a cui appartiene questa parte (segmenti, punti deboli). */
   owner?: Enemy;
   /** Scia della testa del Serpente: i segmenti la seguono. */
@@ -247,6 +262,11 @@ export interface EnemyBullet {
   gravity: number;
   homing: number;
   burst: number;
+  /** Moto ondulato: ampiezza, frequenza, fase ed età del proiettile. */
+  wave: number;
+  waveFreq: number;
+  phase: number;
+  age: number;
   active: boolean;
 }
 

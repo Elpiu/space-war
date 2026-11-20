@@ -90,6 +90,11 @@ export const updatePickups = (g: GameScene, dt: number) => {
 
     if (p.kind !== "chest" && p.kind !== "capsule") {
       if (!p.pulled && (d2 < radius * radius || (vacuum && (p.kind === "xp" || p.kind === "coin")))) p.pulled = true;
+    } else if (p.kind === "chest" && !p.pulled && g.mode.id === "campaign" && p.x < g.cameras.main.scrollX + 30) {
+      // Cassa rimasta indietro con lo scorrimento: vola da sola verso la nave (niente bottino perso).
+      p.pulled = true;
+    }
+    {
       if (p.pulled) {
         const d = Math.sqrt(d2) || 1;
         const speed = Math.max(420, 1400 - d);

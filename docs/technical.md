@@ -31,14 +31,14 @@ src/
     modes/campaign/affixes.ts  affissi del bottino: tiro, etichette, effetti su arma e nave
     modes/campaign/contracts.ts contratti di missione (obiettivo facoltativo per missione)
     ui/extras.ts          finestra Impostazioni e schermata Archivio
-    modes/campaign/ui/    viste dell'hub: mappa, hangar, negozio, officina, elementi comuni
-    modes/campaign/schematic.ts  sagome SVG degli scafi e posizione delle prese
+    modes/campaign/ui/    viste dell'hub: mappa, hangar (con officina), negozio, elementi comuni
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
     systems/director.ts   wave del survival, eventi orda/boss, spawn
     systems/enemies.ts    spawn e IA di base dei nemici, boss a fasi
     systems/enemyAI.ts    comportamenti del bestiario v3: laser, supporto, gravità, EMP, teletrasporto, affissi continui
     systems/bestiary2.ts  bestiario 2: picchiatore, flak, radar, sanguisuga, specchio, madre, mina, unità di terra
     systems/bossAI.ts     boss a rotazione (Serpente, Fortezza, Regina), mini-boss, parti e corazze
+    systems/patterns.ts   schemi di fuoco (mirato, ventaglio, U, I, S, C, X, muro, spirale)
     systems/weapons.ts    proiettili in pool (anche a ricerca, a gravità, esplosivi), arsenale del survival
     systems/rack.ts       armi a slot della campagna: fuoco tenuto, calore, missili, bombe
     systems/terrain.ts    pavimento e soffitto: campionamento, collisioni, disegno
@@ -121,9 +121,14 @@ src/
   in `EVENTS` (`sectors.ts`).
 - **Minaccia**: `ModeSetup.threat` moltiplica HP, danno e velocità dei nemici
   in `spawnEnemy`, tramite `run.threat`.
+- **Schema di fuoco**: un `case` in `firePattern` (`systems/patterns.ts`) e il
+  suo costo in `PATTERN_COST`. Un nemico lo usa con `pattern` nella
+  definizione o, per il singolo esemplare, con l'opzione `pattern` di `spawnEnemy`.
 - **Ondata di campagna**: una voce in `FORMATIONS` (`modes/campaign/formations.ts`)
-  con segmenti, tier minimo e peso. Le traiettorie disponibili sono
-  `straight`, `sine`, `dive` e `hold` (`FlightPath` in `types.ts`).
+  con segmenti, tier minimo, peso e ruolo: `role: "travel"` per chi
+  attraversa lo schermo, altrimenti ingaggio (le traiettorie `hold` con
+  `engage: true` restano a combattere). Le traiettorie disponibili sono
+  `straight`, `sine`, `dive`, `wheel` e `hold` (`FlightPath` in `types.ts`).
 - **Unità di terra o struttura**: definizione in `data/enemies.ts` con
   `campaignOnly` (e `structure` se non attacca), piazzamento nella tabella
   `GROUND` di `level.ts`.

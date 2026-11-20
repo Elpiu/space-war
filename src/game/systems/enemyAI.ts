@@ -1,3 +1,4 @@
+import { firePattern, patternCooldown, patternOf } from "./patterns";
 import { PLAYER_RADIUS, SIGNAL } from "../config";
 import type { GameScene } from "../scenes/GameScene";
 import type { Enemy } from "../types";
@@ -235,6 +236,6 @@ export const extraBehavior = (g: GameScene, e: Enemy, c: Ctx): Steer | null => {
 export const fireAimed = (g: GameScene, e: Enemy, c: Ctx) => {
   const p = e.def.projectile;
   if (!p || g.now < e.nextAttack || c.d > p.range) return;
-  g.fireEnemyBullet(e, c.toPlayer, p);
-  e.nextAttack = g.now + p.cooldown * (0.85 + Math.random() * 0.3);
+  firePattern(g, e, patternOf(e), c.toPlayer, p);
+  e.nextAttack = g.now + patternCooldown(e, p.cooldown);
 };

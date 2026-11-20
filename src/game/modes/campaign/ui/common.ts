@@ -7,7 +7,7 @@ import { hex } from "../../../utils";
 import { affixLinesOf, describeGear, gearPower, mustGearDef, weaponDps, weaponSpec, type GearItem, type GearSlot } from "../gear";
 import type { ShipSummary, SlotKey } from "../profile";
 
-export type HubTab = "map" | "hangar" | "shop" | "workshop";
+export type HubTab = "map" | "hangar" | "shop";
 
 /** Stato dell'interfaccia dell'hub (non salvato). */
 export interface HubState {
@@ -16,22 +16,59 @@ export interface HubState {
   sector: number;
   missionId: string;
   difficulty: DifficultyId;
-  /** Presa selezionata nello schema della nave. */
+  /** Categoria aperta in Hangar e Negozio. */
+  cat: GearSlot;
+  /** Slot di destinazione per "Monta" (uno slot della categoria aperta). */
   slot: SlotKey | null;
-  /** Pezzo selezionato (inventario, officina). */
+  /** Pezzo selezionato nell'hangar. */
   selected: number | null;
-  /** Pezzo del negozio in anteprima. */
+  /** Articolo del negozio in anteprima (id del catalogo oppure "offer:N"). */
   preview: string | null;
-  filter: { type: GearSlot | "all"; rarity: Rarity | "all"; fresh: boolean };
-  sort: "power" | "level" | "rarity" | "type";
-  multi: boolean;
-  picked: Set<number>;
+  /** Nel negozio: categoria del catalogo oppure le offerte del settore. */
+  shopCat: GearSlot | "offers";
   confirm: string | null;
   feedback: string;
 }
 
 export const RARITY_ORDER: Rarity[] = ["legendary", "rare", "uncommon", "common"];
 export const SLOT_ORDER: GearSlot[] = ["front", "rear", "missile", "bomb", "device", "hull"];
+
+/** Categorie di Hangar e Negozio, nell'ordine della lista. */
+export const CATEGORIES: { id: GearSlot; label: string; icon: Parameters<typeof icon>[0] }[] = [
+  { id: "front", label: "Armi frontali", icon: "gear-blaster" },
+  { id: "rear", label: "Armi di coda", icon: "gear-spread" },
+  { id: "missile", label: "Missili", icon: "gear-missile" },
+  { id: "bomb", label: "Bombe", icon: "gear-bomb" },
+  { id: "device", label: "Dispositivi", icon: "gear-radiator" },
+  { id: "hull", label: "Scafo", icon: "gear-hull" },
+];
+
+/** Riassunto in una riga delle statistiche di un pezzo (prime 3 voci). */
+export const summaryLine = (item: GearItem) =>
+  describeGear(item)
+    .filter((l) => !l.startsWith("Item level") && !l.startsWith("Slot:"))
+    .slice(0, 3)
+    .join(" · ");
+
+/** Riga di un pezzo nelle liste di Hangar e Negozio. */
+export const itemRow = (
+  item: GearItem,
+  opts: { action: string; id?: string; selected?: boolean; tag?: string; delta?: string; side?: string; extra?: string },
+) => {
+  const def = mustGearDef(item.defId);
+  const affixes = item.affixes?.length ? `<s class="hq-row__aff">${"◆".repeat(item.affixes.length)}</s>` : "";
+  return `<div class="hq-row ${opts.selected ? "is-selected" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-action="${opts.action}" ${opts.id ? `data-id="${opts.id}"` : ""} data-uid="${item.uid}">
+    <span class="hq-row__icon">${icon(def.icon)}${item.uid >= 0 ? `<b>${item.level}</b>` : ""}</span>
+    <span class="hq-row__body">
+      <b>${esc(def.title)}${affixes}${item.fresh ? ` <em class="badge-new">NUOVO</em>` : ""}</b>
+      <small><i style="color:var(--r)">${RARITIES[item.rarity].label}</i>${item.ilvl ? ` · iL ${item.ilvl}` : ""}${opts.tag ? ` · ${opts.tag}` : ""}</small>
+      <span class="hq-row__stats">${esc(summaryLine(item))}</span>
+      ${opts.delta ? `<span class="hq-row__delta">${opts.delta}</span>` : ""}
+    </span>
+    ${opts.side ? `<span class="hq-row__side">${opts.side}</span>` : ""}
+    ${opts.extra ?? ""}
+  </div>`;
+};
 
 export const SLOT_NAMES: Record<string, string> = {
   hull: "Scafo",
@@ -68,18 +105,6 @@ export const itemScore = (item: GearItem) => {
   const spec = weaponSpec(item);
   if (spec) return weaponDps(spec) * 10;
   return gearPower(item) * mustGearDef(item.defId).value;
-};
-
-export const gearTile = (item: GearItem, opts: { selected?: boolean; equipped?: boolean; picked?: boolean; multi?: boolean } = {}) => {
-  const def = mustGearDef(item.defId);
-  return `<button class="hq-tile ${opts.selected ? "is-selected" : ""} ${opts.picked ? "is-picked" : ""}" style="--c:${hex(def.color)};--r:${rarityColor(item)}" data-action="item" data-uid="${item.uid}" title="${esc(def.title)} · ${RARITIES[item.rarity].label} · Liv. ${item.level}${item.ilvl ? ` · iL ${item.ilvl}` : ""}${affixLinesOf(item).map((l) => ` · ${esc(l)}`).join("")}">
-    ${icon(def.icon)}<b>${item.level}</b>
-    ${opts.equipped ? `<i class="hq-tile__on">${icon("check")}</i>` : ""}
-    ${item.locked ? `<i class="hq-tile__lock">${icon("lock")}</i>` : ""}
-    ${item.fresh ? `<em class="badge-new">NUOVO</em>` : ""}
-    ${item.affixes?.length ? `<s class="hq-tile__aff">${"◆".repeat(item.affixes.length)}</s>` : ""}
-    ${opts.multi ? `<span class="hq-tile__check">${opts.picked ? icon("check") : ""}</span>` : ""}
-  </button>`;
 };
 
 /** Scheda statistiche della nave, con le differenze se c'è un'anteprima. */

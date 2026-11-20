@@ -547,8 +547,8 @@ export class GameScene extends Scene {
     }
   }
 
-  fireEnemyBullet(e: Enemy, angle: number, p: ProjectileDef, speedMul = 1) {
-    fireEnemyBullet(this, e.x, e.y, angle, p, p.damage * (e.damage / e.def.damage), speedMul);
+  fireEnemyBullet(e: Enemy, angle: number, p: ProjectileDef, speedMul = 1, phase = 0) {
+    fireEnemyBullet(this, e.x, e.y, angle, p, p.damage * (e.damage / Math.max(0.01, e.def.damage)), speedMul, phase);
   }
 
   hurtPlayer(damage: number) {

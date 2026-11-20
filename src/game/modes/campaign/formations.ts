@@ -17,6 +17,8 @@ export interface FormationContext {
 
 export interface Formation {
   id: string;
+  /** "travel": attraversa lo schermo; "engage": si piazza e combatte. Default engage. */
+  role?: "travel" | "engage";
   segments: SegmentKind[];
   minTier: number;
   weight: number;
@@ -33,6 +35,7 @@ const midY = (c: FormationContext) => rand(c.top + 40, Math.max(c.top + 40, c.bo
 export const FORMATIONS: Formation[] = [
   {
     id: "sine-swarm",
+    role: "travel",
     segments: ["open", "debris", "cave", "surface"],
     minTier: 1,
     weight: 5,
@@ -50,6 +53,7 @@ export const FORMATIONS: Formation[] = [
   },
   {
     id: "vee",
+    role: "travel",
     segments: ["open", "surface", "station"],
     minTier: 1,
     weight: 4,
@@ -68,6 +72,7 @@ export const FORMATIONS: Formation[] = [
   },
   {
     id: "dive",
+    role: "travel",
     segments: ["open", "surface", "debris"],
     minTier: 2,
     weight: 3,
@@ -96,7 +101,7 @@ export const FORMATIONS: Formation[] = [
         const y0 = c.top + ((i + 1) / (count + 1)) * (c.bottom - c.top);
         spawnEnemy(c.g, "shooter", c.x + i * 40, y0, {
           affix: i === 0 ? c.elite() : undefined,
-          path: { kind: "hold", t: 0, x0: c.x, y0, speed: 170, holdAt: rand(0.62, 0.85), holdFor: 4500, exitY: y0 < 360 ? -1 : 1 },
+          path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 170, holdAt: rand(0.62, 0.85), holdFor: 4500, exitY: y0 < 360 ? -1 : 1 },
         });
       }
       return "shooter";
@@ -111,7 +116,7 @@ export const FORMATIONS: Formation[] = [
       const y0 = midY(c);
       spawnEnemy(c.g, "sniper", c.x, y0, {
         affix: c.elite(),
-        path: { kind: "hold", t: 0, x0: c.x, y0, speed: 150, holdAt: 0.88, holdFor: 6500, exitY: y0 < 360 ? -1 : 1 },
+        path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 150, holdAt: 0.88, holdFor: 6500, exitY: y0 < 360 ? -1 : 1 },
       });
       return "sniper";
     },
@@ -138,6 +143,7 @@ export const FORMATIONS: Formation[] = [
   },
   {
     id: "convoy",
+    role: "travel",
     segments: ["open", "debris", "surface"],
     minTier: 1,
     weight: 1.4,
@@ -145,10 +151,12 @@ export const FORMATIONS: Formation[] = [
       if (c.g.enemies.some((e) => e.def.id === "cargo" && !e.dead)) return "chaser";
       const y0 = clamp(midY(c), c.top + 110, c.bottom - 110);
       spawnEnemy(c.g, "cargo", c.x + 60, y0, { path: { kind: "straight", t: 0, x0: c.x + 60, y0, speed: 70 } });
-      for (const side of [-1, 1]) {
-        spawnEnemy(c.g, "chaser", c.x, y0 + side * 85, {
-          path: { kind: "sine", t: 0, x0: c.x, y0: y0 + side * 85, speed: 70, amp: 25, freq: 3, phase: side },
-        });
+      // Stormo di scorta: viaggia con il cargo, in due ali che ondeggiano.
+      for (let i = 0; i < 6; i += 1) {
+        const side = i % 2 ? 1 : -1;
+        const row = Math.floor(i / 2);
+        const y = y0 + side * (75 + row * 26);
+        spawnEnemy(c.g, "swarm", c.x - row * 40, y, { path: { kind: "sine", t: 0, x0: c.x - row * 40, y0: y, speed: 70, amp: 18, freq: 3, phase: i } });
       }
       return "cargo";
     },
@@ -188,6 +196,7 @@ export const FORMATIONS: Formation[] = [
   // ---------- Bestiario v3 ----------
   {
     id: "interceptor-wing",
+    role: "travel",
     segments: ["open", "debris", "surface"],
     minTier: 1,
     weight: 2.5,
@@ -202,6 +211,7 @@ export const FORMATIONS: Formation[] = [
   },
   {
     id: "zigzag-line",
+    role: "travel",
     segments: ["open", "cave", "surface"],
     minTier: 2,
     weight: 2.5,
@@ -228,6 +238,7 @@ export const FORMATIONS: Formation[] = [
   },
   {
     id: "bomber-run",
+    role: "travel",
     segments: ["surface", "open"],
     minTier: 2,
     weight: 2,
@@ -248,7 +259,7 @@ export const FORMATIONS: Formation[] = [
       const y0 = midY(c);
       spawnEnemy(c.g, "missilePod", c.x, y0, {
         affix: c.elite(),
-        path: { kind: "hold", t: 0, x0: c.x, y0, speed: 130, holdAt: 0.86, holdFor: 7000, exitY: y0 < 360 ? -1 : 1 },
+        path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 130, holdAt: 0.86, holdFor: 7000, exitY: y0 < 360 ? -1 : 1 },
       });
       return "missilePod";
     },
@@ -263,7 +274,7 @@ export const FORMATIONS: Formation[] = [
       for (let i = 0; i < count; i += 1) {
         const y0 = c.top + ((i + 1) / (count + 1)) * (c.bottom - c.top);
         spawnEnemy(c.g, "laserDrone", c.x + i * 50, y0, {
-          path: { kind: "hold", t: 0, x0: c.x, y0, speed: 150, holdAt: 0.8 + i * 0.06, holdFor: 7500, exitY: y0 < 360 ? -1 : 1 },
+          path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 150, holdAt: 0.8 + i * 0.06, holdFor: 7500, exitY: y0 < 360 ? -1 : 1 },
         });
       }
       return "laserDrone";
@@ -277,15 +288,16 @@ export const FORMATIONS: Formation[] = [
     spawn: (c) => {
       for (let i = 0; i < 2; i += 1) {
         const y0 = c.top + ((i + 1) / 3) * (c.bottom - c.top);
-        spawnEnemy(c.g, "shooter", c.x, y0, { path: { kind: "hold", t: 0, x0: c.x, y0, speed: 160, holdAt: 0.66, holdFor: 6000, exitY: i ? 1 : -1 } });
+        spawnEnemy(c.g, "shooter", c.x, y0, { path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 160, holdAt: 0.66, holdFor: 6000, exitY: i ? 1 : -1 } });
       }
       const ry = (c.top + c.bottom) / 2;
-      spawnEnemy(c.g, "repairer", c.x + 80, ry, { path: { kind: "hold", t: 0, x0: c.x + 80, y0: ry, speed: 150, holdAt: 0.84, holdFor: 6500, exitY: 1 } });
+      spawnEnemy(c.g, "repairer", c.x + 80, ry, { path: { kind: "hold", engage: true, t: 0, x0: c.x + 80, y0: ry, speed: 150, holdAt: 0.84, holdFor: 6500, exitY: 1 } });
       return "repairer";
     },
   },
   {
     id: "shield-escort",
+    role: "travel",
     segments: ["station", "debris", "surface"],
     minTier: 4,
     weight: 1.6,
@@ -360,7 +372,7 @@ export const FORMATIONS: Formation[] = [
     spawn: (c) => {
       for (let i = 0; i < 2; i += 1) {
         const y0 = c.top + ((i + 1) / 3) * (c.bottom - c.top);
-        spawnEnemy(c.g, "flak", c.x + i * 60, y0, { path: { kind: "hold", t: 0, x0: c.x, y0, speed: 150, holdAt: 0.8, holdFor: 6000, exitY: i ? 1 : -1 } });
+        spawnEnemy(c.g, "flak", c.x + i * 60, y0, { path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 150, holdAt: 0.8, holdFor: 6000, exitY: i ? 1 : -1 } });
       }
       return "flak";
     },
@@ -372,10 +384,10 @@ export const FORMATIONS: Formation[] = [
     weight: 1.4,
     spawn: (c) => {
       const y0 = midY(c);
-      spawnEnemy(c.g, "radar", c.x + 120, y0, { path: { kind: "hold", t: 0, x0: c.x + 120, y0, speed: 140, holdAt: 0.88, holdFor: 7000, exitY: 1 } });
+      spawnEnemy(c.g, "radar", c.x + 120, y0, { path: { kind: "hold", engage: true, t: 0, x0: c.x + 120, y0, speed: 140, holdAt: 0.88, holdFor: 7000, exitY: 1 } });
       for (let i = 0; i < 3; i += 1) {
         const y = clamp(y0 + (i - 1) * 70, c.top + 20, c.bottom - 20);
-        spawnEnemy(c.g, "shooter", c.x, y, { path: { kind: "hold", t: 0, x0: c.x, y0: y, speed: 160, holdAt: 0.7, holdFor: 6000, exitY: i % 2 ? 1 : -1 } });
+        spawnEnemy(c.g, "shooter", c.x, y, { path: { kind: "hold", engage: true, t: 0, x0: c.x, y0: y, speed: 160, holdAt: 0.7, holdFor: 6000, exitY: i % 2 ? 1 : -1 } });
       }
       return "radar";
     },
@@ -412,6 +424,7 @@ export const FORMATIONS: Formation[] = [
   },
   {
     id: "minefield",
+    role: "travel",
     segments: ["open", "debris", "cave"],
     minTier: 2,
     weight: 1.6,
@@ -422,11 +435,138 @@ export const FORMATIONS: Formation[] = [
       return "spaceMine";
     },
   },
+
+  // ---------- Schemi di fuoco ----------
+  {
+    id: "s-weavers",
+    role: "travel",
+    segments: ["open", "debris", "cave"],
+    minTier: 2,
+    weight: 2,
+    spawn: (c) => {
+      const y0 = midY(c);
+      for (let i = 0; i < 3; i += 1) {
+        spawnEnemy(c.g, "shooter", c.x + i * 80, y0, {
+          pattern: "S",
+          affix: i === 0 ? c.elite() : undefined,
+          path: { kind: "sine", t: 0, x0: c.x + i * 80, y0, speed: 120, amp: clamp((c.bottom - c.top) / 3, 30, 80), freq: 2.4, phase: i * 1.2 },
+        });
+      }
+      return "shooter";
+    },
+  },
+  {
+    id: "i-lancers",
+    role: "travel",
+    segments: ["open", "surface", "station"],
+    minTier: 2,
+    weight: 1.8,
+    spawn: (c) => {
+      for (let i = 0; i < 3; i += 1) {
+        const y = c.top + ((i + 1) / 4) * (c.bottom - c.top);
+        spawnEnemy(c.g, "shooter", c.x + i * 50, y, { pattern: "I", path: { kind: "straight", t: 0, x0: c.x + i * 50, y0: y, speed: 160 } });
+      }
+      return "shooter";
+    },
+  },
+  {
+    id: "u-battery",
+    segments: ["open", "debris", "surface"],
+    minTier: 3,
+    weight: 1.6,
+    spawn: (c) => {
+      for (let i = 0; i < 2; i += 1) {
+        const y0 = c.top + ((i + 1) / 3) * (c.bottom - c.top);
+        spawnEnemy(c.g, "shooter", c.x + i * 40, y0, { pattern: "U", affix: i === 0 ? c.elite() : undefined, path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 160, holdAt: 0.8 } });
+      }
+      return "shooter";
+    },
+  },
+  {
+    id: "c-warden",
+    segments: ["open", "station", "cave"],
+    minTier: 4,
+    weight: 1.2,
+    spawn: (c) => {
+      const y0 = midY(c);
+      // Guardiano blindato: anelli con un varco da attraversare.
+      spawnEnemy(c.g, "shooter", c.x, y0, { pattern: "C", affix: "armored", path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 120, holdAt: 0.82 } });
+      return "shooter";
+    },
+  },
+  {
+    id: "x-sentry",
+    segments: ["station", "open", "debris"],
+    minTier: 4,
+    weight: 1.3,
+    spawn: (c) => {
+      const y0 = midY(c);
+      spawnEnemy(c.g, "missilePod", c.x, y0, { pattern: "X", path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 130, holdAt: 0.86 } });
+      return "missilePod";
+    },
+  },
+  {
+    id: "wall-gunner",
+    segments: ["open", "surface", "station"],
+    minTier: 5,
+    weight: 1.1,
+    spawn: (c) => {
+      const y0 = midY(c);
+      spawnEnemy(c.g, "shooter", c.x, y0, { pattern: "wall", affix: c.elite(), path: { kind: "hold", engage: true, t: 0, x0: c.x, y0, speed: 150, holdAt: 0.85 } });
+      return "shooter";
+    },
+  },
+  {
+    id: "wheel",
+    role: "travel",
+    segments: ["open", "debris"],
+    minTier: 1,
+    weight: 2.2,
+    spawn: (c) => {
+      const y0 = clamp(midY(c), c.top + 80, c.bottom - 80);
+      const n = 8;
+      for (let i = 0; i < n; i += 1) {
+        spawnEnemy(c.g, "swarm", c.x, y0, { path: { kind: "wheel", t: 0, x0: c.x + 80, y0, speed: 110, amp: clamp((c.bottom - c.top) / 3, 50, 85), freq: 2.2, phase: (i / n) * Math.PI * 2 } });
+      }
+      return "swarm";
+    },
+  },
+  {
+    id: "pincer",
+    role: "travel",
+    segments: ["open", "debris", "surface"],
+    minTier: 2,
+    weight: 1.8,
+    spawn: (c) => {
+      const mid = (c.top + c.bottom) / 2;
+      for (let i = 0; i < 6; i += 1) {
+        const fromTop = i % 2 === 0;
+        const y0 = fromTop ? c.top + 10 : c.bottom - 10;
+        spawnEnemy(c.g, "chaser", c.x + Math.floor(i / 2) * 60, y0, { path: { kind: "dive", t: 0, x0: c.x + Math.floor(i / 2) * 60, y0, speed: 210, targetY: mid + (fromTop ? -20 : 20) } });
+      }
+      return "chaser";
+    },
+  },
+  {
+    id: "column",
+    role: "travel",
+    segments: ["open", "debris", "cave", "station"],
+    minTier: 1,
+    weight: 2,
+    spawn: (c) => {
+      const n = 5;
+      for (let i = 0; i < n; i += 1) {
+        const y = c.top + ((i + 0.5) / n) * (c.bottom - c.top);
+        spawnEnemy(c.g, "chaser", c.x, y, { path: { kind: "straight", t: 0, x0: c.x, y0: y, speed: 190 } });
+      }
+      return "chaser";
+    },
+  },
 ];
 
 /** Sceglie un'ondata adatta al segmento; il bioma può favorirne alcune (peso x2.5). */
-export const pickFormation = (segment: SegmentKind, tier: number, favored: string[] = []) => {
-  const pool = FORMATIONS.filter((f) => f.segments.includes(segment) && f.minTier <= tier);
+export const pickFormation = (segment: SegmentKind, tier: number, favored: string[] = [], allowEngage = true) => {
+  const pool = FORMATIONS.filter((f) => f.segments.includes(segment) && f.minTier <= tier && (allowEngage || f.role === "travel"));
   if (pool.length === 0) return undefined;
   const weight = (f: (typeof pool)[number]) => f.weight * (favored.includes(f.id) ? 2.5 : 1);
   const total = pool.reduce((sum, f) => sum + weight(f), 0);

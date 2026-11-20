@@ -1,7 +1,6 @@
 import { icon } from "../../art/svg";
 import type { DifficultyId } from "../../config";
 import { RARITIES } from "../../data/upgrades";
-import type { Rarity } from "../../types";
 import { asset, el, esc, layer, morph } from "../../ui/dom";
 import { closeScreen } from "../../ui/screens";
 import { formatTime, hex } from "../../utils";
@@ -16,40 +15,32 @@ import {
   recalibrate,
   rerollOffers,
   equipTo,
-  equippedSlotOf,
-  isSellable,
   itemByUid,
   loadProfile,
   nextMission,
   saveProfile,
   sell,
   sellCommons,
-  sellMany,
   shopCatalog,
-  slotKeys,
-  slotType,
   toggleFireSlot,
-  toggleLock,
   unequip,
   upgrade,
 } from "./profile";
 import { rarityColor, slotLabel, starsHtml, type HubState, type HubTab } from "./ui/common";
-import { filteredInventory, hangarView, hoverStats } from "./ui/hangarView";
+import { catSlots, hangarView, targetSlot } from "./ui/hangarView";
 import { mapView, sectorHeading } from "./ui/mapView";
-import { shopView, targetSlot } from "./ui/shopView";
-import { workshopView } from "./ui/workshopView";
+import { shopView } from "./ui/shopView";
 
 const TABS: { id: HubTab; label: string; icon: Parameters<typeof icon>[0] }[] = [
   { id: "map", label: "Mappa", icon: "map" },
   { id: "hangar", label: "Hangar", icon: "gear-hull" },
   { id: "shop", label: "Negozio", icon: "coin" },
-  { id: "workshop", label: "Officina", icon: "wrench" },
 ];
 
 /**
- * Hub della campagna: quattro schermate a tutto spazio (Mappa, Hangar,
- * Negozio, Officina). Lo stato dell'interfaccia vive qui; ogni azione
- * modifica il profilo e ridisegna la schermata corrente.
+ * Hub della campagna: tre schermate a tutto spazio (Mappa, Hangar, Negozio).
+ * Hangar e Negozio sono liste per categoria; potenziamento, fusione e
+ * ricalibrazione stanno nel dettaglio del pezzo selezionato.
  */
 export const openCampaignHub = (actions: { launch: (missionId: string, difficulty: DifficultyId) => void; back: () => void }) => {
   const profile = loadProfile();
@@ -59,13 +50,11 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
     sector: next.sector,
     missionId: next.id,
     difficulty: "normal",
-    slot: "front0",
+    cat: "front",
+    slot: null,
     selected: null,
     preview: null,
-    filter: { type: "all", rarity: "all", fresh: false },
-    sort: "power",
-    multi: false,
-    picked: new Set(),
+    shopCat: "offers",
     confirm: null,
     feedback: "",
   };
@@ -81,14 +70,7 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
     </header>`;
   };
 
-  const body = () =>
-    state.tab === "map"
-      ? mapView(profile, state)
-      : state.tab === "hangar"
-        ? hangarView(profile, state)
-        : state.tab === "shop"
-          ? shopView(profile, state)
-          : workshopView(profile, state);
+  const body = () => (state.tab === "map" ? mapView(profile, state) : state.tab === "hangar" ? hangarView(profile, state) : shopView(profile, state));
 
   // La schermata si crea una volta; ogni azione poi aggiorna sul posto solo
   // ciò che cambia, così scorrimento e animazioni non ripartono da capo.
@@ -103,11 +85,9 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
     root = el(`<div class="screen hq">${inner}</div>`);
     layer("screen").appendChild(root);
     root.addEventListener("click", onClick);
-    root.addEventListener("change", onChange);
-    root.addEventListener("mouseover", onHover);
   };
 
-  /** Seleziona un pezzo; nell'hangar apre anche la presa in cui va montato. */
+  /** Seleziona un pezzo (toglie il badge "nuovo"). */
   const selectItem = (uid: number) => {
     const item = itemByUid(profile, uid);
     if (!item) return;
@@ -116,11 +96,19 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
       item.fresh = false;
       saveProfile(profile);
     }
-    if (state.tab === "hangar") {
-      const type = mustGearDef(item.defId).slot;
-      state.slot = equippedSlotOf(profile, uid) ?? slotKeys(profile).find((k) => slotType(k) === type) ?? state.slot;
-    }
   };
+
+  /** Apre una categoria dell'hangar: destinazione = primo slot libero o il primo. */
+  const openCategory = (cat: GearSlot) => {
+    state.cat = cat;
+    const slots = catSlots(profile, cat);
+    state.slot = slots.find((k) => !profile.equipped[k]) ?? slots[0] ?? null;
+    // Nel dettaglio: il pezzo dello slot di destinazione, altrimenti il primo montato della categoria.
+    const firstMounted = slots.map((k) => profile.equipped[k]).find((uid) => uid !== null && uid !== undefined);
+    state.selected = (state.slot ? profile.equipped[state.slot] : null) ?? firstMounted ?? null;
+  };
+
+  openCategory("front");
 
   /** Doppio clic di conferma per le azioni distruttive. */
   const confirmed = (key: string) => {
@@ -142,12 +130,6 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
       case "tab":
         state.tab = id as HubTab;
         state.feedback = "";
-        state.multi = false;
-        state.picked.clear();
-        break;
-      case "tab-workshop":
-        state.tab = "workshop";
-        if (uid !== null) state.selected = uid;
         break;
       case "mission":
         state.missionId = id!;
@@ -177,9 +159,37 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
       case "difficulty":
         state.difficulty = id as DifficultyId;
         break;
-      case "slot":
-        state.slot = id!;
+      case "cat":
+        openCategory(id as GearSlot);
+        state.feedback = "";
         break;
+      case "slot":
+        // Slot vuoto: diventa la destinazione di "Monta".
+        state.slot = id!;
+        state.selected = profile.equipped[id!] ?? null;
+        state.feedback = "";
+        break;
+      case "pick":
+        if (uid === null) break;
+        selectItem(uid);
+        if (id) state.slot = id;
+        state.feedback = "";
+        break;
+      case "equip": {
+        const item = uid !== null ? itemByUid(profile, uid) : undefined;
+        if (!item) break;
+        const slot = targetSlot(profile, item.defId, state.slot);
+        if (!slot) {
+          state.feedback = "Questo scafo non ha slot di questo tipo";
+          break;
+        }
+        state.feedback = equipTo(profile, item.uid, slot) || `${mustGearDef(item.defId).title} montato in ${slotLabel(slot)}`;
+        state.slot = slot;
+        selectItem(item.uid);
+        // Cambiando scafo gli slot cambiano: si riapre la categoria.
+        if (slot === "hull") openCategory("hull");
+        break;
+      }
       case "fp": {
         const [which, key] = id!.split(":");
         toggleFireSlot(profile, Number(which) as 2 | 3, key);
@@ -187,45 +197,12 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
       }
       case "unequip":
         unequip(profile, id!);
+        state.slot = id!;
         break;
-      case "equip-to":
-        if (uid !== null) state.feedback = equipTo(profile, uid, id!);
-        break;
-      case "item":
-        if (uid === null) break;
-        if (state.multi) {
-          if (state.picked.has(uid)) state.picked.delete(uid);
-          else state.picked.add(uid);
-        } else selectItem(uid);
+      case "shop-cat":
+        state.shopCat = id as GearSlot | "offers";
+        state.preview = null;
         state.feedback = "";
-        break;
-      case "filter-type":
-        state.filter.type = id as GearSlot | "all";
-        break;
-      case "filter-rarity":
-        state.filter.rarity = id as Rarity | "all";
-        break;
-      case "filter-fresh":
-        state.filter.fresh = !state.filter.fresh;
-        break;
-      case "multi":
-        state.multi = !state.multi;
-        state.picked.clear();
-        break;
-      case "pick-all":
-        filteredInventory(profile, state)
-          .filter((i) => isSellable(profile, i))
-          .forEach((i) => state.picked.add(i.uid));
-        break;
-      case "sell-many":
-        if (confirmed("sell-many")) {
-          const { count, total } = sellMany(profile, [...state.picked]);
-          state.feedback = `Venduti ${count} pezzi per ${total} monete`;
-          state.picked.clear();
-        }
-        break;
-      case "lock-many":
-        state.picked.forEach((u) => toggleLock(profile, u));
         break;
       case "preview":
         state.preview = id!;
@@ -264,6 +241,7 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
           const slot = targetSlot(profile, item.defId);
           if (slot) state.feedback = equipTo(profile, item.uid, slot) || `${title} montato in ${slotLabel(slot)}`;
         }
+        state.preview = null;
         saveProfile(profile);
         break;
       }
@@ -279,9 +257,6 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
         break;
       case "upgrade":
         if (uid !== null) state.feedback = upgrade(profile, uid) ? "Potenziato!" : "Monete insufficienti";
-        break;
-      case "lock":
-        if (uid !== null) toggleLock(profile, uid);
         break;
       case "sell":
         if (uid !== null && confirmed(`sell-${uid}`)) {
@@ -308,24 +283,6 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
     if (!target || target.hasAttribute("disabled") || target.tagName === "SELECT") return;
     ev.stopPropagation();
     handle(target.dataset.action!, target.dataset.id, target.dataset.uid ? Number(target.dataset.uid) : null);
-  }
-
-  function onChange(ev: Event) {
-    const target = ev.target as HTMLSelectElement;
-    if (target.dataset.action !== "sort") return;
-    state.sort = target.value as HubState["sort"];
-    render();
-  }
-
-  // Anteprima: passando su un pezzo compatibile la scheda statistiche mostra le differenze.
-  let hovered: number | null = null;
-  function onHover(ev: Event) {
-    const row = (ev.target as HTMLElement).closest<HTMLElement>("[data-hover]");
-    const uid = row ? Number(row.dataset.hover) : null;
-    if (uid === hovered) return;
-    hovered = uid;
-    const stats = root?.querySelector<HTMLElement>("[data-role=stats]");
-    if (stats) stats.innerHTML = hoverStats(profile, state, uid);
   }
 
   render();

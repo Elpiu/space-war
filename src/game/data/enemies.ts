@@ -204,6 +204,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   tank: {
     id: "tank",
+    pattern: "burst",
     label: "Carro",
     hint: "Pattuglia il pavimento e spara in diagonale.",
     hp: 12,
@@ -336,6 +337,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   zigzag: {
     id: "zigzag",
+    pattern: "S",
     label: "Zigzag",
     hint: "Avanza a zig-zag e spara a raffica corta.",
     hp: 4,
@@ -371,6 +373,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   bomber: {
     id: "bomber",
+    pattern: "aimed",
     label: "Bombardiere",
     hint: "Lancia bombe a parabola: guarda dove cadono.",
     hp: 9,
@@ -657,6 +660,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   flakTower: {
     id: "flakTower",
+    pattern: "burst",
     label: "Torre flak",
     hint: "Contraerea pesante: granate a frammentazione verso l'alto.",
     hp: 14,
@@ -795,6 +799,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   weakpoint: {
     id: "weakpoint",
+    pattern: "I",
     label: "Punto debole",
     hint: "Finché è acceso, la nave madre è quasi invulnerabile.",
     hp: 22,
@@ -837,6 +842,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   serpentSegment: {
     id: "serpentSegment",
+    pattern: "aimed",
     label: "Segmento",
     hint: "Parte del Serpente: abbatterlo indebolisce la testa.",
     hp: 26,

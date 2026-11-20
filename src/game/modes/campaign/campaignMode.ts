@@ -17,7 +17,7 @@ import { WeaponRack } from "../../systems/rack";
 import type { GameMode, HudInfo, ModeSetup, RunOutcome, SkillInfo } from "../mode";
 import { ilvlMul, mustGearDef, rollGear, type GearItem } from "./gear";
 import { showMissionResult } from "./hub";
-import { pickFormation } from "./formations";
+import { FORMATIONS, pickFormation, type Formation } from "./formations";
 import { SEGMENT_LABELS, generateLevel, segmentAt, type Prop, type Segment, type SegmentKind } from "./level";
 import type { MissionDef } from "./missions";
 import { contractFor, contractLabel, contractStatus, newContractStats, type Contract } from "./contracts";
@@ -86,6 +86,8 @@ export class CampaignMode implements GameMode {
   private combo = 0;
   private lastKillAt = -99999;
   private nextToxicAt = 0;
+  /** Convogli garantiti (unica fonte di casse oltre a mini-boss e boss), a queste frazioni del percorso. */
+  private convoyMarks = [0.28, 0.62];
   private contract: Contract;
   private cstats = newContractStats();
   private radioIndex = Math.floor(Math.random() * RADIO.length);
@@ -249,6 +251,13 @@ export class CampaignMode implements GameMode {
       this.currentSegment = ahead.kind;
     }
 
+    // Convogli garantiti: i cargo sono la fonte principale di casse.
+    if (this.convoyMarks.length && maxScroll > 0 && this.scroll / maxScroll >= this.convoyMarks[0] && !this.miniBoss) {
+      this.convoyMarks.shift();
+      const convoy = FORMATIONS.find((f) => f.id === "convoy");
+      if (convoy && !g.enemies.some((e) => e.def.id === "cargo" && !e.dead)) this.spawnGroup(g, convoy);
+    }
+
     // Spawn innescati dalla distanza percorsa (niente spawn nell'arena del boss).
     const bossSeg = this.segments.find((sg) => sg.kind === "boss");
     const spawnLimit = bossSeg ? bossSeg.start : g.arena.width - 700;
@@ -306,14 +315,23 @@ export class CampaignMode implements GameMode {
     g.hints.enemy(id);
   }
 
-  private spawnGroup(g: GameScene) {
+  /** Nemici che si sono piazzati a combattere (non viaggiatori, non terra, non boss). */
+  private engagedCount(g: GameScene) {
+    return g.enemies.filter(
+      (e) => !e.dead && !e.anchor && !e.def.structure && !e.def.boss && !e.def.miniBoss && !e.def.part && (!e.path || e.path.engage),
+    ).length;
+  }
+
+  private spawnGroup(g: GameScene, forced?: Formation) {
     if (this.miniBoss) return;
     const alive = g.enemies.filter((e) => !e.dead && !e.anchor && !e.def.structure).length;
-    if (alive >= Math.min(LIMITS.maxEnemies, (18 + this.mission.tier * 6) * this.density)) return;
+    if (!forced && alive >= Math.min(LIMITS.maxEnemies, (18 + this.mission.tier * 6) * this.density)) return;
 
     const x = this.scroll + VIEW_W + rand(60, 140);
     const segment = segmentAt(this.segments, x);
-    const formation = pickFormation(segment.kind, this.mission.tier, this.biome?.favored);
+    // Troppi nemici piazzati a combattere: arrivano solo viaggiatori finché non se ne abbatte qualcuno.
+    const allowEngage = this.engagedCount(g) < 4 + Math.floor(this.mission.tier / 2);
+    const formation = forced ?? pickFormation(segment.kind, this.mission.tier, this.biome?.favored, allowEngage);
     if (!formation) return;
 
     // L'ondata entra nello spazio libero fra soffitto e pavimento.
@@ -376,14 +394,18 @@ export class CampaignMode implements GameMode {
     }
 
     const ground = Boolean(e.anchor || def.structure || def.id === "cargo");
-    if (elite || isBoss || ground || Math.random() < 0.6) {
+    // Monete: sempre da élite, boss e unità di terra; dai volanti comuni meno spesso.
+    if (elite || isBoss || ground || Math.random() < 0.45) {
       dropPickup(g, "coin", x, y, Math.ceil(def.coins * (1 + tier * 0.5) * (elite ? 2 : 1) * this.coinMul() * this.coinScale * DIFFICULTIES[this.difficulty].reward));
     }
     if (Math.random() < (elite ? 0.15 : 0.025)) dropPickup(g, "heart", x - 10, y + 4, 2);
     if (Math.random() < (elite ? 0.06 : 0.006)) dropPickup(g, pick(["magnet", "venom", "emp"] as const), x, y - 12);
     const lootMul = this.has("loot") ? 2 : 1;
-    if (isBoss || def.id === "cargo" || (elite && Math.random() < 0.35 * lootMul) || Math.random() < 0.006 * lootMul) dropPickup(g, "chest", x, y);
-    if (isBoss && lootMul > 1) dropPickup(g, "chest", x + 30, y);
+    // Casse di bottino solo da cargo, mini-boss e boss (il mutatore "bottino doppio" ne aggiunge una).
+    if (isBoss || def.id === "cargo") {
+      dropPickup(g, "chest", x, y);
+      if (lootMul > 1) dropPickup(g, "chest", x + 30, y);
+    }
     if (isBoss) {
       for (let i = 0; i < 10; i += 1) dropPickup(g, "coin", x + Math.cos(i) * 60, y + Math.sin(i) * 60, Math.ceil(5 * tier * this.coinScale));
     }

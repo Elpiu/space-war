@@ -346,38 +346,35 @@ calore, bombe), mentre stile e contenuti sono nostri. Il piano completo è in
 
 ## Hub della campagna (v3)
 
-Quattro schermate a tutto spazio, con una barra in alto:
+Tre schermate a tutto spazio, con una barra in alto: **Mappa**, **Hangar**,
+**Negozio**. Niente filtri: tutto è organizzato per categoria (Armi frontali,
+Armi di coda, Missili, Bombe, Dispositivi, Scafo).
 
-- **Mappa:** il settore occupa la schermata. A lato ci sono la scheda della
-  missione (difficoltà, ricompense, capsula) e un riepilogo della nave con il
-  pulsante "Modifica nave".
+- **Mappa:** il settore occupa la schermata. A lato ci sono la sfida del
+  giorno, la scheda della missione (difficoltà, contratto, ricompense,
+  capsula) e un riepilogo della nave con il pulsante "Modifica nave".
 - **Hangar:**
-  - **Schema della nave:** in SVG, con una sagoma diversa per ogni scafo e
-    le prese degli slot sul disegno.
-  - **Presa selezionata:** a destra compaiono il pezzo montato e tutti i
-    pezzi compatibili, ognuno con le differenze ("+3,1 danno/s", "+6
-    calore/s") e il pulsante Monta.
-  - **Anteprima:** passando su un pezzo, la scheda statistiche a sinistra
-    mostra le variazioni. La scheda include il **bilancio termico** (calore
-    prodotto contro dissipazione) e i secondi di fuoco continuo prima del
-    surriscaldamento.
-  - **Profili di fuoco:** si attivano direttamente sulle prese delle armi.
-  - **Inventario:** filtri per tipo, rarità e novità, ordinamento, selezione
-    multipla (vendi o blocca in blocco), pezzi bloccati.
-- **Negozio:** catalogo a schede, divise per slot. L'anteprima confronta il
-  pezzo con la nave attuale. "Compra e monta" usa uno slot libero, oppure
-  sostituisce il pezzo più debole.
-- **Officina:** potenziamento con barra dei livelli e anteprima, blocco,
-  vendita (con conferma) e vendita rapida dei comuni.
-  - **Fusione:** 3 pezzi uguali (stessa definizione e rarità) più monete
-    danno un pezzo della rarità superiore. Il pezzo scelto resta montato
-    dov'è, prende il livello e l'item level migliori, tiene i suoi affissi e
-    ne aggiunge uno. Usa solo doppioni liberi e non bloccati.
-  - **Ricalibrazione:** ritira un affisso a scelta (tipo e valore). Ogni
-    ricalibrazione dello stesso pezzo costa il 50% in più.
-- **Offerte del settore** (in cima al Negozio): 4 pezzi rari o migliori,
-  sempre con affissi, all'item level del settore più alto. Cambiano dopo
-  ogni missione vinta; "Rinnova" li ripesca, a costo crescente.
+  - **A sinistra** le categorie (slot occupati e pezzi in magazzino, un
+    pallino per i pezzi nuovi) e un riepilogo compatto della nave con il
+    **bilancio termico**.
+  - **Al centro** la categoria scelta: prima i pezzi **montati** (con i
+    profili di fuoco 2 e 3 sulle armi e gli slot liberi), poi il
+    **magazzino**, ordinato per potenza, con le differenze sulla nave
+    ("+3,1 danno/s", "+6 calore/s") e il pulsante Monta. "Monta" usa lo slot
+    di destinazione (uno libero, oppure quello che hai selezionato), mai il
+    pezzo migliore per errore.
+  - **A destra** il dettaglio del pezzo selezionato con tutte le azioni:
+    monta o rimuovi, **potenzia** (con anteprima del livello successivo),
+    **fondi** (3 pezzi uguali della stessa rarità più monete → rarità
+    superiore; tiene livello e item level migliori, aggiunge un affisso),
+    **ricalibra** un affisso (ogni volta il 50% più caro), vendi (con
+    conferma). In fondo alla lista c'è "Vendi i comuni liberi".
+- **Negozio:** stessa struttura. A sinistra le **Offerte del settore** (4
+  pezzi rari o migliori con affissi, all'item level del settore più alto,
+  rinnovate dopo ogni missione vinta o con "Rinnova" a costo crescente) e le
+  categorie del catalogo (pezzi comuni a prezzo fisso). Al centro le righe
+  con prezzo e differenze; a destra l'anteprima con il confronto completo,
+  "Compra" e "Compra e monta".
 
 ## Affissi del bottino
 
@@ -498,3 +495,45 @@ Le frecce in cima alla mappa passano da un settore sbloccato all'altro.
   **rallentatore** di 1,4 s alla morte di un boss.
 - **Radio di Controllo Missione:** battute satiriche fra un segmento e
   l'altro della campagna.
+
+## Campagna: bottino, nemici e fuoco (revisione)
+
+- **Casse di bottino** solo da **cargo**, **mini-boss** e **boss** (il
+  mutatore "Bottino doppio" ne aggiunge una). I nemici normali ed élite
+  lasciano solo monete. Ogni missione ha due **convogli garantiti** (al 28%
+  e al 62% del percorso): un cargo con uno stormo di scorta. Il bottino di
+  fine missione e la capsula segreta restano.
+- **Casse rimaste indietro:** quando escono dal bordo sinistro volano da
+  sole verso la nave; niente bottino perso e niente freccia che resta a
+  schermo.
+- **Due tipi di nemici in volo:**
+  - **viaggiatori:** attraversano lo schermo senza fermarsi (sciami,
+    convogli, colonne, ruote, tenaglie) e sparano mentre passano se hanno
+    un'arma;
+  - **ingaggiatori:** entrano, prendono posizione nel 50-90% destro dello
+    schermo e restano a combattere, cambiando posizione ogni 3-4 s, finché
+    non li abbatti. Al massimo 4 + metà del tier alla volta: oltre il tetto
+    arrivano solo viaggiatori.
+  In campagna i nemici in formazione sparano da un capo all'altro dello
+  schermo (gittata minima 1000).
+- **Schemi di fuoco** (stessi per nemici e boss):
+
+  | Schema | Forma |
+  | --- | --- |
+  | Mirato / Raffica | un colpo, o tre in fila |
+  | Ventaglio | 3-5 colpi leggermente aperti |
+  | **U** | arco largo, i lati corrono più del centro |
+  | **I** | colonna di colpi sulla stessa linea |
+  | **S** | colpi azzurri che serpeggiano, in coppia |
+  | **C** | anello con un varco verso la nave, da attraversare |
+  | **X** | croce a 4 o 8 braccia |
+  | Muro | fila perpendicolare con un buco |
+
+  Gli schemi con più colpi sparano meno spesso. I boss li alternano per
+  fase (per esempio il Dreadnought: anelli e C, poi spirale con serpentine,
+  poi cariche con U all'impatto; la Fortezza: flussi, muri e croci; la
+  Regina: U, cariche, anelli C).
+- **Formazioni:** 39 (9 nuove: tessitori a S, lancieri a I, batteria a U,
+  guardiano a C, sentinella a X, artigliere a muro, ruota, tenaglia,
+  colonna).
+- **Velocità della nave:** +15% di base (scafi 345 / 295 / 250, survival 285).

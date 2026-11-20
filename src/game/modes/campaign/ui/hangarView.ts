@@ -1,15 +1,29 @@
 import { icon } from "../../../art/svg";
 import { RARITIES } from "../../../data/upgrades";
-import type { Rarity } from "../../../types";
 import { esc } from "../../../ui/dom";
 import { hex } from "../../../utils";
-import { SLOT_LABELS, milestonesOf, mustGearDef, sellPrice, type GearItem, type GearSlot } from "../gear";
+import { AFFIX_COUNT } from "../affixes";
+import {
+  GEAR_MAX_LEVEL,
+  SLOT_LABELS,
+  affixLinesOf,
+  describeGear,
+  milestonesOf,
+  mustGearDef,
+  sellPrice,
+  upgradeCost,
+  type GearItem,
+  type GearSlot,
+} from "../gear";
 import {
   canUnequip,
-  equippedHull,
+  commonsValue,
   equippedSlotOf,
+  fusionCost,
+  fusionPartners,
   isSellable,
   itemByUid,
+  recalCost,
   simulateEquip,
   slotKeys,
   slotType,
@@ -18,22 +32,30 @@ import {
   type ShipSummary,
   type SlotKey,
 } from "../profile";
-import { hullSvg, socketPosition } from "../schematic";
-import {
-  RARITY_ORDER,
-  SLOT_ICONS,
-  SLOT_NAMES,
-  SLOT_ORDER,
-  gearLines,
-  gearTile,
-  itemScore,
-  slotLabel,
-  statsPanel,
-  type HubState,
-} from "./common";
+import { CATEGORIES, gearLines, itemRow, itemScore, slotLabel, type HubState } from "./common";
+
+// ---------- Slot e confronti ----------
+
+/** Slot dello scafo montato per una categoria. */
+export const catSlots = (profile: CampaignProfile, cat: GearSlot) => slotKeys(profile).filter((k) => slotType(k) === cat);
+
+/** Slot in cui finisce un pezzo con "Monta": uno libero, altrimenti il più debole (mai il migliore). */
+export const targetSlot = (profile: CampaignProfile, defId: string, preferred?: SlotKey | null) => {
+  const type = mustGearDef(defId).slot;
+  if (type === "hull") return "hull";
+  const keys = catSlots(profile, type);
+  if (preferred && keys.includes(preferred)) return preferred;
+  const empty = keys.find((k) => !profile.equipped[k]);
+  if (empty || keys.length === 0) return empty;
+  const score = (k: string) => {
+    const item = itemByUid(profile, profile.equipped[k]);
+    return item ? itemScore(item) : 0;
+  };
+  return [...keys].sort((a, b) => score(a) - score(b))[0];
+};
 
 /** Differenze principali fra la nave attuale e quella con il pezzo montato. */
-const deltaText = (now: ShipSummary, next: ShipSummary) => {
+export const deltaText = (now: ShipSummary, next: ShipSummary) => {
   const parts: string[] = [];
   const add = (label: string, key: keyof ShipSummary, digits: number, higherIsBetter = true) => {
     const d = next[key] - now[key];
@@ -51,164 +73,181 @@ const deltaText = (now: ShipSummary, next: ShipSummary) => {
   return parts.length ? parts.slice(0, 3).join(" ") : `<em>nessuna differenza</em>`;
 };
 
-const socket = (profile: CampaignProfile, key: SlotKey, selected: boolean, counts: Record<string, number>) => {
-  const pos = socketPosition(key, counts);
-  const item = itemByUid(profile, profile.equipped[key]);
-  const type = slotType(key);
-  const def = item ? mustGearDef(item.defId) : undefined;
-  const weapon = type === "front" || type === "rear" || type === "missile";
-  const fp = (which: 2 | 3) =>
-    `<i class="hq-fp ${profile.fireProfiles[which].includes(key) ? "is-on" : ""}" data-action="fp" data-id="${which}:${key}" title="Attiva nel profilo di fuoco ${which}">${which}</i>`;
-  return `<div class="hq-socket ${selected ? "is-selected" : ""} ${item ? "" : "is-empty"} hq-socket--${type}" style="left:${pos.x}%;top:${pos.y}%;--c:${def ? hex(def.color) : "#64748b"};--r:${item ? hex(RARITIES[item.rarity].color) : "#334155"}">
-    <button class="hq-socket__btn" data-action="slot" data-id="${key}" title="${esc(def ? def.title : slotLabel(key))}">
-      ${icon(def ? def.icon : SLOT_ICONS[type])}${item ? `<b>${item.level}</b>` : ""}
-    </button>
-    <span class="hq-socket__label">${slotLabel(key, true)}</span>
-    ${weapon && item ? `<span class="hq-socket__fp">${fp(2)}${fp(3)}</span>` : ""}
+// ---------- Colonna sinistra: categorie e nave ----------
+
+const categoryNav = (profile: CampaignProfile, state: HubState) =>
+  CATEGORIES.map((c) => {
+    const slots = catSlots(profile, c.id);
+    const mounted = slots.filter((k) => profile.equipped[k]).length;
+    const spare = profile.inventory.filter((i) => mustGearDef(i.defId).slot === c.id && !equippedSlotOf(profile, i.uid));
+    const fresh = spare.some((i) => i.fresh);
+    return `<button class="hq-cat ${state.cat === c.id ? "is-on" : ""}" data-action="cat" data-id="${c.id}">
+      ${icon(c.icon)}<span><b>${c.label}</b><small>${slots.length ? `${mounted}/${slots.length} montati` : "nessuno slot"} · ${spare.length} in magazzino</small></span>
+      ${fresh ? `<i class="hq-cat__new"></i>` : ""}
+    </button>`;
+  }).join("");
+
+/** Riepilogo compatto della nave. */
+export const shipCard = (s: ShipSummary) => {
+  const balance = s.sink - s.heat;
+  const ratio = s.sink > 0 ? Math.min(2, s.heat / s.sink) : 0;
+  return `<div class="hq-shipcard">
+    <span>${icon("heart")} <b>${s.hp.toFixed(0)}</b> HP</span>
+    ${s.shield > 0 ? `<span>${icon("shield")} <b>${s.shield.toFixed(0)}</b> scudo</span>` : ""}
+    <span>${icon("tome-power")} <b>${s.dps.toFixed(1)}</b> danno/s</span>
+    <span>${icon("tome-mobility")} <b>${s.speed.toFixed(0)}</b> velocità</span>
+    <div class="hq-heat ${balance < 0 ? "is-hot" : ""}">
+      <div class="hq-heat__bar"><i style="width:${Math.min(100, ratio * 50)}%"></i><span></span></div>
+      <small>${icon("heat")} ${balance >= 0 ? "Fuoco continuo senza surriscaldarsi" : `Surriscalda in ~${Math.max(1, Math.round(s.cap / -balance))} s`}</small>
+    </div>
   </div>`;
 };
 
-/** Pannello destro: cosa c'è nella presa e cosa ci si può montare. */
-const slotPanel = (profile: CampaignProfile, state: HubState, now: ShipSummary) => {
-  const key = state.slot;
-  if (!key) {
-    return `<h3>${icon("wrench")} Slot</h3><p class="muted">Clicca una presa sullo schema per vedere cosa ci puoi montare.</p>`;
-  }
-  const type = slotType(key) as GearSlot;
-  const mounted = itemByUid(profile, profile.equipped[key]);
-  const candidates = profile.inventory
-    .filter((i) => mustGearDef(i.defId).slot === type && i.uid !== mounted?.uid)
-    .sort((a, b) => itemScore(b) - itemScore(a));
+// ---------- Colonna centrale: montati e magazzino ----------
 
-  const mountedCard = mounted
-    ? (() => {
-        const def = mustGearDef(mounted.defId);
-        const ms = milestonesOf(mounted)
-          .map((m) => `<li class="${m.reached ? "is-reached" : ""}">${icon(m.reached ? "check" : "lock")} Liv. ${m.level}: ${esc(m.text)}</li>`)
-          .join("");
-        return `<div class="hq-mounted" style="--c:${hex(def.color)};--r:${hex(RARITIES[mounted.rarity].color)}">
-          <div class="gear-detail"><span class="gear-detail__icon">${icon(def.icon)}</span>
-            <div><small style="color:var(--r)">${RARITIES[mounted.rarity].label} · ${SLOT_LABELS[def.slot]}</small><h3>${esc(def.title)} <em>Liv. ${mounted.level}</em></h3></div></div>
-          ${gearLines(mounted)}
-          ${ms ? `<ul class="gear-milestones">${ms}</ul>` : ""}
-          <div class="gear-actions">
-            ${canUnequip(profile, key) ? `<button class="btn btn--small" data-action="unequip" data-id="${key}">Rimuovi</button>` : ""}
-            <button class="btn btn--small" data-action="tab-workshop" data-uid="${mounted.uid}">${icon("arrow-up")} Officina</button>
-          </div>
-        </div>`;
-      })()
-    : `<p class="muted">Slot vuoto.</p>`;
+const fireToggles = (profile: CampaignProfile, key: SlotKey) => {
+  const t = slotType(key);
+  if (t !== "front" && t !== "rear" && t !== "missile") return "";
+  const fp = (which: 2 | 3) =>
+    `<i class="hq-fp ${profile.fireProfiles[which].includes(key) ? "is-on" : ""}" data-action="fp" data-id="${which}:${key}" title="Accesa nel profilo di fuoco ${which}">${which}</i>`;
+  return `<span class="hq-row__fp" title="Profili di fuoco 2 e 3 (il profilo 1 usa tutto)">${fp(2)}${fp(3)}</span>`;
+};
 
-  const rows = candidates
-    .map((item) => {
-      const def = mustGearDef(item.defId);
-      const next = summarize(simulateEquip(profile, key, item.uid));
-      const where = equippedSlotOf(profile, item.uid);
-      return `<div class="hq-cand" data-hover="${item.uid}" style="--c:${hex(def.color)};--r:${hex(RARITIES[item.rarity].color)}">
-        <span class="hq-cand__icon">${icon(def.icon)}<b>${item.level}</b></span>
-        <span class="hq-cand__body"><b>${esc(def.title)}${item.fresh ? ` <em class="badge-new">NUOVO</em>` : ""}</b>
-          <small style="color:var(--r)">${RARITIES[item.rarity].label}${where ? ` · montato in ${slotLabel(where)}` : ""}</small>
-          <span class="hq-cand__delta">${deltaText(now, next)}</span></span>
-        <button class="btn btn--small" data-action="equip-to" data-uid="${item.uid}" data-id="${key}">Monta</button>
-      </div>`;
+const listColumn = (profile: CampaignProfile, state: HubState, now: ShipSummary) => {
+  const cat = CATEGORIES.find((c) => c.id === state.cat)!;
+  const slots = catSlots(profile, state.cat);
+  const mountedRows = slots
+    .map((k) => {
+      const item = itemByUid(profile, profile.equipped[k]);
+      if (!item) {
+        return `<div class="hq-row hq-row--empty ${state.slot === k ? "is-target" : ""}" data-action="slot" data-id="${k}">
+          <span class="hq-row__icon">${icon(cat.icon)}</span><span class="hq-row__body"><b>${slotLabel(k)} libero</b><small>Scegli un pezzo dal magazzino e premi Monta</small></span></div>`;
+      }
+      return itemRow(item, {
+        action: "pick",
+        id: k,
+        selected: state.selected === item.uid,
+        tag: `${slotLabel(k)}${state.slot === k && slots.length > 1 ? " · destinazione" : ""}`,
+        extra: fireToggles(profile, k),
+      });
     })
     .join("");
-  return `<h3>${icon(SLOT_ICONS[type])} ${slotLabel(key)}</h3>
-    ${mountedCard}
-    <h3 class="hq-sub">${icon("crate")} Compatibili · ${candidates.length}</h3>
-    <div class="hq-cands">${rows || `<p class="muted">Nessun pezzo di questo tipo: cercane nel negozio o nel bottino.</p>`}</div>`;
-};
 
-export const filteredInventory = (profile: CampaignProfile, state: HubState) => {
-  const f = state.filter;
-  const list = profile.inventory.filter((i) => {
-    const def = mustGearDef(i.defId);
-    if (f.type !== "all" && def.slot !== f.type) return false;
-    if (f.rarity !== "all" && i.rarity !== f.rarity) return false;
-    if (f.fresh && !i.fresh) return false;
-    return true;
-  });
-  const by = {
-    power: (a: GearItem, b: GearItem) => itemScore(b) - itemScore(a),
-    level: (a: GearItem, b: GearItem) => b.level - a.level,
-    rarity: (a: GearItem, b: GearItem) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity),
-    type: (a: GearItem, b: GearItem) => SLOT_ORDER.indexOf(mustGearDef(a.defId).slot) - SLOT_ORDER.indexOf(mustGearDef(b.defId).slot),
-  }[state.sort];
-  return list.sort((a, b) => by(a, b) || itemScore(b) - itemScore(a));
-};
-
-/** Barra filtri + griglia dell'inventario, condivisa da Hangar e Officina. */
-export const inventoryPanel = (profile: CampaignProfile, state: HubState) => {
-  const items = filteredInventory(profile, state);
-  const typeChips = (["all", ...SLOT_ORDER] as const)
-    .map((t) => `<button class="hq-filter ${state.filter.type === t ? "is-on" : ""}" data-action="filter-type" data-id="${t}">${t === "all" ? "Tutti" : SLOT_NAMES[t]}</button>`)
+  const spare = profile.inventory
+    .filter((i) => mustGearDef(i.defId).slot === state.cat && !equippedSlotOf(profile, i.uid))
+    .sort((a, b) => itemScore(b) - itemScore(a));
+  const spareRows = spare
+    .map((item) => {
+      const target = targetSlot(profile, item.defId, state.slot);
+      const delta = target ? deltaText(now, summarize(simulateEquip(profile, target, item.uid))) : "";
+      return itemRow(item, {
+        action: "pick",
+        selected: state.selected === item.uid,
+        delta,
+        side: target
+          ? `<button class="btn btn--small" data-action="equip" data-uid="${item.uid}">Monta</button>`
+          : `<small class="muted">nessuno slot</small>`,
+      });
+    })
     .join("");
-  const rarityChips = (["all", ...RARITY_ORDER] as const)
+
+  const commons = commonsValue(profile);
+  return `
+    <h3>${icon(cat.icon)} ${cat.label} · montati</h3>
+    <div class="hq-rows">${mountedRows || `<p class="muted">Questo scafo non ha slot per ${cat.label.toLowerCase()}.</p>`}</div>
+    <h3 class="hq-sub">${icon("crate")} In magazzino · ${spare.length}</h3>
+    <div class="hq-rows">${spareRows || `<p class="muted">Niente in magazzino: cerca nel negozio o nelle casse dei cargo.</p>`}</div>
+    ${commons.count ? `<button class="btn btn--small hq-commons ${state.confirm === "commons" ? "btn--danger" : ""}" data-action="sell-commons">${icon("coin")} ${state.confirm === "commons" ? `Conferma: vendi ${commons.count} comuni per ${commons.total}` : `Vendi i comuni liberi (${commons.count}) +${commons.total}`}</button>` : ""}`;
+};
+
+// ---------- Colonna destra: dettaglio e azioni ----------
+
+const NEXT: Partial<Record<string, keyof typeof RARITIES>> = { common: "uncommon", uncommon: "rare", rare: "legendary" };
+
+const upgradePreview = (item: GearItem) => {
+  if (item.level >= GEAR_MAX_LEVEL) return `<p class="muted">Livello massimo raggiunto.</p>`;
+  const now = describeGear(item);
+  const next = describeGear({ ...item, level: item.level + 1 });
+  const diffs = now
+    .map((line, i) => (next[i] && next[i] !== line ? `${line} → ${next[i].slice(next[i].lastIndexOf(" ") + 1)}` : ""))
+    .filter(Boolean);
+  const unlock = milestonesOf(item).find((m) => m.level === item.level + 1);
+  return `<div class="compare"><small>Al livello ${item.level + 1}</small>
+    <ul class="gear-stats">${diffs.map((d) => `<li>${esc(d)}</li>`).join("") || "<li>Nessuna statistica cambia</li>"}</ul>
+    ${unlock ? `<p class="unlock">${icon("star")} Sblocca: ${esc(unlock.text)}</p>` : ""}</div>`;
+};
+
+const fusionPanel = (profile: CampaignProfile, item: GearItem) => {
+  const next = NEXT[item.rarity];
+  if (!next) return "";
+  const partners = fusionPartners(profile, item);
+  const cost = fusionCost(item);
+  const ready = partners.length >= 2;
+  const slots = [item, ...partners.slice(0, 2)]
+    .map((p) => `<i class="on" style="--r:${hex(RARITIES[p.rarity].color)}"></i>`)
+    .concat(Array.from({ length: Math.max(0, 2 - partners.length) }, () => `<i></i>`))
+    .join("");
+  return `<section class="hq-forge">
+    <h4>${icon("reroll")} Fusione <small>3 uguali → <b style="color:${hex(RARITIES[next].color)}">${RARITIES[next].label}</b></small></h4>
+    <div class="hq-forge__slots">${slots}</div>
+    <p class="muted">${ready ? `Usa 2 doppioni in magazzino; tiene livello e item level migliori, +${AFFIX_COUNT[next] - (item.affixes?.length ?? 0)} affisso.` : `Doppioni in magazzino: ${partners.length}/2.`}</p>
+    <button class="btn btn--small" data-action="fuse" data-uid="${item.uid}" ${ready && profile.coins >= cost ? "" : "disabled"}>${icon("reroll")} Fondi ${cost}</button>
+  </section>`;
+};
+
+const recalPanel = (profile: CampaignProfile, item: GearItem) => {
+  if (!item.affixes?.length) return "";
+  const cost = recalCost(item);
+  const rows = item.affixes
     .map(
-      (r) =>
-        `<button class="hq-filter ${state.filter.rarity === r ? "is-on" : ""}" data-action="filter-rarity" data-id="${r}" ${r !== "all" ? `style="--c:${hex(RARITIES[r as Rarity].color)}"` : ""}>${r === "all" ? "Ogni rarità" : RARITIES[r as Rarity].label}</button>`,
+      (a, i) => `<li><span>${icon("star")} ${esc(affixLinesOf({ ...item, affixes: [a] })[0])}</span>
+        <button class="btn btn--small" data-action="recal" data-uid="${item.uid}" data-id="${i}" ${profile.coins < cost ? "disabled" : ""} title="Ritira questo affisso">${icon("reroll")} ${cost}</button></li>`,
     )
     .join("");
-  const picked = profile.inventory.filter((i) => state.picked.has(i.uid) && isSellable(profile, i));
-  const pickedValue = picked.reduce((sum, i) => sum + sellPrice(i), 0);
-  const multiBar = state.multi
-    ? `<div class="hq-multi">
-        <span>${state.picked.size} selezionati</span>
-        <button class="btn btn--small ${state.confirm === "sell-many" ? "btn--danger" : ""}" data-action="sell-many" ${picked.length ? "" : "disabled"}>${icon("coin")} ${state.confirm === "sell-many" ? `Conferma: vendi ${picked.length} per ${pickedValue}` : `Vendi ${picked.length} (+${pickedValue})`}</button>
-        <button class="btn btn--small" data-action="lock-many" ${state.picked.size ? "" : "disabled"}>${icon("lock")} Blocca/sblocca</button>
-        <button class="btn btn--small" data-action="pick-all">Seleziona visibili</button>
-        <button class="btn btn--small btn--ghost" data-action="multi">Fine</button>
-      </div>`
-    : "";
-  const equipped = new Set(Object.values(profile.equipped));
-  return `<section class="panel hq-inv">
-    <div class="hq-inv__bar">
-      <h3>${icon("crate")} Inventario · ${profile.inventory.length}</h3>
-      <div class="hq-filters">${typeChips}</div>
-      <div class="hq-filters">${rarityChips}
-        <button class="hq-filter ${state.filter.fresh ? "is-on" : ""}" data-action="filter-fresh">Solo nuovi</button>
-      </div>
-      <label class="hq-sort">Ordina
-        <select data-action="sort">
-          ${(["power", "level", "rarity", "type"] as const).map((s) => `<option value="${s}" ${state.sort === s ? "selected" : ""}>${{ power: "Potenza", level: "Livello", rarity: "Rarità", type: "Tipo" }[s]}</option>`).join("")}
-        </select>
-      </label>
-      ${state.multi ? "" : `<button class="btn btn--small" data-action="multi">${icon("check")} Selezione multipla</button>`}
+  return `<section class="hq-forge"><h4>${icon("star")} Ricalibrazione <small>ritira un affisso</small></h4><ul class="hq-recal">${rows}</ul></section>`;
+};
+
+const detailPanel = (profile: CampaignProfile, state: HubState) => {
+  const item = itemByUid(profile, state.selected);
+  if (!item) return `<p class="muted">Seleziona un pezzo per vederne il dettaglio, montarlo, potenziarlo, fonderlo o venderlo.</p>`;
+  const def = mustGearDef(item.defId);
+  const where = equippedSlotOf(profile, item.uid);
+  const target = where ? null : targetSlot(profile, item.defId, state.slot);
+  const cost = upgradeCost(item);
+  const maxed = item.level >= GEAR_MAX_LEVEL;
+  const levelBar = Array.from({ length: GEAR_MAX_LEVEL }, (_, i) => `<i class="${i < item.level ? "on" : ""} ${i === 4 || i === 9 ? "is-mile" : ""}"></i>`).join("");
+  const ms = milestonesOf(item)
+    .map((m) => `<li class="${m.reached ? "is-reached" : ""}">${icon(m.reached ? "check" : "lock")} Liv. ${m.level}: ${esc(m.text)}</li>`)
+    .join("");
+  const sellKey = `sell-${item.uid}`;
+  return `
+    <div class="gear-detail" style="--c:${hex(def.color)};--r:${hex(RARITIES[item.rarity].color)}">
+      <span class="gear-detail__icon">${icon(def.icon)}</span>
+      <div><small style="color:var(--r)">${RARITIES[item.rarity].label} · ${SLOT_LABELS[def.slot]}${where ? ` · montato in ${slotLabel(where)}` : " · in magazzino"}</small>
+        <h3>${esc(def.title)} <em>Liv. ${item.level}</em></h3></div>
     </div>
-    ${multiBar}
-    <div class="hq-grid">${items.map((item) => gearTile(item, { selected: item.uid === state.selected, equipped: equipped.has(item.uid), picked: state.picked.has(item.uid), multi: state.multi })).join("") || `<p class="muted">Nessun pezzo con questi filtri.</p>`}</div>
-  </section>`;
+    <div class="hq-levels" style="--c:${hex(def.color)}">${levelBar}</div>
+    ${gearLines(item)}
+    ${ms ? `<ul class="gear-milestones">${ms}</ul>` : ""}
+    <div class="gear-actions">
+      ${where ? (canUnequip(profile, where) ? `<button class="btn btn--small" data-action="unequip" data-id="${where}">Rimuovi</button>` : "") : target ? `<button class="btn btn--primary btn--small" data-action="equip" data-uid="${item.uid}">${icon("check")} Monta in ${slotLabel(target)}</button>` : ""}
+      <button class="btn btn--small" data-action="upgrade" data-uid="${item.uid}" ${maxed || profile.coins < cost ? "disabled" : ""}>${icon("arrow-up")} ${maxed ? "Livello max" : `Potenzia ${cost}`}</button>
+      <button class="btn btn--small ${state.confirm === sellKey ? "btn--danger" : ""}" data-action="sell" data-uid="${item.uid}" ${isSellable(profile, item) ? "" : "disabled"} title="${where ? "Smonta il pezzo prima di venderlo" : ""}">${icon("coin")} ${state.confirm === sellKey ? "Conferma" : "Vendi"} ${sellPrice(item)}</button>
+    </div>
+    ${state.feedback ? `<p class="hub__feedback">${esc(state.feedback)}</p>` : ""}
+    ${upgradePreview(item)}
+    ${fusionPanel(profile, item)}
+    ${recalPanel(profile, item)}`;
 };
 
 export const hangarView = (profile: CampaignProfile, state: HubState) => {
   const now = summarize(profile);
-  const keys = slotKeys(profile);
-  const counts: Record<string, number> = {};
-  keys.forEach((k) => {
-    const t = slotType(k);
-    counts[t] = (counts[t] ?? 0) + 1;
-  });
-  const hull = equippedHull(profile);
   return `<div class="hq-hangar">
-    <aside class="panel hq-stats" data-role="stats">${statsPanel(now)}</aside>
-    <section class="panel hq-ship">
-      <div class="hq-ship__head">
-        <b>${esc(hull ? mustGearDef(hull.defId).title : "Nessuno scafo")}</b>
-        <small>Profili di fuoco: tasti 1 · 2 · 3 in volo. Il profilo 1 usa tutte le armi.</small>
-      </div>
-      <div class="hq-ship__stage">
-        ${hullSvg(hull?.defId)}
-        ${keys.map((k) => socket(profile, k, state.slot === k, counts)).join("")}
-      </div>
-    </section>
-    <aside class="panel hq-slot">${slotPanel(profile, state, now)}</aside>
-    ${inventoryPanel(profile, state)}
+    <aside class="hq-hangar__nav">
+      <nav class="panel hq-cats">${categoryNav(profile, state)}</nav>
+      <section class="panel">${shipCard(now)}</section>
+    </aside>
+    <section class="panel hq-hangar__list">${listColumn(profile, state, now)}</section>
+    <aside class="panel hq-hangar__detail">${detailPanel(profile, state)}</aside>
   </div>`;
-};
-
-/** Anteprima nella scheda statistiche al passaggio su un candidato. */
-export const hoverStats = (profile: CampaignProfile, state: HubState, uid: number | null) => {
-  const now = summarize(profile);
-  if (uid === null || !state.slot) return statsPanel(now);
-  return statsPanel(now, summarize(simulateEquip(profile, state.slot, uid)));
 };

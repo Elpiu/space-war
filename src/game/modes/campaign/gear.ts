@@ -507,7 +507,7 @@ export const GEAR: GearDef[] = [
     color: 0x34d399,
     value: 60,
     shopTier: 1,
-    hull: { front: 2, rear: 0, missile: 1, bomb: 0, device: 1, hp: 8, speed: 300, heatCap: 100, heatSink: 32 },
+    hull: { front: 2, rear: 0, missile: 1, bomb: 0, device: 1, hp: 8, speed: 345, heatCap: 100, heatSink: 32 },
   },
   {
     id: "frigate",
@@ -518,7 +518,7 @@ export const GEAR: GearDef[] = [
     color: 0x38bdf8,
     value: 50,
     shopTier: 0,
-    hull: { front: 2, rear: 1, missile: 0, bomb: 1, device: 1, hp: 11, speed: 255, heatCap: 110, heatSink: 30 },
+    hull: { front: 2, rear: 1, missile: 0, bomb: 1, device: 1, hp: 11, speed: 295, heatCap: 110, heatSink: 30 },
   },
   {
     id: "bastion",
@@ -529,7 +529,7 @@ export const GEAR: GearDef[] = [
     color: 0xf97316,
     value: 120,
     shopTier: 3,
-    hull: { front: 3, rear: 1, missile: 1, bomb: 1, device: 2, hp: 16, speed: 215, heatCap: 130, heatSink: 26 },
+    hull: { front: 3, rear: 1, missile: 1, bomb: 1, device: 2, hp: 16, speed: 250, heatCap: 130, heatSink: 26 },
   },
 ];
 

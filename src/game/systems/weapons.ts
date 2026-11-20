@@ -188,11 +188,11 @@ export const updateBullets = (g: GameScene, dt: number) => {
 
 // ---------- Proiettili nemici ----------
 
-export const fireEnemyBullet = (g: GameScene, x: number, y: number, angle: number, p: ProjectileDef, damage: number, speedMul = 1) => {
+export const fireEnemyBullet = (g: GameScene, x: number, y: number, angle: number, p: ProjectileDef, damage: number, speedMul = 1, phase = 0) => {
   let b = g.enemyBullets.find((entry) => !entry.active);
   if (!b) {
     const sprite = g.add.image(0, 0, "orb").setBlendMode(BlendModes.ADD).setDepth(DEPTH.enemyBullet);
-    b = { sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, radius: 6, life: 0, gravity: 0, homing: 0, burst: 0, active: false };
+    b = { sprite, x: 0, y: 0, vx: 0, vy: 0, damage: 0, radius: 6, life: 0, gravity: 0, homing: 0, burst: 0, wave: 0, waveFreq: 0, phase: 0, age: 0, active: false };
     g.enemyBullets.push(b);
   }
   b.x = x;
@@ -207,9 +207,13 @@ export const fireEnemyBullet = (g: GameScene, x: number, y: number, angle: numbe
   b.gravity = p.gravity ?? 0;
   b.homing = p.homing ?? 0;
   b.burst = p.burst ?? 0;
+  b.wave = p.wave ?? 0;
+  b.waveFreq = p.waveFreq ?? 0;
+  b.phase = phase;
+  b.age = 0;
   b.active = true;
   // Colori dei proiettili: rosa normali, arancio bombe, viola missili, giallo granate.
-  const tint = p.gravity ? 0xfb923c : p.homing ? 0xc084fc : p.burst ? 0xfacc15 : COLORS.enemyBullet;
+  const tint = p.gravity ? 0xfb923c : p.homing ? 0xc084fc : p.burst ? 0xfacc15 : p.wave ? 0x67e8f9 : COLORS.enemyBullet;
   b.sprite.setActive(true).setVisible(true).setPosition(x, y).setTint(tint).setDisplaySize(p.radius * 3.4, p.radius * 3.4);
 };
 
@@ -236,8 +240,18 @@ export const updateEnemyBullets = (g: GameScene, dt: number) => {
       b.vy = Math.sin(a) * speed;
       if (Math.random() < 0.4) g.fx.trailDot(b.x, b.y, 0xc084fc);
     }
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
+    let lx = 0;
+    let ly = 0;
+    if (b.wave) {
+      // Schema a S: oscillazione perpendicolare alla direzione di volo.
+      b.age += dt;
+      const speed = Math.hypot(b.vx, b.vy) || 1;
+      const lateral = b.wave * b.waveFreq * Math.cos(b.waveFreq * b.age + b.phase);
+      lx = (-b.vy / speed) * lateral;
+      ly = (b.vx / speed) * lateral;
+    }
+    b.x += (b.vx + lx) * dt;
+    b.y += (b.vy + ly) * dt;
     b.life -= Math.hypot(b.vx, b.vy) * dt;
     b.sprite.setPosition(b.x, b.y);
     const dead = b.life <= 0 || !insideArena(g.arena, b.x, b.y, 200) || g.solidAt(b.x, b.y, b.radius);
