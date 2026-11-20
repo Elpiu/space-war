@@ -32,6 +32,7 @@ src/
     modes/campaign/contracts.ts contratti di missione (obiettivo facoltativo per missione)
     ui/extras.ts          finestra Impostazioni e schermata Archivio
     modes/campaign/ui/    viste dell'hub: mappa, hangar (con officina), negozio, elementi comuni
+    modes/campaign/schematic.ts  sagome SVG degli scafi e posizione delle prese (schema in cima all'hangar)
     systems/arena.ts      arena quadrata e corridoio, disegno, collisioni, parallasse
     systems/director.ts   wave del survival, eventi orda/boss, spawn
     systems/enemies.ts    spawn e IA di base dei nemici, boss a fasi

@@ -22,6 +22,7 @@ import {
   sell,
   sellCommons,
   shopCatalog,
+  slotType,
   toggleFireSlot,
   unequip,
   upgrade,
@@ -163,6 +164,15 @@ export const openCampaignHub = (actions: { launch: (missionId: string, difficult
         openCategory(id as GearSlot);
         state.feedback = "";
         break;
+      case "socket": {
+        // Presa dello schema: apre la categoria e punta quello slot.
+        const key = id!;
+        openCategory(slotType(key) as GearSlot);
+        state.slot = key;
+        state.selected = profile.equipped[key] ?? state.selected;
+        state.feedback = "";
+        break;
+      }
       case "slot":
         // Slot vuoto: diventa la destinazione di "Monta".
         state.slot = id!;

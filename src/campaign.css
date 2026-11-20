@@ -382,3 +382,31 @@
 .is-touch .hq-row { padding: 6px 8px; gap: 8px; }
 .is-touch .hq-row__icon { width: 34px; height: 34px; }
 .is-touch .hq-shipcard { font-size: 11px; gap: 4px; }
+
+/* ---------- Schema della nave in cima all'hangar ---------- */
+.hq-hangar__center { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; min-height: 0; }
+.hq-ship { display: grid; gap: 4px; padding: 10px 12px; overflow: hidden; }
+.hq-ship__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.hq-ship__head b { font: 700 15px/1 var(--font-title); letter-spacing: 0.05em; }
+.hq-ship__head small { color: var(--muted); font-size: 11px; }
+/* Stesse proporzioni del viewBox (600x320): le prese restano sul disegno. */
+.hq-ship__stage { position: relative; height: 205px; aspect-ratio: 600 / 320; margin: 0 auto; border-radius: 12px; background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.08), transparent 70%); }
+.hq-ship__svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hq-ship__flame { animation: flame 1.2s ease-in-out infinite; transform-origin: 70px 160px; }
+.hq-socket { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 2px; }
+.hq-socket__btn { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border: 2px solid var(--r); border-radius: 10px; background: color-mix(in srgb, var(--c) 18%, rgba(2, 6, 23, 0.92)); color: var(--c); cursor: pointer; box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); transition: transform 120ms ease; }
+.hq-socket__btn:hover { transform: scale(1.08); }
+.hq-socket__btn .ico { width: 21px; height: 21px; }
+.hq-socket__btn b { position: absolute; right: 2px; bottom: 0; color: #f8fafc; font: 700 9px/1 var(--font-title); }
+.hq-socket.is-empty .hq-socket__btn { border-style: dashed; border-color: rgba(148, 163, 184, 0.45); color: rgba(148, 163, 184, 0.6); box-shadow: none; background: rgba(2, 6, 23, 0.75); }
+.hq-socket.is-cat .hq-socket__btn { border-color: var(--accent); }
+.hq-socket.is-selected .hq-socket__btn { box-shadow: 0 0 0 3px var(--gold), 0 0 18px rgba(250, 204, 21, 0.5); }
+.hq-socket__label { padding: 1px 5px; border-radius: 5px; background: rgba(2, 6, 23, 0.8); color: var(--muted); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.is-touch .hq-ship { padding: 6px 8px; }
+.is-touch .hq-ship__head small { display: none; }
+.is-touch .hq-ship__stage { height: 120px; }
+.is-touch .hq-socket__btn { width: 30px; height: 30px; }
+.is-touch .hq-socket__btn .ico { width: 16px; height: 16px; }
+.is-touch .hq-socket__label { display: none; }
+/* Prese frontali impilate: l'etichetta va a sinistra per non finire sotto la presa successiva. */
+.hq-socket--front .hq-socket__label { position: absolute; right: calc(100% + 4px); top: 50%; transform: translateY(-50%); }

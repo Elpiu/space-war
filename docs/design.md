@@ -357,6 +357,9 @@ Armi di coda, Missili, Bombe, Dispositivi, Scafo).
   - **A sinistra** le categorie (slot occupati e pezzi in magazzino, un
     pallino per i pezzi nuovi) e un riepilogo compatto della nave con il
     **bilancio termico**.
+  - **In cima al centro** lo **schema della nave**: sagoma SVG dello scafo
+    con le prese degli slot; cliccando una presa si apre la sua categoria
+    con quello slot come destinazione.
   - **Al centro** la categoria scelta: prima i pezzi **montati** (con i
     profili di fuoco 2 e 3 sulle armi e gli slot liberi), poi il
     **magazzino**, ordinato per potenza, con le differenze sulla nave

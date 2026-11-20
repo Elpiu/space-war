@@ -18,6 +18,7 @@ import {
 import {
   canUnequip,
   commonsValue,
+  equippedHull,
   equippedSlotOf,
   fusionCost,
   fusionPartners,
@@ -32,7 +33,8 @@ import {
   type ShipSummary,
   type SlotKey,
 } from "../profile";
-import { CATEGORIES, gearLines, itemRow, itemScore, slotLabel, type HubState } from "./common";
+import { hullSvg, socketPosition } from "../schematic";
+import { CATEGORIES, SLOT_ICONS, gearLines, itemRow, itemScore, slotLabel, type HubState } from "./common";
 
 // ---------- Slot e confronti ----------
 
@@ -101,6 +103,38 @@ export const shipCard = (s: ShipSummary) => {
       <small>${icon("heat")} ${balance >= 0 ? "Fuoco continuo senza surriscaldarsi" : `Surriscalda in ~${Math.max(1, Math.round(s.cap / -balance))} s`}</small>
     </div>
   </div>`;
+};
+
+// ---------- Schema della nave (in cima alla colonna centrale) ----------
+
+/** Sagoma dello scafo con le prese degli slot: cliccando una presa si apre la sua categoria. */
+const shipBand = (profile: CampaignProfile, state: HubState) => {
+  const keys = slotKeys(profile);
+  const counts: Record<string, number> = {};
+  keys.forEach((k) => {
+    const t = slotType(k);
+    counts[t] = (counts[t] ?? 0) + 1;
+  });
+  const hull = equippedHull(profile);
+  const sockets = keys
+    .map((key) => {
+      const pos = socketPosition(key, counts);
+      const item = itemByUid(profile, profile.equipped[key]);
+      const def = item ? mustGearDef(item.defId) : undefined;
+      const type = slotType(key);
+      const selected = state.slot === key || (type === "hull" && state.cat === "hull");
+      return `<div class="hq-socket hq-socket--${type} ${selected ? "is-selected" : ""} ${item ? "" : "is-empty"} ${state.cat === type ? "is-cat" : ""}" style="left:${pos.x}%;top:${pos.y}%;--c:${def ? hex(def.color) : "#64748b"};--r:${item ? hex(RARITIES[item.rarity].color) : "#334155"}">
+        <button class="hq-socket__btn" data-action="socket" data-id="${key}" title="${esc(def ? `${def.title} · ${slotLabel(key)}` : `${slotLabel(key)} libero`)}">
+          ${icon(def ? def.icon : SLOT_ICONS[type])}${item ? `<b>${item.level}</b>` : ""}
+        </button>
+        <span class="hq-socket__label">${slotLabel(key, true)}</span>
+      </div>`;
+    })
+    .join("");
+  return `<section class="panel hq-ship">
+    <div class="hq-ship__head"><b>${esc(hull ? mustGearDef(hull.defId).title : "Nessuno scafo")}</b><small>Clicca una presa per aprirne la categoria</small></div>
+    <div class="hq-ship__stage">${hullSvg(hull?.defId)}${sockets}</div>
+  </section>`;
 };
 
 // ---------- Colonna centrale: montati e magazzino ----------
@@ -247,7 +281,10 @@ export const hangarView = (profile: CampaignProfile, state: HubState) => {
       <nav class="panel hq-cats">${categoryNav(profile, state)}</nav>
       <section class="panel">${shipCard(now)}</section>
     </aside>
-    <section class="panel hq-hangar__list">${listColumn(profile, state, now)}</section>
+    <div class="hq-hangar__center">
+      ${shipBand(profile, state)}
+      <section class="panel hq-hangar__list">${listColumn(profile, state, now)}</section>
+    </div>
     <aside class="panel hq-hangar__detail">${detailPanel(profile, state)}</aside>
   </div>`;
 };
